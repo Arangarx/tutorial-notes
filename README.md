@@ -34,9 +34,30 @@ Use `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`.
 ### Dev email “outbox”
 Sending an update writes to a local outbox so you can preview the exact email content at `/admin/outbox`.
 
-### Tests
+### Running tests
 
 ```bash
-npm test
+npm test        # Jest unit/integration
+npm run test:e2e  # Playwright UI smoke tests
+npm run test:all  # both
 ```
+
+### Production build and run
+
+For a production-like run on your own machine or server:
+
+```bash
+# 1) Ensure .env is configured (see .env.example).
+#    In production, set these as real environment variables instead of a file.
+
+# 2) Build the app
+npm run build
+
+# 3) Start the app (defaults to port 3000 unless PORT is set)
+npm start
+```
+
+Set `NEXTAUTH_URL` to the public URL where the app will be served (e.g. `https://notes.example.com`). On a phone, open that URL in the browser (no separate native app).
+
+Emails are **not** actually sent in this MVP; the "Send" button writes to the dev outbox only so you can review what would be sent. A real email transport can be wired in later behind the same flow.*** End Patch】} -->
 

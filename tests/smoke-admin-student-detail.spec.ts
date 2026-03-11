@@ -54,7 +54,9 @@ test("smoke: create note, send update, outbox link opens share page", async ({
 
   await expect(popup).toHaveURL(/\/s\//);
   await expect(popup.getByRole("heading", { name: "Playwright Student" })).toBeVisible();
-  await expect(popup.getByRole("link", { name: "https://example.com/resource" })).toBeVisible();
+  await expect(
+    popup.getByRole("link", { name: "https://example.com/resource" }).first(),
+  ).toBeVisible();
 });
 
 test("auth: unauthenticated access to admin redirects to login", async ({ page }) => {

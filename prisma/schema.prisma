@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum NoteStatus {
+  DRAFT
+  READY
+  SENT
+}
+
+enum FeedbackKind {
+  BUG
+  FEEDBACK
+}
+
+model Student {
+  id        String      @id @default(uuid())
+  name      String
+  createdAt DateTime    @default(now())
+  notes     SessionNote[]
+  shareLinks ShareLink[]
+}
+
+model SessionNote {
+  id        String    @id @default(uuid())
+  studentId String
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  date      DateTime
+  topics    String
+  homework  String
+  nextSteps String
+  linksJson String    @default("[]")
+  template  String?
+  status    NoteStatus @default(DRAFT)
+  sentAt    DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([studentId, date])
+}
+
+model ShareLink {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model EmailMessage {
+  id        String   @id @default(uuid())
+  toEmail   String
+  subject   String
+  bodyText  String
+  linkUrl   String
+  createdAt DateTime @default(now())
+}
+
+model FeedbackItem {
+  id        String       @id @default(uuid())
+  kind      FeedbackKind
+  message   String
+  page      String?
+  createdAt DateTime     @default(now())
+}
+

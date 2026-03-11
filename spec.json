@@ -1,0 +1,62 @@
+{
+  "project": {
+    "name": "Tutoring Notes",
+    "goal": "Help tutors quickly capture session notes and share clear, consistent updates with parents/students.",
+    "type": "web",
+    "platforms": ["web"]
+  },
+  "scope": {
+    "mustHave": [
+      "Tutor can create a session note (date, student, topics covered, homework, next steps, optional attachments/links)",
+      "Parent/student can view recent session notes in a simple web view (read-only)",
+      "Tutor can send a session update email link to parent/student after a session",
+      "Basic authentication for tutor/admin area",
+      "Simple landing page describing the product and pricing placeholder",
+      "In-app feedback/bug report link or button (per pipeline preferences)"
+    ],
+    "niceToHave": [
+      "Per-student goals and progress tags (e.g. Algebra, Reading comprehension)",
+      "Templates for common session note formats",
+      "SMS delivery for updates (later)",
+      "Export notes (CSV/PDF)"
+    ],
+    "outOfScope": [
+      "Payments/Stripe in v1 (ok to add later)",
+      "Full scheduling/calendar integration",
+      "Multi-tutor organization accounts",
+      "Student messaging/chat"
+    ]
+  },
+  "users": {
+    "who": "Independent tutors who want to save time on parent updates, and parents/students who want visibility into progress.",
+    "useCases": [
+      "Tutor writes a structured note immediately after a session in under 2 minutes",
+      "Parent receives an email with a link to the session summary and homework",
+      "Tutor reviews prior notes before the next session to stay consistent"
+    ]
+  },
+  "constraints": {
+    "stack": [],
+    "hosting": "Local-first for MVP. Deploy later when a target is configured."
+  },
+  "success": {
+    "reviewChecklist": [
+      "Tutor can create, edit, and view session notes without friction",
+      "Parent/student view is clean and clearly shows topics, homework, and next steps",
+      "Email delivery flow works end-to-end (even if using a dev email transport initially)",
+      "Auth prevents unauthorized access to tutor/admin area",
+      "Feedback/bug report is discoverable in the UI"
+    ],
+    "acceptanceCriteria": [
+      "New note can be created in <2 minutes from a blank state",
+      "Parent view link does not require tutor login and only shows the intended student's notes",
+      "At least one automated test covers note creation and viewing",
+      "At least one automated test covers auth protection for admin routes"
+    ]
+  },
+  "meta": {
+    "version": "1.0",
+    "preferenceOverrides": {}
+  }
+}
+

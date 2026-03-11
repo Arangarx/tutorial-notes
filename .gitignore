@@ -3,4 +3,6 @@ node_modules
 .env
 dev.db
 test.db
+pw.db
+test-results/
 

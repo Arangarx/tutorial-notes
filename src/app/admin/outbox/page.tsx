@@ -35,6 +35,9 @@ export default async function OutboxPage() {
               <div className="divider" />
               <div className="row">
                 <input readOnly value={m.linkUrl} />
+                <a className="btn" href={m.linkUrl} target="_blank" rel="noreferrer">
+                  Open link
+                </a>
               </div>
               <div style={{ marginTop: 12, whiteSpace: "pre-wrap" }}>{m.bodyText}</div>
             </div>

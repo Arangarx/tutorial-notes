@@ -42,8 +42,9 @@ export default function LoginPage() {
           }}
         >
           <div style={{ marginTop: 16 }}>
-            <label>Email</label>
+            <label htmlFor="email">Email</label>
             <input
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
@@ -52,8 +53,9 @@ export default function LoginPage() {
             />
           </div>
           <div style={{ marginTop: 12 }}>
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
             <input
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"

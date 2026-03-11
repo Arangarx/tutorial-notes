@@ -21,8 +21,13 @@ export default async function StudentsPage() {
       <form action={createStudent}>
         <div className="row" style={{ alignItems: "flex-end" }}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            <label>Student name</label>
-            <input name="name" placeholder="e.g. Jordan S." required />
+            <label htmlFor="studentName">Student name</label>
+            <input
+              id="studentName"
+              name="name"
+              placeholder="e.g. Jordan S."
+              required
+            />
           </div>
           <button className="btn primary" type="submit">
             Add student

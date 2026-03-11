@@ -18,6 +18,15 @@ function formatDateInput(d: Date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function safeJsonArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function StudentDetailPage({
   params,
 }: {
@@ -63,20 +72,30 @@ export default async function StudentDetailPage({
               This link does not require login. You can revoke/regenerate anytime.
             </p>
             <div className="row">
+              {(() => {
+                const url = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/s/${activeShare.token}`;
+                return (
+                  <>
               <input
                 readOnly
-                value={`${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/s/${activeShare.token}`}
+                    value={url}
               />
-              <form action={async () => regenerateShareLink(student.id)}>
+                    <a className="btn" href={url} target="_blank" rel="noreferrer">
+                      Open
+                    </a>
+              <form action={regenerateShareLink.bind(null, student.id)}>
                 <button className="btn primary" type="submit">
                   Regenerate
                 </button>
               </form>
-              <form action={async () => revokeShareLink(student.id)}>
+              <form action={revokeShareLink.bind(null, student.id)}>
                 <button className="btn" type="submit">
                   Revoke
                 </button>
               </form>
+                  </>
+                );
+              })()}
             </div>
           </>
         ) : (
@@ -84,7 +103,7 @@ export default async function StudentDetailPage({
             <p className="muted" style={{ margin: 0 }}>
               No active share link yet.
             </p>
-            <form action={async () => regenerateShareLink(student.id)}>
+            <form action={regenerateShareLink.bind(null, student.id)}>
               <button className="btn primary" type="submit">
                 Create share link
               </button>
@@ -99,7 +118,7 @@ export default async function StudentDetailPage({
         <div className="card" style={{ flex: 1, minWidth: 340 }}>
           <h3 style={{ marginTop: 0 }}>New session note</h3>
 
-          <form action={async (fd) => createNote(student.id, fd)}>
+          <form action={createNote.bind(null, student.id)}>
             <div className="row">
               <div style={{ flex: 1, minWidth: 200 }}>
                 <label>Date</label>
@@ -146,7 +165,7 @@ export default async function StudentDetailPage({
           <p className="muted">
             This writes to a local outbox for preview. It still validates the full flow.
           </p>
-          <form action={async (fd) => sendUpdateEmail(student.id, fd)}>
+          <form action={sendUpdateEmail.bind(null, student.id)}>
             <label>To</label>
             <input name="toEmail" type="email" placeholder="parent@example.com" required />
             <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
@@ -179,13 +198,13 @@ export default async function StudentDetailPage({
                 </div>
                 <div className="row">
                   {n.status !== "READY" ? (
-                    <form action={async () => setNoteStatus(n.id, student.id, "READY")}>
+                    <form action={setNoteStatus.bind(null, n.id, student.id, "READY")}>
                       <button className="btn" type="submit">
                         Mark ready
                       </button>
                     </form>
                   ) : (
-                    <form action={async () => setNoteStatus(n.id, student.id, "DRAFT")}>
+                    <form action={setNoteStatus.bind(null, n.id, student.id, "DRAFT")}>
                       <button className="btn" type="submit">
                         Mark draft
                       </button>
@@ -219,6 +238,26 @@ export default async function StudentDetailPage({
                     {n.nextSteps || <span className="muted">—</span>}
                   </div>
                 </div>
+                {(() => {
+                  const links = safeJsonArray(n.linksJson);
+                  if (links.length === 0) return null;
+                  return (
+                    <div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        Links
+                      </div>
+                      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                        {links.map((u) => (
+                          <li key={u}>
+                            <a href={u} target="_blank" rel="noreferrer">
+                              {u}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ))}

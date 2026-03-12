@@ -28,11 +28,16 @@ npm run db:push
 npm run dev
 ```
 
-### Login
-Use `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`.
+### Login and first-run setup
+- **First time:** If no admin account exists and you haven’t set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`, open `/setup` to create the first admin (stored in DB, password hashed). Then sign in at `/login`.
+- **Otherwise:** Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`, or with any admin account you created via `/setup`.
 
-### Dev email “outbox”
-Sending an update writes to a local outbox so you can preview the exact email content at `/admin/outbox`.
+### Email (real send vs outbox)
+- **Easiest: Connect Gmail** — Admin → Email settings → **Connect Gmail**, sign in with Google. No SMTP. (Deployer sets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` once; see .env.example.)
+- **Or use SMTP** — Same page, "Or use SMTP": host, user, password (e.g. Resend/SendGrid). Optional .env `SMTP_*` fallback.
+- **Configure in the app:** Go to **Admin → Email settings**. Enter your SMTP host, username, password (e.g. from [Resend](https://resend.com) or SendGrid), and optional “From” address. Save. “Send update” will then send real email and record it in the outbox.
+- **Optional .env fallback:** You can instead set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (and optionally `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM`) in `.env`; the app uses in-app settings first, then env.
+- **Outbox only:** If neither in-app nor env SMTP is set, “Send update” only records the message at `/admin/outbox` (no email is sent). You can still copy the share link and send it yourself.
 
 ### Running tests
 
@@ -57,7 +62,5 @@ npm run build
 npm start
 ```
 
-Set `NEXTAUTH_URL` to the public URL where the app will be served (e.g. `https://notes.example.com`). On a phone, open that URL in the browser (no separate native app).
-
-Emails are **not** actually sent in this MVP; the "Send" button writes to the dev outbox only so you can review what would be sent. A real email transport can be wired in later behind the same flow.*** End Patch】} -->
+Set `NEXTAUTH_URL` to the public URL where the app will be served (e.g. `https://notes.example.com`). On a phone, open that URL in the browser (no separate native app). Configure SMTP (see above) so “Send update” actually delivers email to parents.
 

@@ -4,15 +4,44 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   NEXTAUTH_SECRET: z.string().min(1),
   NEXTAUTH_URL: z.string().min(1).optional(),
-  ADMIN_EMAIL: z.string().email(),
-  ADMIN_PASSWORD: z.string().min(6),
+  // Optional when using first-run setup (AdminUser in DB)
+  ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD: z.string().min(6).optional(),
+  // Optional: when set, real email is sent via SMTP
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_SECURE: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
+  // Optional: for "Connect Gmail" OAuth (deployer sets once; users never touch)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
-export const env = EnvSchema.parse({
+const parsed = EnvSchema.safeParse({
   DATABASE_URL: process.env.DATABASE_URL,
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
+  SMTP_SECURE: process.env.SMTP_SECURE,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM: process.env.SMTP_FROM,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 });
 
+if (!parsed.success) {
+  throw new Error("Invalid env: " + JSON.stringify(parsed.error.flatten()));
+}
+
+export const env = parsed.data;
+
+/** True if SMTP is configured so we can send real email. */
+export function isEmailConfigured(): boolean {
+  return !!(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+}

@@ -30,7 +30,7 @@ test("smoke: create note, send update, outbox link opens share page", async ({
   await expect(page.getByRole("heading", { name: "Playwright Student" })).toBeVisible();
   await expect(page.getByText("Share link (for parents/students)")).toBeVisible();
   await expect(page.getByText("New session note")).toBeVisible();
-  await expect(page.getByText("Send update email (dev outbox)")).toBeVisible();
+  await expect(page.getByText("Send update email")).toBeVisible();
 
   // Create a note (so the share page has content).
   await page.locator('textarea[name="topics"]').fill("Fractions practice");
@@ -39,9 +39,12 @@ test("smoke: create note, send update, outbox link opens share page", async ({
   await page.locator('textarea[name="links"]').fill("https://example.com/resource");
   await page.getByRole("button", { name: "Save note" }).click();
 
-  // Send update (writes to dev outbox and creates share link if missing).
+  // Send update (sends if SMTP configured, else outbox; UI must show outcome).
   await page.locator('input[name="toEmail"]').fill("parent@example.com");
   await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page.getByText(/Sent to|Email is not configured|Failed to send|saved to outbox/i)
+  ).toBeVisible({ timeout: 10_000 });
 
   // Open outbox and click through to the share link.
   await page.getByRole("link", { name: "Outbox" }).first().click();

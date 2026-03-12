@@ -5,9 +5,9 @@ import {
   createNote,
   regenerateShareLink,
   revokeShareLink,
-  sendUpdateEmail,
   setNoteStatus,
 } from "./actions";
+import SendUpdateForm from "./SendUpdateForm";
 
 export const dynamic = "force-dynamic";
 
@@ -161,19 +161,13 @@ export default async function StudentDetailPage({
         </div>
 
         <div className="card" style={{ flex: 1, minWidth: 340 }}>
-          <h3 style={{ marginTop: 0 }}>Send update email (dev outbox)</h3>
+          <h3 style={{ marginTop: 0 }}>Send update email</h3>
           <p className="muted">
-            This writes to a local outbox for preview. It still validates the full flow.
+            Sends the share link to the parent. If SMTP is configured on the server, the email is
+            sent; otherwise it’s saved to the outbox and you can copy the link. The “To” address is
+            saved for this student for next time.
           </p>
-          <form action={sendUpdateEmail.bind(null, student.id)}>
-            <label>To</label>
-            <input name="toEmail" type="email" placeholder="parent@example.com" required />
-            <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-              <button className="btn primary" type="submit">
-                Send
-              </button>
-            </div>
-          </form>
+          <SendUpdateForm studentId={student.id} defaultToEmail={student.parentEmail} />
         </div>
       </div>
 

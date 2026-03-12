@@ -19,11 +19,12 @@ enum FeedbackKind {
 }
 
 model Student {
-  id        String      @id @default(uuid())
-  name      String
-  createdAt DateTime    @default(now())
-  notes     SessionNote[]
-  shareLinks ShareLink[]
+  id          String       @id @default(uuid())
+  name        String
+  parentEmail String?      // Saved so tutor doesn't re-enter every time
+  createdAt   DateTime     @default(now())
+  notes       SessionNote[]
+  shareLinks  ShareLink[]
 }
 
 model SessionNote {
@@ -72,5 +73,34 @@ model FeedbackItem {
   message   String
   page      String?
   createdAt DateTime     @default(now())
+}
+
+model AdminUser {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Singleton: one row. In-app email (SMTP) settings so deployer doesn't hunt for .env.
+model EmailConfig {
+  id        String   @id @default(uuid())
+  host      String
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  user      String
+  password  String   // Store in DB; protect DB access in production
+  fromEmail String?
+  updatedAt DateTime @updatedAt
+}
+
+// OAuth email connections: "Connect Gmail" / "Connect Outlook" — one per provider.
+model OAuthEmailConnection {
+  id           String   @id @default(uuid())
+  provider     String   // "gmail" | "outlook"
+  refreshToken String
+  email        String   // connected address (e.g. user@gmail.com)
+  updatedAt    DateTime @updatedAt
 }
 

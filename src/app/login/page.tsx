@@ -2,22 +2,43 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/admin/students";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/setup-required")
+      .then((r) => r.json())
+      .then((data: { setupRequired?: boolean }) => {
+        if (data.setupRequired) window.location.href = "/setup";
+        else setReady(true);
+      })
+      .catch(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="container" style={{ maxWidth: 560 }}>
+        <div className="card">
+          <p className="muted">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container" style={{ maxWidth: 560 }}>
       <div className="card">
         <h1 style={{ marginTop: 0 }}>Login</h1>
         <p className="muted">
-          Use the admin credentials from your <code>.env</code>.
+          Sign in with your admin account.
         </p>
 
         <form
@@ -76,6 +97,18 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="container" style={{ maxWidth: 560 }}>
+        <div className="card"><p className="muted">Loading...</p></div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
 

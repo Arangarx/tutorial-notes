@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 
 function baseUrl() {
@@ -64,9 +65,21 @@ export async function setNoteStatus(noteId: string, studentId: string, status: "
   revalidatePath(`/admin/students/${studentId}`);
 }
 
-export async function sendUpdateEmail(studentId: string, formData: FormData) {
+export type SendUpdateResult = {
+  ok: boolean;
+  sent: boolean;
+  outboxOnly?: boolean;
+  error?: string;
+  toEmail?: string;
+};
+
+export async function sendUpdateEmail(
+  _prev: SendUpdateResult | null,
+  formData: FormData
+): Promise<SendUpdateResult> {
+  const studentId = String(formData.get("studentId") ?? "").trim();
   const toEmail = String(formData.get("toEmail") ?? "").trim();
-  if (!toEmail) throw new Error("To email is required");
+  if (!studentId || !toEmail) return { ok: false, sent: false, error: "Student and email required" };
 
   const activeLink =
     (await db.shareLink.findFirst({
@@ -87,6 +100,28 @@ export async function sendUpdateEmail(studentId: string, formData: FormData) {
     data: { toEmail, subject, bodyText, linkUrl },
   });
 
+  const { sent, error } = await sendMail({
+    to: toEmail,
+    subject,
+    text: bodyText,
+  });
+
+  if (error) {
+    console.error("[sendUpdateEmail] SMTP error:", error);
+    await db.sessionNote.updateMany({
+      where: { studentId, status: { in: ["READY", "DRAFT"] } },
+      data: { status: "SENT", sentAt: new Date() },
+    });
+    revalidatePath(`/admin/students/${studentId}`);
+    revalidatePath("/admin/outbox");
+    return { ok: true, sent: false, error, toEmail };
+  }
+
+  await db.student.update({
+    where: { id: studentId },
+    data: { parentEmail: toEmail },
+  });
+
   await db.sessionNote.updateMany({
     where: { studentId, status: { in: ["READY", "DRAFT"] } },
     data: { status: "SENT", sentAt: new Date() },
@@ -94,5 +129,8 @@ export async function sendUpdateEmail(studentId: string, formData: FormData) {
 
   revalidatePath(`/admin/students/${studentId}`);
   revalidatePath("/admin/outbox");
+
+  if (sent) return { ok: true, sent: true, toEmail };
+  return { ok: true, sent: false, outboxOnly: true, toEmail };
 }
 

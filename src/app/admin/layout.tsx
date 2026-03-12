@@ -22,6 +22,9 @@ export default async function AdminLayout({
           <Link className="btn" href="/admin/feedback">
             Feedback
           </Link>
+          <Link className="btn" href="/admin/settings/email">
+            Email settings
+          </Link>
         </div>
         <div className="row">
           <Link className="btn" href="/api/auth/signout">

@@ -95,7 +95,7 @@ export default async function AdminDashboardPage() {
         <Link className="btn" href="/admin/outbox">
           Outbox
         </Link>
-        <Link className="btn" href="/admin/settings/profile">
+        <Link className="btn" href="/admin/settings">
           Settings
         </Link>
       </div>

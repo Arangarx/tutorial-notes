@@ -71,7 +71,9 @@ export default async function EmailSettingsPage({
       </div>
 
       <p className="muted" style={{ marginTop: 24, fontSize: 14 }}>
-        <Link href="/admin/students">← Back to Students</Link>
+        <Link href="/admin/settings">← All settings</Link>
+        {" · "}
+        <Link href="/admin/students">Students</Link>
       </p>
     </div>
   );

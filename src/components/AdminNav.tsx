@@ -11,7 +11,7 @@ const adminLinks = [
   { href: "/admin/outbox", label: "Outbox" },
   { href: "/admin/feedback", label: "Feedback" },
   { href: "/admin/waitlist", label: "Waitlist" },
-  { href: "/admin/settings/profile", label: "Settings" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 export function AdminNav() {

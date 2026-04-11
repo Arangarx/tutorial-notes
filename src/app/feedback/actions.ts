@@ -4,10 +4,15 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 
-export async function submitFeedback(formData: FormData) {
+export type FeedbackResult = { ok: true } | { ok: false; error: string };
+
+export async function submitFeedback(
+  _prev: FeedbackResult | null,
+  formData: FormData
+): Promise<FeedbackResult> {
   const kind = String(formData.get("kind") ?? "FEEDBACK");
   const message = String(formData.get("message") ?? "").trim();
-  if (!message) throw new Error("Message required");
+  if (!message) return { ok: false, error: "Message is required." };
 
   const h = await headers();
   const page = h.get("referer") ?? null;
@@ -17,5 +22,5 @@ export async function submitFeedback(formData: FormData) {
   });
 
   revalidatePath("/admin/feedback");
+  return { ok: true };
 }
-

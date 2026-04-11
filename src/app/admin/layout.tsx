@@ -1,44 +1,15 @@
-import Link from "next/link";
-import { requireAdminSession } from "@/lib/require-admin";
+import { AdminNav } from "@/components/AdminNav";
+import { Providers } from "@/components/Providers";
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
-  await requireAdminSession();
-
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="container">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row">
-          <Link className="btn" href="/">
-            Home
-          </Link>
-          <Link className="btn" href="/admin/students">
-            Students
-          </Link>
-          <Link className="btn" href="/admin/outbox">
-            Outbox
-          </Link>
-          <Link className="btn" href="/admin/feedback">
-            Feedback
-          </Link>
-          <Link className="btn" href="/admin/settings/email">
-            Email settings
-          </Link>
-        </div>
-        <div className="row">
-          <Link className="btn" href="/api/auth/signout">
-            Sign out
-          </Link>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>{children}</div>
-
-      <footer className="muted" style={{ marginTop: 24 }}>
-        <Link href="/feedback">Send feedback</Link>
-      </footer>
-    </div>
+    <Providers>
+      <AdminNav />
+      <div className="container">{children}</div>
+    </Providers>
   );
 }
-

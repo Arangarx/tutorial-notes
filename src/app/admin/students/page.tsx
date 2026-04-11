@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { createStudent } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,7 @@ export default async function StudentsPage() {
               required
             />
           </div>
-          <button className="btn primary" type="submit">
-            Add student
-          </button>
+          <SubmitButton label="Add student" />
         </div>
       </form>
 

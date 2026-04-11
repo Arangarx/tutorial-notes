@@ -18,7 +18,26 @@ function asciiSubject(subject: string): string {
     .trim();
 }
 
-function buildMimeMessage(from: string, to: string, subject: string, text: string): string {
+/** Display name for From: header — ASCII only (same rationale as subject). */
+export function asciiEmailDisplayName(name: string): string {
+  return asciiSubject(name).replace(/"/g, "'");
+}
+
+/** `email` or `"Name" <email>` for MIME From (Gmail shows this to recipients). */
+function formatFromHeader(fromEmail: string, displayName?: string | null): string {
+  const raw = (displayName ?? "").trim();
+  if (!raw) return fromEmail;
+  const safe = asciiEmailDisplayName(raw);
+  if (!safe) return fromEmail;
+  return `"${safe.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}" <${fromEmail}>`;
+}
+
+function buildMimeMessage(
+  from: string,
+  to: string,
+  subject: string,
+  text: string
+): string {
   const lines = [
     `From: ${from}`,
     `To: ${to}`,
@@ -41,7 +60,7 @@ function toBase64Url(buffer: Buffer): string {
 export async function sendViaGmailApi(
   refreshToken: string,
   fromEmail: string,
-  options: { to: string; subject: string; text: string }
+  options: { to: string; subject: string; text: string; fromDisplayName?: string | null }
 ): Promise<{ sent: boolean; error?: string }> {
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;
@@ -49,11 +68,18 @@ export async function sendViaGmailApi(
 
   const oauth2Client = new OAuth2Client(clientId, clientSecret);
   oauth2Client.setCredentials({ refresh_token: refreshToken });
-  const auth = await oauth2Client.getAccessToken();
+  let auth: { token?: string | null };
+  try {
+    auth = await oauth2Client.getAccessToken();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { sent: false, error: message };
+  }
   if (!auth.token) return { sent: false, error: "Could not get access token" };
 
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-  const raw = buildMimeMessage(fromEmail, options.to, options.subject, options.text);
+  const fromHeader = formatFromHeader(fromEmail, options.fromDisplayName);
+  const raw = buildMimeMessage(fromHeader, options.to, options.subject, options.text);
   const encoded = toBase64Url(Buffer.from(raw, "utf-8"));
 
   try {

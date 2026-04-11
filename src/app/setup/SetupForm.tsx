@@ -33,6 +33,19 @@ export default function SetupForm() {
           required
         />
       </div>
+      <div style={{ marginTop: 12 }}>
+        <label htmlFor="setup-displayName">Your name (shown to parents in emails)</label>
+        <input
+          id="setup-displayName"
+          name="displayName"
+          type="text"
+          autoComplete="name"
+          placeholder="e.g. Alex Chen"
+        />
+        <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+          Optional but recommended. You can change this later under Admin → Profile.
+        </p>
+      </div>
       {state?.error ? (
         <p style={{ color: "#ffb4b4", marginTop: 12 }}>{state.error}</p>
       ) : null}

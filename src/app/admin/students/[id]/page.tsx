@@ -5,9 +5,11 @@ import {
   createNote,
   regenerateShareLink,
   revokeShareLink,
-  setNoteStatus,
-} from "./actions";
-import SendUpdateForm from "./SendUpdateForm";
+} from "./actions";import SendUpdateForm from "./SendUpdateForm";
+import { ShareLinkRow } from "./ShareLinkRow";
+import { SubmitButton } from "@/components/SubmitButton";
+import { StudentActions } from "./StudentActions";
+import { NoteCardActions } from "./NoteCardActions";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,7 @@ export default async function StudentDetailPage({
 
   return (
     <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div className="muted" style={{ fontSize: 12 }}>
             <Link href="/admin/students">Students</Link> / {student.name}
@@ -56,6 +58,7 @@ export default async function StudentDetailPage({
           <h1 style={{ margin: "6px 0 0" }}>{student.name}</h1>
         </div>
         <div className="row">
+          <StudentActions studentId={student.id} currentName={student.name} />
           <Link className="btn" href="/admin/outbox">
             Outbox
           </Link>
@@ -71,32 +74,22 @@ export default async function StudentDetailPage({
             <p className="muted" style={{ marginTop: 0 }}>
               This link does not require login. You can revoke/regenerate anytime.
             </p>
-            <div className="row">
-              {(() => {
-                const url = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/s/${activeShare.token}`;
-                return (
-                  <>
-              <input
-                readOnly
-                    value={url}
-              />
-                    <a className="btn" href={url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
-              <form action={regenerateShareLink.bind(null, student.id)}>
-                <button className="btn primary" type="submit">
-                  Regenerate
-                </button>
-              </form>
-              <form action={revokeShareLink.bind(null, student.id)}>
-                <button className="btn" type="submit">
-                  Revoke
-                </button>
-              </form>
-                  </>
-                );
-              })()}
-            </div>
+            {(() => {
+              const url = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/s/${activeShare.token}`;
+              return (
+                <>
+                  <ShareLinkRow url={url} />
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <form action={regenerateShareLink.bind(null, student.id)}>
+                      <SubmitButton label="Regenerate" pendingLabel="Regenerating…" />
+                    </form>
+                    <form action={revokeShareLink.bind(null, student.id)}>
+                      <SubmitButton label="Revoke" pendingLabel="Revoking…" className="btn" />
+                    </form>
+                  </div>
+                </>
+              );
+            })()}
           </>
         ) : (
           <div className="row" style={{ justifyContent: "space-between" }}>
@@ -104,9 +97,7 @@ export default async function StudentDetailPage({
               No active share link yet.
             </p>
             <form action={regenerateShareLink.bind(null, student.id)}>
-              <button className="btn primary" type="submit">
-                Create share link
-              </button>
+              <SubmitButton label="Create share link" />
             </form>
           </div>
         )}
@@ -121,12 +112,12 @@ export default async function StudentDetailPage({
           <form action={createNote.bind(null, student.id)}>
             <div className="row">
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label>Date</label>
-                <input name="date" type="date" defaultValue={formatDateInput(new Date())} />
+                <label htmlFor="note-date">Date</label>
+                <input id="note-date" name="date" type="date" defaultValue={formatDateInput(new Date())} />
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label>Template (optional)</label>
-                <select name="template" defaultValue="">
+                <label htmlFor="note-template">Template (optional)</label>
+                <select id="note-template" name="template" defaultValue="">
                   <option value="">None</option>
                   <option value="Math session">Math session</option>
                   <option value="Reading session">Reading session</option>
@@ -136,26 +127,24 @@ export default async function StudentDetailPage({
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <label>Topics covered</label>
-              <textarea name="topics" rows={3} placeholder="What did you work on today?" />
+              <label htmlFor="note-topics">Topics covered</label>
+              <textarea id="note-topics" name="topics" rows={3} placeholder="What did you work on today?" />
             </div>
             <div style={{ marginTop: 12 }}>
-              <label>Homework</label>
-              <textarea name="homework" rows={3} placeholder="What should they do before next time?" />
+              <label htmlFor="note-homework">Homework</label>
+              <textarea id="note-homework" name="homework" rows={3} placeholder="What should they do before next time?" />
             </div>
             <div style={{ marginTop: 12 }}>
-              <label>Next steps</label>
-              <textarea name="nextSteps" rows={3} placeholder="What’s the plan for next session?" />
+              <label htmlFor="note-next-steps">Next steps</label>
+              <textarea id="note-next-steps" name="nextSteps" rows={3} placeholder="What's the plan for next session?" />
             </div>
             <div style={{ marginTop: 12 }}>
-              <label>Links (optional, one per line)</label>
-              <textarea name="links" rows={3} placeholder="https://..." />
+              <label htmlFor="note-links">Links (optional, one per line)</label>
+              <textarea id="note-links" name="links" rows={3} placeholder="https://..." />
             </div>
 
             <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-              <button className="btn primary" type="submit">
-                Save note
-              </button>
+              <SubmitButton label="Save note" />
             </div>
           </form>
         </div>
@@ -163,9 +152,8 @@ export default async function StudentDetailPage({
         <div className="card" style={{ flex: 1, minWidth: 340 }}>
           <h3 style={{ marginTop: 0 }}>Send update email</h3>
           <p className="muted">
-            Sends the share link to the parent. If SMTP is configured on the server, the email is
-            sent; otherwise it’s saved to the outbox and you can copy the link. The “To” address is
-            saved for this student for next time.
+            Sends the share link to the parent. The parent email address is saved for this student
+            for next time.
           </p>
           <SendUpdateForm studentId={student.id} defaultToEmail={student.parentEmail} />
         </div>
@@ -178,86 +166,68 @@ export default async function StudentDetailPage({
         <p className="muted">No notes yet.</p>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
-          {student.notes.map((n) => (
-            <div key={n.id} className="card">
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>
-                    {new Date(n.date).toLocaleDateString()}
+          {student.notes.map((n) => {
+            const links = safeJsonArray(n.linksJson);
+            return (
+              <div key={n.id} className="card">
+                <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>
+                      {new Date(n.date).toLocaleDateString()}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      Status: {n.status}
+                    </div>
                   </div>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                    Status: {n.status}
-                    {n.sentAt ? ` • Sent ${new Date(n.sentAt).toLocaleString()}` : ""}
-                  </div>
+                  <NoteCardActions
+                    noteId={n.id}
+                    studentId={student.id}
+                    status={n.status}
+                    sentAt={n.sentAt ? n.sentAt.toISOString() : null}
+                    defaultValues={{
+                      date: formatDateInput(n.date),
+                      template: n.template ?? "",
+                      topics: n.topics,
+                      homework: n.homework,
+                      nextSteps: n.nextSteps,
+                      links: safeJsonArray(n.linksJson).join("\n"),
+                    }}
+                  />
                 </div>
-                <div className="row">
-                  {n.status !== "READY" ? (
-                    <form action={setNoteStatus.bind(null, n.id, student.id, "READY")}>
-                      <button className="btn" type="submit">
-                        Mark ready
-                      </button>
-                    </form>
-                  ) : (
-                    <form action={setNoteStatus.bind(null, n.id, student.id, "DRAFT")}>
-                      <button className="btn" type="submit">
-                        Mark draft
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
 
-              <div className="divider" />
+                <div className="divider" />
 
-              <div style={{ display: "grid", gap: 10 }}>
-                <div>
-                  <div className="muted" style={{ fontSize: 12 }}>
-                    Topics
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div>
+                    <div className="muted" style={{ fontSize: 12 }}>Topics</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{n.topics || <span className="muted">—</span>}</div>
                   </div>
-                  <div style={{ whiteSpace: "pre-wrap" }}>{n.topics || <span className="muted">—</span>}</div>
-                </div>
-                <div>
-                  <div className="muted" style={{ fontSize: 12 }}>
-                    Homework
+                  <div>
+                    <div className="muted" style={{ fontSize: 12 }}>Homework</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{n.homework || <span className="muted">—</span>}</div>
                   </div>
-                  <div style={{ whiteSpace: "pre-wrap" }}>
-                    {n.homework || <span className="muted">—</span>}
+                  <div>
+                    <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{n.nextSteps || <span className="muted">—</span>}</div>
                   </div>
-                </div>
-                <div>
-                  <div className="muted" style={{ fontSize: 12 }}>
-                    Next steps
-                  </div>
-                  <div style={{ whiteSpace: "pre-wrap" }}>
-                    {n.nextSteps || <span className="muted">—</span>}
-                  </div>
-                </div>
-                {(() => {
-                  const links = safeJsonArray(n.linksJson);
-                  if (links.length === 0) return null;
-                  return (
+                  {links.length > 0 && (
                     <div>
-                      <div className="muted" style={{ fontSize: 12 }}>
-                        Links
-                      </div>
+                      <div className="muted" style={{ fontSize: 12 }}>Links</div>
                       <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
                         {links.map((u) => (
                           <li key={u}>
-                            <a href={u} target="_blank" rel="noreferrer">
-                              {u}
-                            </a>
+                            <a href={u} target="_blank" rel="noreferrer">{u}</a>
                           </li>
                         ))}
                       </ul>
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
-

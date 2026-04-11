@@ -16,12 +16,33 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
   return bcrypt.compare(plain, hash);
 }
 
-export async function createAdmin(email: string, plainPassword: string) {
+export async function createAdmin(
+  email: string,
+  plainPassword: string,
+  displayName?: string | null
+) {
   const hash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
+  const dn = displayName?.trim() || null;
   return db.adminUser.create({
     data: {
       email: email.trim().toLowerCase(),
       passwordHash: hash,
+      displayName: dn,
     },
+  });
+}
+
+export async function updateAdminDisplayName(email: string, displayName: string | null) {
+  await db.adminUser.update({
+    where: { email: email.trim().toLowerCase() },
+    data: { displayName: displayName?.trim() || null },
+  });
+}
+
+export async function updateAdminPassword(email: string, plainPassword: string) {
+  const hash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
+  await db.adminUser.update({
+    where: { email: email.trim().toLowerCase() },
+    data: { passwordHash: hash },
   });
 }

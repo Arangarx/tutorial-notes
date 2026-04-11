@@ -1,10 +1,15 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 
-export async function requireAdminSession() {
+/**
+ * Call at the top of every mutating server action.
+ * Redirects to /login if the session is invalid, making CSRF/unauthenticated
+ * mutation impossible even if the middleware is bypassed.
+ */
+export async function requireAdminSession(): Promise<void> {
   const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
-  return session;
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
 }
-

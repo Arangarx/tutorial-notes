@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { requireAdminSession } from "@/lib/require-admin";
 
 function hasOAuthModel(): boolean {
   return typeof (db as { oAuthEmailConnection?: { findFirst: unknown } }).oAuthEmailConnection?.findFirst === "function";
 }
 
 export async function disconnectGmail() {
+  await requireAdminSession();
   if (!hasOAuthModel()) {
     revalidatePath("/admin/settings/email");
     redirect("/admin/settings/email");
@@ -24,6 +26,7 @@ export async function disconnectGmail() {
 }
 
 export async function saveEmailConfig(formData: FormData) {
+  await requireAdminSession();
   const host = String(formData.get("host") ?? "").trim();
   const port = parseInt(String(formData.get("port") ?? "587"), 10);
   const secure = String(formData.get("secure") ?? "") === "true";

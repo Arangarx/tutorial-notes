@@ -1,7 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { sendUpdateEmail, type SendUpdateResult } from "./actions";
+
+function SendButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button className="btn primary" type="submit" disabled={pending}>
+      {pending ? "Sending…" : "Send"}
+    </button>
+  );
+}
 
 export default function SendUpdateForm({
   studentId,
@@ -26,9 +36,7 @@ export default function SendUpdateForm({
           required
         />
         <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-          <button className="btn primary" type="submit">
-            Send
-          </button>
+          <SendButton />
         </div>
       </form>
       {state?.ok === true && state.sent && (

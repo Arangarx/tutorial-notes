@@ -41,13 +41,15 @@ export default async function SharePage({
   if (!link || link.revokedAt) notFound();
 
   const student = link.student;
+  const tutor = await db.adminUser.findFirst({ select: { displayName: true, email: true } });
+  const tutorName = tutor?.displayName?.trim() || tutor?.email?.split("@")[0] || null;
 
   return (
     <div className="container" style={{ maxWidth: 860 }}>
       <div className="card" style={{ background: "rgba(255,255,255,0.04)" }}>
         <h1 style={{ marginTop: 0 }}>{student.name}</h1>
         <p className="muted" style={{ marginTop: 6 }}>
-          Recent session notes
+          {tutorName ? `Notes shared by ${tutorName}` : "Recent session notes"}
         </p>
 
         <div className="divider" />

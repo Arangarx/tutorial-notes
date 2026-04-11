@@ -3,6 +3,10 @@ generator client {
 }
 
 datasource db {
+  // For local development: keep "sqlite" and DATABASE_URL="file:./dev.db"
+  // For production (Vercel + Neon): change to "postgresql", add DIRECT_URL,
+  //   and update DATABASE_URL to your Neon pooled connection string.
+  // See docs/DEPLOY.md — this is a one-line change when you're ready to deploy.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
@@ -79,8 +83,21 @@ model AdminUser {
   id            String   @id @default(uuid())
   email         String   @unique
   passwordHash  String
+  displayName   String?  // Shown to parents in emails (e.g. "Alex Chen")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// One-time password reset links (hashed token, email delivery).
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
 }
 
 // Singleton: one row. In-app email (SMTP) settings so deployer doesn't hunt for .env.
@@ -102,5 +119,14 @@ model OAuthEmailConnection {
   refreshToken String
   email        String   // connected address (e.g. user@gmail.com)
   updatedAt    DateTime @updatedAt
+}
+
+// Waitlist entries from the landing page interest form.
+model WaitlistEntry {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  note      String?
+  createdAt DateTime @default(now())
 }
 

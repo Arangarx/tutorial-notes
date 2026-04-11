@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
@@ -7,6 +8,7 @@ import { Suspense, useState, useEffect } from "react";
 function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/admin/students";
+  const resetOk = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,11 @@ function LoginForm() {
         <p className="muted">
           Sign in with your admin account.
         </p>
+        {resetOk ? (
+          <p style={{ marginTop: 12, color: "rgba(180,255,200,0.95)" }}>
+            Your password was updated. Sign in with your new password.
+          </p>
+        ) : null}
 
         <form
           onSubmit={async (e) => {
@@ -89,7 +96,14 @@ function LoginForm() {
             <p style={{ color: "#ffb4b4", marginTop: 12 }}>{error}</p>
           ) : null}
 
-          <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
+          <div className="row" style={{ justifyContent: "space-between", marginTop: 16 }}>
+            <Link
+              href="/forgot-password"
+              className="muted"
+              style={{ fontSize: 14, textDecoration: "underline", alignSelf: "center" }}
+            >
+              Forgot password?
+            </Link>
             <button className="btn primary" disabled={busy} type="submit">
               {busy ? "Signing in..." : "Sign in"}
             </button>

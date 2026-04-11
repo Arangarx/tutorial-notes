@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
 import { env, isEmailConfigured } from "./env";
 import { createGmailTransport } from "./gmail-transport";
-import { sendViaGmailApi } from "./gmail-api-send";
+import { asciiEmailDisplayName, sendViaGmailApi } from "./gmail-api-send";
 
 let _transport: nodemailer.Transporter | null = null;
 
@@ -107,7 +107,10 @@ export async function sendMail(options: {
   to: string;
   subject: string;
   text: string;
+  /** Full From address or email only; if display name is set, pass via fromDisplayName for Gmail API. */
   from?: string;
+  /** Shown as "Name" <fromEmail> in Gmail; ignored if using plain SMTP without from string. */
+  fromDisplayName?: string | null; // omit or null to send with address only (rare)
 }): Promise<{ sent: boolean; error?: string }> {
   const gmail = await getGmailConnection();
   if (gmail) {
@@ -115,6 +118,7 @@ export async function sendMail(options: {
       to: options.to,
       subject: options.subject,
       text: options.text,
+      fromDisplayName: options.fromDisplayName,
     });
     if (result.sent) return { sent: true };
     if (result.error) return { sent: false, error: result.error };
@@ -123,7 +127,13 @@ export async function sendMail(options: {
   const result = await getTransportAndFrom();
   if (!result) return { sent: false };
 
-  const from = options.from ?? result.fromEmail;
+  const emailAddr = options.from ?? result.fromEmail;
+  const dn = options.fromDisplayName?.trim()
+    ? asciiEmailDisplayName(options.fromDisplayName.trim())
+    : "";
+  const from = dn
+    ? `"${dn.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}" <${emailAddr}>`
+    : emailAddr;
 
   try {
     await result.transport.sendMail({

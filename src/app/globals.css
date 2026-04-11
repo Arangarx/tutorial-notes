@@ -96,3 +96,136 @@ label {
   margin: 16px 0;
 }
 
+/* ------------------------------------------------------------------
+   Admin navigation
+   ------------------------------------------------------------------ */
+
+.admin-nav {
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.admin-nav-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-nav-brand {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.admin-nav-links {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-nav-link {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+.admin-nav-link.active {
+  background: rgba(124, 92, 255, 0.18);
+  color: var(--text);
+}
+.admin-nav-link.sign-out {
+  color: rgba(255, 180, 180, 0.8);
+}
+.admin-nav-link.sign-out:hover {
+  background: rgba(255, 100, 100, 0.12);
+  color: #ffb4b4;
+}
+
+/* Hamburger — hidden on desktop */
+.admin-nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+.hamburger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 1px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.hamburger-bar.open:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger-bar.open:nth-child(2) { opacity: 0; }
+.hamburger-bar.open:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile drawer + backdrop */
+.admin-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 90;
+}
+.admin-nav-drawer {
+  position: fixed;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  width: 260px;
+  background: #0d1328;
+  border-left: 1px solid var(--border);
+  z-index: 95;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+.admin-nav-drawer-link {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+}
+.admin-nav-drawer-link:hover { background: rgba(255, 255, 255, 0.06); }
+.admin-nav-drawer-link.active { background: rgba(124, 92, 255, 0.18); color: var(--text); }
+.admin-nav-drawer-link.sign-out { color: rgba(255, 180, 180, 0.8); }
+
+@media (max-width: 768px) {
+  .admin-nav-links { display: none; }
+  .admin-nav-hamburger { display: flex; }
+}
+

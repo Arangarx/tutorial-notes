@@ -10,10 +10,10 @@ export default async function OutboxPage() {
 
   return (
     <div className="card">
-      <h1 style={{ marginTop: 0 }}>Outbox (dev)</h1>
+      <h1 style={{ marginTop: 0 }}>Outbox</h1>
       <p className="muted">
-        This is a local preview of “sent” emails for the MVP. It allows end-to-end
-        testing of the email flow without external providers.
+        Sent and queued email messages. Use this to review what was sent and to copy share links if
+        needed.
       </p>
 
       <div className="divider" />

@@ -49,17 +49,19 @@ Jest still defaults to `postgresql://...@127.0.0.1:5432/tutoring_notes_test` unl
 
 Set `DATABASE_URL` and `DIRECT_URL` in the Vercel project to your **production** Neon strings. No code change — only host env vars.
 
-### One-time: create tables on Neon (e.g. project `tutoring-notes`)
+### Production Neon (tables / schema)
 
-Prisma must apply the schema to the **same** database Vercel uses. From `pipeline-projects/tutoring-notes`, with Neon’s **pooled** and **direct** strings from the console:
+**Default:** Vercel runs **`prisma migrate deploy`** on every production build, using `DATABASE_URL` + `DIRECT_URL` from Vercel. You usually **do not** run anything manually for the live DB.
+
+**Fallback** (broken deploy, emergency): from this folder, with Neon’s pooled + direct strings:
 
 ```powershell
 $env:DATABASE_URL = "<pooled connection string>"
 $env:DIRECT_URL   = "<direct connection string>"
-npx prisma db push
+npx prisma migrate deploy
 ```
 
-Or run **`scripts\push-schema-neon.ps1`** after setting those two env vars (see comments at the top of the script). This creates all tables (`Student`, `SessionNote`, `AdminUser`, etc.) to match `prisma/schema.prisma`.
+Or **`scripts\push-schema-neon.ps1`** (uses `db push` — prefer `migrate deploy` when possible). See **[DEPLOY.md](./DEPLOY.md)**.
 
 ## Migrating from old SQLite `dev.db`
 

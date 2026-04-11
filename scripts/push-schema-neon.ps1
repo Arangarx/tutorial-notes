@@ -1,4 +1,5 @@
-# Apply Prisma schema to your Neon database (project: tutoring-notes).
+# Fallback: apply schema to Neon when you cannot run migrations from Vercel/CI.
+# Normal path: migrations run automatically on Vercel build (`prisma migrate deploy`).
 #
 # 1. In https://console.neon.tech → project "tutoring-notes" → Connection details:
 #    - Copy POOLED connection string → DATABASE_URL
@@ -36,6 +37,6 @@ Set-Location $root
 $env:DATABASE_URL = $DatabaseUrl
 $env:DIRECT_URL = $DirectUrl
 
-Write-Host "Running: npx prisma db push (schema -> Neon)..." -ForegroundColor Cyan
-npx prisma db push
+Write-Host "Running: npx prisma migrate deploy (pending migrations -> Neon)..." -ForegroundColor Cyan
+npx prisma migrate deploy
 Write-Host "Done. Next: open https://YOUR-APP.vercel.app/setup to create the first admin (if not already)." -ForegroundColor Green

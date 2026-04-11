@@ -25,23 +25,40 @@ See `.env.example` for all variables with comments.
 
 ---
 
-## Neon database setup
+## Neon database + automated migrations
 
-The app uses **PostgreSQL** in all environments; you switch dev vs production by **environment variables only** (see **[LOCAL-DEV.md](./LOCAL-DEV.md)**). The Prisma schema in git is already `postgresql` + `directUrl` — no manual schema edits per deploy.
+The app uses **PostgreSQL** in all environments; you switch dev vs production by **environment variables only** (see **[LOCAL-DEV.md](./LOCAL-DEV.md)**).
 
-1. Sign up at [neon.tech](https://neon.tech) → create a project → choose a region close to your Vercel region.
-2. In the Neon dashboard, copy:
-   - **Pooled connection string** → `DATABASE_URL` in Vercel
-   - **Direct connection string** → `DIRECT_URL` in Vercel
-3. Run the initial schema sync **once** against that database (from your machine with production URLs in env, or using Vercel CLI with env pulled):
+### What runs automatically
 
-   ```bash
-   npx prisma db push
-   ```
+Every **`npm run build`** on Vercel runs:
 
-   After tables exist, deploy to Vercel as usual.
+`prisma generate` → **`prisma migrate deploy`** → `next build`
 
-> **Note:** `DIRECT_URL` is required for `prisma db push` / `migrate` against Neon's pooler. At runtime the app uses `DATABASE_URL` (pooled) from Vercel.
+So **you do not need to SSH or run SQL by hand** for normal schema changes: commit migration files under `prisma/migrations/` (see below) and push — the next deploy applies pending migrations to the database configured in Vercel (`DATABASE_URL` + `DIRECT_URL`).
+
+### One-time: Neon + Vercel env
+
+1. Sign up at [neon.tech](https://neon.tech) → create a project (e.g. **tutoring-notes**).
+2. Copy into **Vercel → Environment variables** (Production):
+   - **Pooled** connection string → `DATABASE_URL`
+   - **Direct** connection string → `DIRECT_URL`
+3. Deploy. The **first** deploy applies migration `prisma/migrations/*` and creates tables.
+
+> **`DIRECT_URL`** is required so `prisma migrate deploy` can talk to Neon correctly. At runtime the app queries via **`DATABASE_URL`** (pooled).
+
+### When you still do things manually
+
+- **Emergency / broken CI:** run `npx prisma migrate deploy` locally with the same env vars, or use `scripts/push-schema-neon.ps1` / `db push` only as a fallback (documented in LOCAL-DEV).
+- **Neon MCP / agents:** optional convenience; if tools hang or UAC appears, use the console + commands above instead.
+
+### Preview deployments (PRs)
+
+If Vercel **Preview** uses the **same** `DATABASE_URL` as Production, migrations from a branch can affect prod data. Safer: set a **separate** Neon branch + different env vars for **Preview**, or disable Preview DB access until you have that split.
+
+### Troubleshooting: “relation already exists” / messy first migration
+
+If you created tables earlier with `db push` or manual SQL, the first `migrate deploy` can error. Options: use a **fresh** Neon database for production, or follow [Prisma baselining](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining) / `prisma migrate resolve` so the `_prisma_migrations` table matches reality.
 
 ---
 
@@ -70,17 +87,24 @@ Reset emails use the same SMTP/Gmail config as other emails. If email is not con
 ## First deploy checklist
 
 1. Push repo to GitHub.
-2. Import project in Vercel → set all environment variables.
-3. Deploy.
-4. Run `npx prisma db push` once from local with production env vars set.
-5. Visit `https://your-app.vercel.app/setup` → create admin account.
-6. Go to `https://your-app.vercel.app/admin/settings/email` → configure email.
-7. Send a test "Send update" to confirm email delivery.
-8. Add OAuth **test users** (or complete Google verification) if using Connect Gmail — see `docs/pilot-ops-playbook.md`.
+2. Import project in Vercel → set all environment variables (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_*`, etc.).
+3. Deploy — **migrations run during the build** (`prisma migrate deploy`).
+4. Visit `https://your-app.vercel.app/setup` → create admin account (if none exists).
+5. Go to `https://your-app.vercel.app/admin/settings/email` → configure email.
+6. Send a test "Send update" to confirm email delivery.
+7. Add OAuth **test users** (or complete Google verification) if using Connect Gmail — see `docs/pilot-ops-playbook.md`.
+
+---
+
+## Schema changes after launch
+
+1. Edit `prisma/schema.prisma`.
+2. Locally (with a dev DB): `npx prisma migrate dev --name describe_change` — creates a new folder under `prisma/migrations/`.
+3. Commit and push. Vercel’s next build runs `migrate deploy` and applies pending migrations.
 
 ---
 
 ## Vercel + Neon re-deploy (iterating)
 
-- Push to `main` → Vercel auto-deploys.
-- For schema changes: run `npx prisma db push` locally against the production DB **before** deploying code that requires the new schema.
+- Push to `main` → Vercel auto-deploys; pending migrations apply on build.
+- If a migration fails, fix forward with a new migration or restore from backup — avoid editing already-applied migration SQL in git.

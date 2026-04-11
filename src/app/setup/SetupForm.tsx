@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { createFirstAdmin } from "./actions";
 
-export default function SetupForm() {
+export default function SetupForm({ setupToken }: { setupToken: string }) {
   const [state, formAction] = useActionState(createFirstAdmin, null);
   const [busy, setBusy] = useState(false);
 
@@ -12,6 +12,7 @@ export default function SetupForm() {
       action={formAction}
       onSubmit={() => setBusy(true)}
     >
+      <input type="hidden" name="setupToken" value={setupToken} />
       <div style={{ marginTop: 16 }}>
         <label htmlFor="setup-email">Email</label>
         <input

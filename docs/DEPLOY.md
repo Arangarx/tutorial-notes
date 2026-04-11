@@ -20,6 +20,7 @@ Use this with **[GTM-READINESS.md](./GTM-READINESS.md)** (what "ready" means for
 | `DIRECT_URL` | Neon **direct** (unpooled) connection string (required for migrations) |
 | `NEXTAUTH_SECRET` | Long random string; unique per environment |
 | `NEXTAUTH_URL` | Public origin, e.g. `https://notes.example.com` — required for reset links + OAuth |
+| `SETUP_SECRET` | **Production:** long random string (≥16 chars). Required to use `/setup` — open `/setup?token=…` with the **same** value so the first admin cannot be claimed by a random visitor. Optional locally (omit for an open `/setup` on dev). |
 
 See `.env.example` for all variables with comments.
 
@@ -126,7 +127,7 @@ Reset emails use the same SMTP/Gmail config as other emails. If email is not con
 1. Push repo to GitHub.
 2. Import project in Vercel → set all environment variables (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_*`, etc.).
 3. Deploy — **migrations run during the build** (`prisma migrate deploy`).
-4. Visit `https://your-app.vercel.app/setup` → create admin account (if none exists).
+4. **First admin:** Set `SETUP_SECRET` in Vercel, redeploy, then visit `https://your-app.vercel.app/setup?token=<same secret>` and create the admin. **Or** set `ADMIN_EMAIL` + `ADMIN_PASSWORD` and sign in at `/login` (no `/setup`). The public `/setup` form is **disabled** in production until `SETUP_SECRET` is set, so nobody can squat the first account.
 5. Go to `https://your-app.vercel.app/admin/settings/email` → configure email.
 6. Send a test "Send update" to confirm email delivery.
 7. Add OAuth **test users** (or complete Google verification) if using Connect Gmail — see `docs/pilot-ops-playbook.md`.

@@ -7,6 +7,11 @@ const EnvSchema = z.object({
   // Optional when using first-run setup (AdminUser in DB)
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(6).optional(),
+  /** Production: set a long random value; open /setup?token=… to create first admin. Empty = unset. */
+  SETUP_SECRET: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().min(16).optional()
+  ),
   // Optional: when set, real email is sent via SMTP
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
@@ -25,6 +30,7 @@ const parsed = EnvSchema.safeParse({
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  SETUP_SECRET: process.env.SETUP_SECRET,
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT,
   SMTP_SECURE: process.env.SMTP_SECURE,

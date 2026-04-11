@@ -42,7 +42,8 @@ npm run dev
 To stop local Postgres: `npm run db:down`
 
 ### Login and first-run setup
-- **First time:** If no admin account exists and you haven’t set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`, open `/setup` to create the first admin (stored in DB, password hashed). Optionally set **your name** so parents see it in update emails. Then sign in at `/login`.
+- **First time (local dev):** If no admin exists and you didn’t set `ADMIN_EMAIL`/`ADMIN_PASSWORD`, open `/setup` to create the first admin (password hashed in the DB). If you set `SETUP_SECRET` in `.env`, use `/setup?token=…` with that value instead.
+- **First time (production / Vercel):** Set `SETUP_SECRET` (≥16 characters) in the host env, redeploy, then open `/setup?token=…` with the **same** value — the open `/setup` page is **not** available on production without this (prevents a stranger from claiming admin). **Or** set `ADMIN_EMAIL` / `ADMIN_PASSWORD` and sign in at `/login` without using `/setup`.
 - **Otherwise:** Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`, or with any admin account you created via `/setup`.
 - **Forgot password:** On `/login`, use **Forgot password?** — works for **database** admins only, and sends email only if Gmail or SMTP is configured (same as “Send update”). Env-only `ADMIN_PASSWORD` login cannot be reset from the app; change server config instead.
 - **Profile:** **Admin → Profile** to change the name shown to parents (and in the email “From” line when using Gmail).

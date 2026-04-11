@@ -14,13 +14,18 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [setupHint, setSetupHint] = useState(false);
 
   useEffect(() => {
     fetch("/api/setup-required")
       .then((r) => r.json())
-      .then((data: { setupRequired?: boolean }) => {
-        if (data.setupRequired) window.location.href = "/setup";
-        else setReady(true);
+      .then((data: { setupRequired?: boolean; autoRedirectToSetup?: boolean }) => {
+        if (data.setupRequired && data.autoRedirectToSetup) {
+          window.location.href = "/setup";
+          return;
+        }
+        if (data.setupRequired) setSetupHint(true);
+        setReady(true);
       })
       .catch(() => setReady(true));
   }, []);
@@ -42,6 +47,13 @@ function LoginForm() {
         <p className="muted">
           Sign in with your admin account.
         </p>
+        {setupHint ? (
+          <p className="muted" style={{ marginTop: 12, fontSize: 14 }}>
+            No admin exists yet. On production, set <code>SETUP_SECRET</code> in your host env, redeploy, then open{" "}
+            <code>/setup?token=…</code> with that value (see <code>docs/DEPLOY.md</code>). Or set{" "}
+            <code>ADMIN_EMAIL</code> / <code>ADMIN_PASSWORD</code> and sign in here.
+          </p>
+        ) : null}
         {resetOk ? (
           <p style={{ marginTop: 12, color: "rgba(180,255,200,0.95)" }}>
             Your password was updated. Sign in with your new password.

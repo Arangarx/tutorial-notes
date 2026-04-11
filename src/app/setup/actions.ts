@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { hasAdminUsers, createAdmin } from "@/lib/auth-db";
 import { sendMail } from "@/lib/email";
 import { getPublicBaseUrl } from "@/lib/public-url";
+import { setupBlockedNoSecretInProduction, setupTokenValid } from "@/lib/setup-guard";
 
 export async function createFirstAdmin(
   _prev: { error?: string } | null,
@@ -11,6 +12,15 @@ export async function createFirstAdmin(
 ): Promise<{ error?: string }> {
   const hasAdmins = await hasAdminUsers();
   if (hasAdmins) redirect("/login");
+
+  if (setupBlockedNoSecretInProduction()) {
+    return { error: "Setup is disabled in production until SETUP_SECRET is configured. See docs/DEPLOY.md." };
+  }
+
+  const setupToken = String(formData.get("setupToken") ?? "");
+  if (!setupTokenValid(setupToken)) {
+    return { error: "Invalid or missing setup token. Open /setup?token=… with the same value as SETUP_SECRET." };
+  }
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");

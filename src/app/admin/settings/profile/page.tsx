@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 import { getAdminByEmail } from "@/lib/auth-db";
+import ChangePasswordForm from "./ChangePasswordForm";
 import ProfileForm from "./ProfileForm";
 
 export default async function ProfileSettingsPage() {
@@ -24,6 +25,20 @@ export default async function ProfileSettingsPage() {
         Signed in as <strong>{email}</strong>. Set how parents see you in update emails.
       </p>
       <ProfileForm defaultDisplayName={admin?.displayName ?? ""} />
+
+      <div className="divider" style={{ margin: "28px 0" }} />
+
+      {admin ? (
+        <ChangePasswordForm />
+      ) : (
+        <p className="muted" style={{ fontSize: 14, maxWidth: 480 }}>
+          <strong>Password:</strong> This session uses server environment login only. Change{" "}
+          <code>ADMIN_PASSWORD</code> in your host settings, or complete <code>/setup</code> to create a
+          database account — then you can change your password here or use{" "}
+          <Link href="/forgot-password">Forgot your password?</Link> from the login page.
+        </p>
+      )}
+
       <p className="muted" style={{ marginTop: 24, fontSize: 14 }}>
         <Link href="/admin/students">← Back to Students</Link>
       </p>

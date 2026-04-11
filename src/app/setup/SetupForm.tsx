@@ -35,6 +35,17 @@ export default function SetupForm({ setupToken }: { setupToken: string }) {
         />
       </div>
       <div style={{ marginTop: 12 }}>
+        <label htmlFor="setup-password-confirm">Confirm password</label>
+        <input
+          id="setup-password-confirm"
+          name="passwordConfirm"
+          type="password"
+          autoComplete="new-password"
+          minLength={6}
+          required
+        />
+      </div>
+      <div style={{ marginTop: 12 }}>
         <label htmlFor="setup-displayName">Your name (shown to parents in emails)</label>
         <input
           id="setup-displayName"

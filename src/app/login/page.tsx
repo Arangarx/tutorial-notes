@@ -102,20 +102,21 @@ function LoginForm() {
               autoComplete="current-password"
               required
             />
+            <p style={{ marginTop: 8, marginBottom: 0 }}>
+              <Link
+                href="/forgot-password"
+                style={{ fontSize: 14, textDecoration: "underline" }}
+              >
+                Forgot your password?
+              </Link>
+            </p>
           </div>
 
           {error ? (
             <p style={{ color: "#ffb4b4", marginTop: 12 }}>{error}</p>
           ) : null}
 
-          <div className="row" style={{ justifyContent: "space-between", marginTop: 16 }}>
-            <Link
-              href="/forgot-password"
-              className="muted"
-              style={{ fontSize: 14, textDecoration: "underline", alignSelf: "center" }}
-            >
-              Forgot password?
-            </Link>
+          <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
             <button className="btn primary" disabled={busy} type="submit">
               {busy ? "Signing in..." : "Sign in"}
             </button>

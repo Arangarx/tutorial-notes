@@ -24,10 +24,12 @@ export async function createFirstAdmin(
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
   const displayName = String(formData.get("displayName") ?? "").trim() || null;
 
   if (!email || !password) return { error: "Email and password required" };
   if (password.length < 6) return { error: "Password must be at least 6 characters" };
+  if (password !== passwordConfirm) return { error: "Passwords do not match." };
 
   await createAdmin(email, password, displayName);
 

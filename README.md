@@ -1,35 +1,45 @@
-## Tutoring Notes (local-first MVP)
+## Tutoring Notes
 
 ### What this is
-A local-first web app for tutors to write session notes fast and share clean updates with parents/students via a link.
+A web app for tutors to write session notes fast and share clean updates with parents/students via a link.
 
 ### Go-to-market / pilots
-See **[docs/GTM-READINESS.md](docs/GTM-READINESS.md)** for a candid “are we ready?” assessment (pilot vs production). For **production hosting, Postgres vs SQLite, and env checklist**, see **[docs/DEPLOY.md](docs/DEPLOY.md)**. For **pilot acquisition, onboarding checklist, and email/Google OAuth reminders**, use the pipeline repo’s **`docs/pilot-ops-playbook.md`** (if you use the combined `agenticPipeline` workspace, it’s at the repo root).
+See **[docs/GTM-READINESS.md](docs/GTM-READINESS.md)** for a candid “are we ready?” assessment (pilot vs production). For **production hosting (Vercel + Neon) and env checklist**, see **[docs/DEPLOY.md](docs/DEPLOY.md)**. For **local Postgres (Docker or Neon dev)**, see **[docs/LOCAL-DEV.md](docs/LOCAL-DEV.md)**. For **pilot acquisition, onboarding checklist, and email/Google OAuth reminders**, use the pipeline repo’s **`docs/pilot-ops-playbook.md`** (if you use the combined `agenticPipeline` workspace, it’s at the repo root).
 
 ### Quickstart
-1) Copy env file:
+1) Copy env template and fill in **your** URLs (never commit `.env`):
 
 ```bash
 copy .env.example .env
 ```
 
-2) Install deps:
+2) Start **PostgreSQL** locally — easiest path is Docker:
+
+```bash
+npm run db:up
+```
+
+Use the `DATABASE_URL` / `DIRECT_URL` values from `.env.example` (they match `docker-compose.yml`), or use a Neon dev database instead — see **[docs/LOCAL-DEV.md](docs/LOCAL-DEV.md)**.
+
+3) Install deps:
 
 ```bash
 npm install
 ```
 
-3) Create the local DB + tables:
+4) Create tables:
 
 ```bash
 npm run db:push
 ```
 
-4) Run the app:
+5) Run the app:
 
 ```bash
 npm run dev
 ```
+
+To stop local Postgres: `npm run db:down`
 
 ### Login and first-run setup
 - **First time:** If no admin account exists and you haven’t set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`, open `/setup` to create the first admin (stored in DB, password hashed). Optionally set **your name** so parents see it in update emails. Then sign in at `/login`.
@@ -46,6 +56,8 @@ npm run dev
 - **Outbox only:** If neither in-app nor env SMTP is set, “Send update” only records the message at `/admin/outbox` (no email is sent). Password reset emails also require a configured mail path.
 
 ### Running tests
+
+Jest uses a **separate test database** (`tutoring_notes_test` by default when using Docker — see `jest.global-setup.ts`). Start Postgres first (`npm run db:up`), or set `TEST_DATABASE_URL` in `.env`.
 
 ```bash
 npm test        # Jest unit/integration

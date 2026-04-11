@@ -10,6 +10,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
     "test": "jest",
     "test:e2e": "playwright test",
     "test:all": "npm run test && npm run test:e2e"

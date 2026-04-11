@@ -3,12 +3,11 @@ generator client {
 }
 
 datasource db {
-  // For local development: keep "sqlite" and DATABASE_URL="file:./dev.db"
-  // For production (Vercel + Neon): change to "postgresql", add DIRECT_URL,
-  //   and update DATABASE_URL to your Neon pooled connection string.
-  // See docs/DEPLOY.md — this is a one-line change when you're ready to deploy.
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  // PostgreSQL everywhere (local Docker, Neon dev branch, or Neon production).
+  // Set DATABASE_URL + DIRECT_URL in .env (gitignored) — see .env.example and docs/LOCAL-DEV.md.
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum NoteStatus {

@@ -1,0 +1,20 @@
+# Local PostgreSQL for development and tests. No secrets in git: credentials match .env.example.
+# Usage: docker compose up -d
+# Then copy DATABASE_URL / DIRECT_URL from .env.example into your .env and run: npm run db:push
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tutoring_notes
+    volumes:
+      - tutoring_notes_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+
+volumes:
+  tutoring_notes_pgdata:

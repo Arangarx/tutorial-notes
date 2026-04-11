@@ -27,34 +27,21 @@ See `.env.example` for all variables with comments.
 
 ## Neon database setup
 
-**Before deploying**, switch the Prisma schema from SQLite to PostgreSQL (one-time change):
+The app uses **PostgreSQL** in all environments; you switch dev vs production by **environment variables only** (see **[LOCAL-DEV.md](./LOCAL-DEV.md)**). The Prisma schema in git is already `postgresql` + `directUrl` — no manual schema edits per deploy.
 
-1. In `prisma/schema.prisma`, change the datasource block to:
-
-   ```prisma
-   datasource db {
-     provider  = "postgresql"
-     url       = env("DATABASE_URL")
-     directUrl = env("DIRECT_URL")
-   }
-   ```
-
-2. Sign up at [neon.tech](https://neon.tech) → create a project → choose a region close to your Vercel region.
-3. In the Neon dashboard, copy:
-   - **Pooled connection string** → `DATABASE_URL`
-   - **Direct connection string** → `DIRECT_URL`
-4. Add both to Vercel Environment Variables (Settings → Environment Variables).
-5. Run the initial migration **once** from your local machine with both env vars set in a `.env.production.local` file:
+1. Sign up at [neon.tech](https://neon.tech) → create a project → choose a region close to your Vercel region.
+2. In the Neon dashboard, copy:
+   - **Pooled connection string** → `DATABASE_URL` in Vercel
+   - **Direct connection string** → `DIRECT_URL` in Vercel
+3. Run the initial schema sync **once** against that database (from your machine with production URLs in env, or using Vercel CLI with env pulled):
 
    ```bash
    npx prisma db push
    ```
 
-   After that, deploy to Vercel normally — Prisma will use the pooled URL at runtime.
+   After tables exist, deploy to Vercel as usual.
 
-> **Note:** `DIRECT_URL` is required by Prisma for migrations/pushes against Neon's serverless pooler. It is not used at runtime.
-
-> **Local dev:** Continue using `provider = "sqlite"` and `DATABASE_URL="file:./dev.db"` locally. Just don't commit the schema change until you're ready to deploy.
+> **Note:** `DIRECT_URL` is required for `prisma db push` / `migrate` against Neon's pooler. At runtime the app uses `DATABASE_URL` (pooled) from Vercel.
 
 ---
 

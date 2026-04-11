@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { hasAdminUsers } from "@/lib/auth-db";
 import SetupForm from "./SetupForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function SetupPage() {
   const hasAdmins = await hasAdminUsers();
   if (hasAdmins) redirect("/login");

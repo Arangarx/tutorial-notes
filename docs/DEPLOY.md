@@ -33,7 +33,7 @@ The app uses **PostgreSQL** in all environments; you switch dev vs production by
 
 Every **`npm run build`** on Vercel runs:
 
-`prisma generate` → **`prisma migrate deploy`** → `next build`
+`prisma generate` → **`node scripts/migrate-with-retry.mjs`** (`prisma migrate deploy` with retries) → `next build`
 
 So **you do not need to SSH or run SQL by hand** for normal schema changes: commit migration files under `prisma/migrations/` (see below) and push — the next deploy applies pending migrations to the database configured in Vercel (`DATABASE_URL` + `DIRECT_URL`).
 
@@ -68,9 +68,34 @@ Neon can **auto-suspend** compute; the first connection after idle may exceed Pr
    - `&connect_timeout=60`
    - Example: `...neondb?sslmode=require&channel_binding=require&connect_timeout=60`
 
-2. **Retries:** the build runs `node scripts/migrate-with-retry.mjs`, which retries `prisma migrate deploy` up to **3** times with **25s** between attempts (helps cold start). Override with env: `PRISMA_MIGRATE_ATTEMPTS`, `PRISMA_MIGRATE_RETRY_MS`.
+2. **Retries:** the build runs `node scripts/migrate-with-retry.mjs`, which retries `prisma migrate deploy` (default **8** attempts, **30s** between attempts — helps cold start and short lock contention). Override with env: `PRISMA_MIGRATE_ATTEMPTS`, `PRISMA_MIGRATE_RETRY_MS`.
 
 3. In the Neon console, open the project and **wake** the branch (run a query) once, then **Redeploy** in Vercel.
+
+### Troubleshooting: advisory lock / `pg_advisory_lock` (10s timeout)
+
+Prisma Migrate takes a **Postgres advisory lock** so two migrates cannot run at once. The wait is **fixed at 10 seconds** (not configurable). If you see:
+
+`Timed out trying to acquire a postgres advisory lock … Timeout: 10000ms`
+
+**1. Use two different Neon URLs in Vercel (most common fix)**
+
+| Variable | Neon dashboard | Hostname hint |
+|----------|----------------|---------------|
+| `DATABASE_URL` | **Pooled** connection | Usually contains **`-pooler`** in the host |
+| `DIRECT_URL` | **Direct** connection | Same endpoint **without** `-pooler` |
+
+If **`DIRECT_URL` is accidentally the pooled string**, session locks break and migrate can fail. On **Vercel**, the migrate script **fails fast** if `DIRECT_URL`’s hostname contains **`-pooler`**. Locally it only **warns** (so Docker URLs are unaffected). Fix: paste Neon’s **Direct** string into `DIRECT_URL` only.
+
+See Neon: [Schema migrations with Prisma](https://neon.tech/docs/guides/prisma-migrations).
+
+**2. Overlapping Vercel builds**
+
+Two deploys running `migrate deploy` at the same time contend on the same lock; one waits 10s and errors. **Wait** for the other build to finish and **Redeploy**, or avoid triggering multiple production builds at once (push + manual redeploy while CI is still running). The retry script defaults to **8** attempts × **30s** spacing (`PRISMA_MIGRATE_ATTEMPTS`, `PRISMA_MIGRATE_RETRY_MS`) so a short queue can clear.
+
+**3. Last resort (know the tradeoff)**
+
+Prisma supports `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK` — **only** consider if you are sure **one** migrate runs at a time; disabling removes protection against concurrent migrates. Prefer fixing URLs and deploy overlap first.
 
 ---
 

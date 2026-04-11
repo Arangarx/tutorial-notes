@@ -60,6 +60,18 @@ If Vercel **Preview** uses the **same** `DATABASE_URL` as Production, migrations
 
 If you created tables earlier with `db push` or manual SQL, the first `migrate deploy` can error. Options: use a **fresh** Neon database for production, or follow [Prisma baselining](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining) / `prisma migrate resolve` so the `_prisma_migrations` table matches reality.
 
+### Troubleshooting: `P1002` (timeout) during `migrate deploy` on Vercel
+
+Neon can **auto-suspend** compute; the first connection after idle may exceed Prisma’s default wait. Mitigations:
+
+1. **Append a longer connect timeout** to both URLs in Vercel (libpq / Prisma accept this on the query string). If the string already has `?sslmode=require`, add:
+   - `&connect_timeout=60`
+   - Example: `...neondb?sslmode=require&channel_binding=require&connect_timeout=60`
+
+2. **Retries:** the build runs `node scripts/migrate-with-retry.mjs`, which retries `prisma migrate deploy` up to **3** times with **25s** between attempts (helps cold start). Override with env: `PRISMA_MIGRATE_ATTEMPTS`, `PRISMA_MIGRATE_RETRY_MS`.
+
+3. In the Neon console, open the project and **wake** the branch (run a query) once, then **Redeploy** in Vercel.
+
 ---
 
 ## Email setup (Resend — recommended for pilots)

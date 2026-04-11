@@ -12,13 +12,14 @@ export default async function AdminFeedbackPage() {
     <div className="card">
       <h1 style={{ marginTop: 0 }}>Feedback</h1>
       <p className="muted">
-        Stored locally. For now you can copy/paste or use Prisma Studio for export.
+        Messages submitted from the public <a href="/feedback">/feedback</a> page are stored here.
+        Anyone can send feedback without signing in.
       </p>
 
       <div className="divider" />
 
       {items.length === 0 ? (
-        <p className="muted">No feedback yet.</p>
+        <p className="muted">No submissions yet. Open the public feedback page to test.</p>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {items.map((f) => (
@@ -28,6 +29,7 @@ export default async function AdminFeedbackPage() {
                   <div style={{ fontWeight: 700 }}>{f.kind}</div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                     {new Date(f.createdAt).toLocaleString()}
+                    {f.contactEmail ? ` • ${f.contactEmail}` : ""}
                     {f.page ? ` • ${f.page}` : ""}
                   </div>
                 </div>

@@ -71,11 +71,12 @@ model EmailMessage {
 }
 
 model FeedbackItem {
-  id        String       @id @default(uuid())
-  kind      FeedbackKind
-  message   String
-  page      String?
-  createdAt DateTime     @default(now())
+  id           String       @id @default(uuid())
+  kind         FeedbackKind
+  message      String
+  page         String?
+  contactEmail String? // optional — so we can reply
+  createdAt    DateTime     @default(now())
 }
 
 model AdminUser {

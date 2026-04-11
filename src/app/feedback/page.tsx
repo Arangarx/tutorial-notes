@@ -49,7 +49,8 @@ export default function FeedbackPage() {
         </div>
 
         <p className="muted" style={{ marginTop: 10 }}>
-          Found a bug or have a suggestion? Let us know — we read every submission.
+          Found a bug or have a suggestion? Send it here — we read every submission. (No account
+          required.)
         </p>
 
         <div className="divider" />
@@ -66,6 +67,17 @@ export default function FeedbackPage() {
           </div>
 
           <div style={{ marginTop: 12 }}>
+            <label htmlFor="feedback-contactEmail">Your email (optional)</label>
+            <input
+              id="feedback-contactEmail"
+              name="contactEmail"
+              type="email"
+              autoComplete="email"
+              placeholder="So we can reply if needed"
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
             <label htmlFor="feedback-message">Message</label>
             <textarea
               id="feedback-message"
@@ -73,6 +85,7 @@ export default function FeedbackPage() {
               rows={6}
               placeholder="What should be improved? What went wrong?"
               required
+              maxLength={10000}
             />
           </div>
 

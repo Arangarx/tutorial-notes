@@ -80,7 +80,7 @@ export default function TermsPage() {
             <h2 style={{ fontSize: 18, margin: 0 }}>Contact</h2>
             <p style={{ margin: "8px 0 0" }}>
               Questions about these terms? Email{" "}
-              <a href="mailto:arangarx@gmail.com">arangarx@gmail.com</a>.
+              <a href="mailto:arangarx+tutoringnotes@gmail.com">arangarx+tutoringnotes@gmail.com</a>.
             </p>
           </div>
         </section>

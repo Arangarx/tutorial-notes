@@ -112,29 +112,26 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   }
 
   return (
-    <div className="card" data-testid="ai-assist-panel">
+    <div className="card" data-testid="ai-assist-panel" style={{ flex: 1, minWidth: 280 }}>
       <h3 style={{ marginTop: 0 }}>Auto-fill from session</h3>
 
       {panelState === "filled" ? (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "10px 14px",
+            padding: "12px 14px",
             background: "var(--color-success-bg, #f0fdf4)",
             borderRadius: 6,
             border: "1px solid var(--color-success-border, #bbf7d0)",
           }}
           data-testid="ai-filled-hint"
         >
-          <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600 }}>
+          <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, display: "block", marginBottom: 10 }}>
             Form filled — review and save.
           </span>
           <button
             type="button"
             className="btn"
-            style={{ marginLeft: "auto", fontSize: 13 }}
+            style={{ fontSize: 13 }}
             onClick={handleRegenerate}
           >
             Start over

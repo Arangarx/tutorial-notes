@@ -213,7 +213,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               style={{ marginTop: 2, flexShrink: 0 }}
               data-testid="share-recording-checkbox"
             />
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>
                 Recording attached
               </div>

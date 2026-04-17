@@ -181,9 +181,9 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
           style={{
             marginTop: 16,
             padding: "12px 14px",
-            background: "var(--color-info-bg, #eff6ff)",
             borderRadius: 6,
-            border: "1px solid var(--color-info-border, #bfdbfe)",
+            border: "1px solid var(--color-border, #d1d5db)",
+            borderLeft: "3px solid var(--color-primary, #2563eb)",
           }}
           data-testid="recording-section"
         >

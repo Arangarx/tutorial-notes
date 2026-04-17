@@ -25,7 +25,6 @@ type UploadState = "idle" | "uploading" | "done" | "error";
 export default function AudioUploadInput({ studentId, onUploaded, disabled }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>("idle");
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | null>(null);
 
@@ -44,7 +43,6 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
 
     setFilename(file.name);
     setState("uploading");
-    setProgress(0);
 
     try {
       const result = await upload(
@@ -54,9 +52,6 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
           access: "public",
           handleUploadUrl: "/api/upload/audio",
           clientPayload: studentId,
-          onUploadProgress: (e) => {
-            setProgress(Math.round(e.percentage));
-          },
         }
       );
 
@@ -87,7 +82,6 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
 
   function handleReset() {
     setState("idle");
-    setProgress(0);
     setError(null);
     setFilename(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -144,7 +138,7 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
       >
         {state === "uploading" ? (
           <div>
-            <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
+            <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
               Uploading {filename}…
             </p>
             <div
@@ -158,16 +152,19 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
               <div
                 style={{
                   height: "100%",
-                  width: `${progress}%`,
+                  width: "40%",
                   background: "var(--color-primary, #2563eb)",
-                  transition: "width 0.2s",
                   borderRadius: 3,
+                  animation: "uploadSweep 1.2s ease-in-out infinite",
                 }}
               />
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-              {progress}%
-            </p>
+            <style>{`
+              @keyframes uploadSweep {
+                0%   { transform: translateX(-100%); }
+                100% { transform: translateX(350%); }
+              }
+            `}</style>
           </div>
         ) : (
           <>

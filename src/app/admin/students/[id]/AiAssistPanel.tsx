@@ -198,7 +198,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
                   ? "Transcribing…"
                   : error
                   ? "Try again"
-                  : "Transcribe &amp; generate notes"}
+                  : "Transcribe & generate notes"}
               </button>
             )}
           </div>

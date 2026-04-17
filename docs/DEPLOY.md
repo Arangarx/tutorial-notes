@@ -122,6 +122,25 @@ Reset emails use the same SMTP/Gmail config as other emails. If email is not con
 
 ---
 
+## Add another admin (pilot) — quick path
+
+There is **no in-app signup** after the first admin exists. To onboard a second tutor **today**:
+
+1. **Locally**, set `DATABASE_URL` to the **same** Neon string Vercel uses (pooled URL is fine for this script).
+2. Run:
+
+   ```bash
+   npm run db:create-admin -- pilot@their-domain.com "TemporaryPass123!"
+   ```
+
+3. **If outbound email works on production** (Gmail connect or SMTP): tell them the **live URL** and their **email only** — they open **`/forgot-password`**, request a reset, and set their own password. You do **not** need to DM a password.
+
+4. **If email is not configured yet:** DM them once: **URL**, **email**, **temporary password** from step 2 — ask them to **change password** under **Settings → Profile** after first login.
+
+Longer-term, add an **invite link** flow so you never handle temp passwords.
+
+---
+
 ## First deploy checklist
 
 1. Push repo to GitHub.

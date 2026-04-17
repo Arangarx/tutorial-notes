@@ -7,6 +7,7 @@ export type PopulatePayload = {
   topics: string;
   homework: string;
   nextSteps: string;
+  links: string;
   promptVersion: string;
   /** Set when the note was generated from an audio recording. */
   recordingId?: string;
@@ -62,6 +63,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setTopics(payload.topics);
       setHomework(payload.homework);
       setNextSteps(payload.nextSteps);
+      if (payload.links) setLinks(payload.links);
       setAiGenerated(true);
       setAiPromptVersion(payload.promptVersion);
       if (payload.recordingId) {
@@ -194,6 +196,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
             borderRadius: 6,
             border: "1px solid var(--color-border, #d1d5db)",
             borderLeft: "3px solid var(--color-primary, #2563eb)",
+            overflow: "hidden",
           }}
           data-testid="recording-section"
         >
@@ -203,6 +206,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               alignItems: "flex-start",
               gap: 10,
               cursor: "pointer",
+              width: "100%",
+              minWidth: 0,
             }}
             data-testid="share-recording-label"
           >

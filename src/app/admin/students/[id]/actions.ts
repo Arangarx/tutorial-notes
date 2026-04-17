@@ -113,7 +113,7 @@ export async function createNote(studentId: string, formData: FormData) {
 // ---------------------------------------------------------------------------
 
 export type GenerateNoteResult =
-  | { ok: true; topics: string; homework: string; nextSteps: string; promptVersion: string }
+  | { ok: true; topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
   | { ok: false; error: string };
 
 export async function generateNoteFromTextAction(
@@ -166,6 +166,7 @@ export async function generateNoteFromTextAction(
     topics: result.topics,
     homework: result.homework,
     nextSteps: result.nextSteps,
+    links: result.links,
     promptVersion: result.promptVersion,
   };
 }
@@ -182,6 +183,7 @@ export type TranscribeAndGenerateResult =
       topics: string;
       homework: string;
       nextSteps: string;
+      links: string;
       promptVersion: string;
     }
   | { ok: false; error: string };
@@ -293,6 +295,7 @@ export async function transcribeAndGenerateAction(
       topics: "",
       homework: "",
       nextSteps: "",
+      links: "",
       promptVersion: "",
     };
   }
@@ -328,6 +331,7 @@ export async function transcribeAndGenerateAction(
       topics: "",
       homework: "",
       nextSteps: "",
+      links: "",
       promptVersion: "",
     };
   }
@@ -339,6 +343,7 @@ export async function transcribeAndGenerateAction(
     topics: genResult.topics,
     homework: genResult.homework,
     nextSteps: genResult.nextSteps,
+    links: genResult.links,
     promptVersion: genResult.promptVersion,
   };
 }

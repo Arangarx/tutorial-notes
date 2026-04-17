@@ -52,6 +52,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         topics: result.topics,
         homework: result.homework,
         nextSteps: result.nextSteps,
+        links: result.links,
         promptVersion: result.promptVersion,
         recordingId: undefined,
       });
@@ -78,6 +79,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         topics: result.topics,
         homework: result.homework,
         nextSteps: result.nextSteps,
+        links: result.links,
         promptVersion: result.promptVersion,
         recordingId: result.recordingId,
       });

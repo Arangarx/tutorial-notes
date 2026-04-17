@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { env } from "@/lib/env";
 
-export const PROMPT_VERSION = "2026-04-16-v4";
+export const PROMPT_VERSION = "2026-04-16-v5";
 
 export type RecentNoteContext = {
   date: Date;
@@ -20,6 +20,7 @@ export type GenerateSessionNoteSuccess = {
   topics: string;
   homework: string;
   nextSteps: string;
+  links: string;
   promptVersion: string;
 };
 
@@ -35,10 +36,11 @@ function buildUserPrompt(input: GenerateSessionNoteInput): string {
 Tutor's notes from today's session (use ONLY this to fill the fields):
 ${input.sessionText}
 
-Return JSON with exactly these three fields. Each field should be 1-3 sentences drawn directly from the notes above. Do not add anything not stated in the notes. Do not prefix values with the field name (e.g. do not start with "Topics covered:", "Homework:", "Next steps:", etc.) — the field labels are shown separately in the UI:
+Return JSON with exactly these four fields. Write concisely — state the content directly without wrapping it in a full sentence that restates the field name (e.g. for topics write "X, Y, and Z" not "Today we covered X, Y, and Z"). Do not add anything not stated in the notes. Do not prefix values with the field name:
 - "topics": what was covered or worked on during TODAY's session (past tense — what already happened)
 - "homework": what the student should do before next session (empty string "" if nothing assigned)
-- "nextSteps": what the tutor plans to cover in a FUTURE session (future tense — "will work on", "next time", "plan to", etc.). If the notes mention something that hasn't happened yet, put it here, not in topics. Empty string "" if not mentioned.`;
+- "nextSteps": what the tutor plans to cover in a FUTURE session (future tense — "will work on", "next time", "plan to", etc.). If the notes mention something that hasn't happened yet, put it here, not in topics. Empty string "" if not mentioned.
+- "links": any URLs or websites mentioned in the notes, one per line (empty string "" if none)`;
 }
 
 const SYSTEM_PROMPT =
@@ -102,8 +104,9 @@ export async function generateSessionNote(
   const topics = typeof obj.topics === "string" ? obj.topics : "";
   const homework = typeof obj.homework === "string" ? obj.homework : "";
   const nextSteps = typeof obj.nextSteps === "string" ? obj.nextSteps : "";
+  const links = typeof obj.links === "string" ? obj.links : "";
 
-  return { topics, homework, nextSteps, promptVersion: PROMPT_VERSION };
+  return { topics, homework, nextSteps, links, promptVersion: PROMPT_VERSION };
 }
 
 /** Roughly estimate token count (4 chars ≈ 1 token). Used by callers to guard input length. */

@@ -75,6 +75,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setTopics("");
       setHomework("");
       setNextSteps("");
+      setLinks("");
       setAiGenerated(false);
       setAiPromptVersion("");
       setRecordingId(undefined);
@@ -84,6 +85,19 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       return !!(topics.trim() || homework.trim() || nextSteps.trim());
     },
   }));
+
+  const hasContent = !!(topics.trim() || homework.trim() || nextSteps.trim() || links.trim());
+
+  function handleClear() {
+    setTopics("");
+    setHomework("");
+    setNextSteps("");
+    setLinks("");
+    setAiGenerated(false);
+    setAiPromptVersion("");
+    setRecordingId(undefined);
+    setShareRecordingInEmail(false);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -230,8 +244,16 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         </div>
       )}
 
-      <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-        <button className="btn primary" type="submit" disabled={submitting}>
+      <div className="row" style={{ justifyContent: "flex-end", marginTop: 12, gap: 8 }}>
+        <button
+          type="button"
+          className="btn"
+          disabled={!hasContent || submitting}
+          onClick={handleClear}
+        >
+          Clear form
+        </button>
+        <button className="btn primary" type="submit" disabled={submitting || !hasContent}>
           {submitting ? "Saving…" : "Save note"}
         </button>
       </div>

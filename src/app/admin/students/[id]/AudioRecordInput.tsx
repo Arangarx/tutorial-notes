@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { upload } from "@vercel/blob/client";
+import { uploadAudioAction } from "./actions";
 
 /**
  * Pick the best supported MIME type for MediaRecorder in priority order.
@@ -58,7 +58,6 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
   const [recordState, setRecordState] = useState<RecordState>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -169,23 +168,21 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
       const ext = fileExtension(mimeType);
       const filename = `session-${Date.now()}.${ext}`;
       setRecordState("uploading");
-      setProgress(0);
 
       try {
-        const result = await upload(
-          `sessions/${studentId}/${filename}`,
-          blob,
-          {
-            access: "public",
-            handleUploadUrl: "/api/upload/audio",
-            clientPayload: studentId,
-            onUploadProgress: (e) => setProgress(Math.round(e.percentage)),
-          }
-        );
+        const formData = new FormData();
+        formData.append("file", new File([blob], filename, { type: mimeType }));
+        const result = await uploadAudioAction(studentId, formData);
+
+        if (!result.ok) {
+          setError(result.error);
+          setRecordState("error");
+          return;
+        }
 
         setRecordState("done");
         onRecorded({
-          blobUrl: result.url,
+          blobUrl: result.blobUrl,
           mimeType,
           sizeBytes: blob.size,
           filename,
@@ -209,7 +206,6 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
     chunksRef.current = [];
     elapsedRef.current = 0;
     setElapsed(0);
-    setProgress(0);
     setError(null);
     setRecordState("idle");
   }
@@ -248,30 +244,18 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
   if (recordState === "uploading") {
     return (
       <div data-testid="audio-record-uploading">
-        <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
           Uploading recording…
         </p>
-        <div
-          style={{
-            height: 6,
-            background: "var(--color-border, #e5e7eb)",
+        <div style={{ height: 6, background: "var(--color-border, #e5e7eb)", borderRadius: 3, overflow: "hidden" }}>
+          <div style={{
+            height: "100%", width: "40%",
+            background: "var(--color-primary, #2563eb)",
             borderRadius: 3,
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${progress}%`,
-              background: "var(--color-primary, #2563eb)",
-              transition: "width 0.2s",
-              borderRadius: 3,
-            }}
-          />
+            animation: "uploadSweep 1.2s ease-in-out infinite",
+          }} />
         </div>
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-          {progress}%
-        </p>
+        <style>{`@keyframes uploadSweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }`}</style>
       </div>
     );
   }
@@ -362,7 +346,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
               onClick={stopAndUpload}
               data-testid="audio-record-stop"
             >
-              ■ Stop &amp; save
+              ■ Stop & save
             </button>
             <button
               type="button"

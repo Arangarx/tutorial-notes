@@ -20,6 +20,8 @@ export type NewNoteFormHandle = {
 
 type Props = {
   studentId: string;
+  /** Called after a note is successfully saved, so parent can reset dependent panels. */
+  onSaved?: () => void;
 };
 
 const TEMPLATES = [
@@ -37,7 +39,7 @@ function formatDateInput(d: Date) {
 }
 
 const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
-  { studentId },
+  { studentId, onSaved },
   ref
 ) {
   const [date] = useState(() => formatDateInput(new Date()));
@@ -89,6 +91,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         setAiPromptVersion("");
         setRecordingId(undefined);
         setShareRecordingInEmail(false);
+        onSaved?.();
       } finally {
         setSubmitting(false);
       }

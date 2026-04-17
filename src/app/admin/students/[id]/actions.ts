@@ -431,13 +431,15 @@ export async function sendUpdateEmail(
     orderBy: { date: "desc" },
   });
   const topicsLine =
-    latestNote?.topics?.trim() ? `\nRecent focus: ${latestNote.topics.trim()}\n` : "\n";
+    latestNote?.topics?.trim()
+      ? `\nLatest session preview: ${latestNote.topics.trim()}\n`
+      : "\n";
 
-  const subject = `Session update - ${student.name}`;
+  const subject = `Session notes - ${student.name}`;
   const bodyText = `Hi,
 
-${signer} is sharing a session update for ${student.name}.${topicsLine}
-Open this link to read notes, homework, and next steps (no login needed):
+${signer} has shared session notes for ${student.name}.${topicsLine}
+Open the link below to read all notes, homework, and next steps (no login needed):
 ${linkUrl}
 
 If the link does not open, you can reply to this email.

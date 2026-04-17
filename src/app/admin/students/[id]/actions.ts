@@ -233,11 +233,12 @@ export async function transcribeAndGenerateAction(
     },
   });
 
-  // Download bytes for Whisper.
+  // Download bytes for Whisper — private blob requires Bearer token.
   let audioBuffer: Buffer;
   try {
-    const audioUrl = getAudioUrl(blobUrl);
-    const res = await fetch(audioUrl);
+    const res = await fetch(blobUrl, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}` },
+    });
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     audioBuffer = Buffer.from(await res.arrayBuffer());
   } catch (err) {
@@ -287,13 +288,11 @@ export async function transcribeAndGenerateAction(
     select: { name: true },
   });
 
-  const recentNotes = await db.sessionNote.findMany({
+  const template = await db.sessionNote.findFirst({
     where: { studentId },
     orderBy: { date: "desc" },
-    take: 2,
-    select: { date: true, topics: true, nextSteps: true, template: true },
-  });
-  const template = recentNotes[0]?.template ?? null;
+    select: { template: true },
+  }).then((n) => n?.template ?? null);
 
   const sessionText = trimmed.length > MAX_INPUT_TOKENS * 4
     ? trimmed.slice(0, MAX_INPUT_TOKENS * 4)
@@ -302,11 +301,6 @@ export async function transcribeAndGenerateAction(
   const genResult = await generateSessionNote({
     studentName: student.name,
     sessionText,
-    recentNotes: recentNotes.map((n) => ({
-      date: n.date,
-      topics: n.topics,
-      nextSteps: n.nextSteps,
-    })),
     template,
   });
 
@@ -510,7 +504,7 @@ export async function uploadAudioAction(
   const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
 
   const blob = await put(pathname, file, {
-    access: "public",
+    access: "private",
     contentType: mimeType,
   });
 

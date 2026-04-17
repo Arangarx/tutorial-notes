@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getAudioUrl } from "@/lib/blob";
 
 export const dynamic = "force-dynamic";
 
@@ -58,15 +57,12 @@ export default async function SharePage({
   const tutor = await db.adminUser.findFirst({ select: { displayName: true, email: true } });
   const tutorName = tutor?.displayName?.trim() || tutor?.email?.split("@")[0] || null;
 
-  // Generate audio URLs for notes that have a shared recording.
+  // Build proxy URLs for notes that have a shared recording.
+  // Proxy route handles auth so the browser never needs the blob token.
   const audioUrlMap = new Map<string, string>();
   student.notes.forEach((n) => {
-    if (n.shareRecordingInEmail && n.recording?.blobUrl) {
-      try {
-        audioUrlMap.set(n.id, getAudioUrl(n.recording.blobUrl));
-      } catch {
-        // Non-fatal: audio player just won't render.
-      }
+    if (n.shareRecordingInEmail && n.recording?.id) {
+      audioUrlMap.set(n.id, `/api/audio/${n.recording.id}?token=${token}`);
     }
   });
 

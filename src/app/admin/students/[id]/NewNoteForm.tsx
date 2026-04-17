@@ -215,11 +215,10 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
             />
             <div>
               <div style={{ fontSize: 13, fontWeight: 500 }}>
-                Session recording attached — include in parent share link
+                Recording attached
               </div>
               <div style={{ fontSize: 11, color: "var(--color-muted, #6b7280)", marginTop: 3 }}>
-                Off by default. When enabled, parents can play the audio on the notes page.
-                Obtain student consent before sharing.
+                Include in parent share link? Off by default. Obtain student consent before sharing.
               </div>
             </div>
           </label>

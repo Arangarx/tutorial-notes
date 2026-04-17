@@ -25,7 +25,7 @@ export default async function SettingsIndexPage() {
           <Link href="/admin/settings/email" className="card" style={{ textDecoration: "none", display: "block" }}>
             <div style={{ fontWeight: 700 }}>Email</div>
             <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
-              Connect Gmail or SMTP so "Send update" and password reset emails deliver.
+              Connect Gmail or SMTP so &ldquo;Send update&rdquo; and password reset emails deliver.
             </p>
           </Link>
         ) : null}

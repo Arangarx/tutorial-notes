@@ -13,8 +13,12 @@ export default async function AdminFeedbackPage() {
     <div className="card">
       <h1 style={{ marginTop: 0 }}>Feedback inbox</h1>
       <p className="muted">
-        This is <strong>/admin/feedback</strong> — submissions left by anyone on the public{" "}
-        <Link href="/feedback">/feedback</Link> page (no login). They appear below.
+        <strong>This page only lists submissions.</strong> To send feedback yourself (even while signed
+        in), use{" "}
+        <Link href="/feedback" style={{ fontWeight: 600 }}>
+          Send feedback
+        </Link>{" "}
+        in the top nav — that opens the public <code>/feedback</code> form.
       </p>
 
       <div className="divider" />

@@ -9,7 +9,10 @@ const adminLinks = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/students", label: "Students" },
   { href: "/admin/outbox", label: "Outbox" },
-  { href: "/admin/feedback", label: "Feedback" },
+  /** Inbox of messages from the public form (not the form itself). */
+  { href: "/admin/feedback", label: "Feedback inbox" },
+  /** Public submit form — works even while signed in as admin. */
+  { href: "/feedback", label: "Send feedback" },
   { href: "/admin/waitlist", label: "Waitlist" },
   { href: "/admin/settings", label: "Settings" },
 ];
@@ -20,6 +23,7 @@ export function AdminNav() {
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
+    if (href === "/feedback") return pathname === "/feedback";
     return pathname.startsWith(href);
   }
 

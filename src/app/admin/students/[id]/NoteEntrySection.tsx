@@ -16,7 +16,7 @@ export default function NoteEntrySection({ studentId, aiEnabled, blobEnabled }: 
   const [panelKey, setPanelKey] = useState(0);
 
   return (
-    <>
+    <div style={{ display: "flex", flex: 2, minWidth: 0, gap: "inherit", flexWrap: "wrap", alignItems: "flex-start" }}>
       <AiAssistPanel
         key={panelKey}
         studentId={studentId}
@@ -28,6 +28,6 @@ export default function NoteEntrySection({ studentId, aiEnabled, blobEnabled }: 
         <h3 style={{ marginTop: 0 }}>New session note</h3>
         <NewNoteForm ref={formRef} studentId={studentId} onSaved={() => setPanelKey((k) => k + 1)} />
       </div>
-    </>
+    </div>
   );
 }

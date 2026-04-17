@@ -23,6 +23,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   const [sessionText, setSessionText] = useState("");
   const [pendingAudio, setPendingAudio] = useState<AudioResult | null>(null);
   const [panelState, setPanelState] = useState<PanelState>("idle");
+  const [audioTabsKey, setAudioTabsKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -89,7 +90,14 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setSessionText("");
     setError(null);
     setPendingAudio(null);
+    setAudioTabsKey((k) => k + 1);
+    formRef.current?.clear();
     setTimeout(() => textareaRef.current?.focus(), 0);
+  }
+
+  function handleClearAudio() {
+    setPendingAudio(null);
+    setAudioTabsKey((k) => k + 1);
   }
 
   if (!enabled) {
@@ -129,7 +137,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             style={{ marginLeft: "auto", fontSize: 13 }}
             onClick={handleRegenerate}
           >
-            Re-generate
+            Start over
           </button>
         </div>
       ) : (
@@ -151,6 +159,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           </p>
 
           <AudioInputTabs
+            key={audioTabsKey}
             studentId={studentId}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -177,6 +186,17 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           )}
 
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 10 }}>
+            {pendingAudio && (
+              <button
+                type="button"
+                className="btn"
+                style={{ marginRight: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}
+                onClick={handleClearAudio}
+                disabled={isPending}
+              >
+                × Clear audio
+              </button>
+            )}
             {activeTab === "text" ? (
               <button
                 type="button"

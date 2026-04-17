@@ -14,6 +14,8 @@ export type PopulatePayload = {
 
 export type NewNoteFormHandle = {
   populate: (payload: PopulatePayload) => void;
+  /** Clears all AI-filled fields and recording state. */
+  clear: () => void;
   /** Returns true if any of the AI-fillable fields have content the user typed. */
   hasUserContent: () => boolean;
 };
@@ -64,9 +66,17 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setAiPromptVersion(payload.promptVersion);
       if (payload.recordingId) {
         setRecordingId(payload.recordingId);
-        // Default share to off — tutor opts in explicitly.
         setShareRecordingInEmail(false);
       }
+    },
+    clear() {
+      setTopics("");
+      setHomework("");
+      setNextSteps("");
+      setAiGenerated(false);
+      setAiPromptVersion("");
+      setRecordingId(undefined);
+      setShareRecordingInEmail(false);
     },
     hasUserContent() {
       return !!(topics.trim() || homework.trim() || nextSteps.trim());

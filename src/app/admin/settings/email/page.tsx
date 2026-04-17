@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { authOptions } from "@/auth-options";
 import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
 import { isEmailConfiguredAny, getGmailConnection } from "@/lib/email";
+import { requireOperator } from "@/lib/operator";
 import { disconnectGmail } from "./actions";
 import EmailConfigForm from "./EmailConfigForm";
 import OAuthEmailSection from "./OAuthEmailSection";
@@ -29,6 +30,7 @@ export default async function EmailSettingsPage({
       </div>
     );
   }
+  await requireOperator();
   const session = await getServerSession(authOptions);
   const sessionEmail = session?.user?.email ?? null;
   const canUseGmailConnect = isGmailConnectAllowedForEmail(sessionEmail);

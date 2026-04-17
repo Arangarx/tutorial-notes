@@ -14,9 +14,11 @@ export function AdminNav({ showOperatorLinks = false }: AdminNavProps) {
   const adminLinks = [
     { href: "/admin", label: "Dashboard" },
     { href: "/admin/students", label: "Students" },
-    { href: "/admin/outbox", label: "Outbox" },
     ...(showOperatorLinks
-      ? [{ href: "/admin/feedback", label: "Feedback inbox" } as const]
+      ? [
+          { href: "/admin/outbox", label: "Outbox" } as const,
+          { href: "/admin/feedback", label: "Feedback inbox" } as const,
+        ]
       : []),
     { href: "/feedback", label: "Send feedback" },
     ...(showOperatorLinks ? [{ href: "/admin/waitlist", label: "Waitlist" } as const] : []),

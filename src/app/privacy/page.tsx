@@ -63,6 +63,24 @@ export default function PrivacyPage() {
           </div>
 
           <div>
+            <h2 style={{ fontSize: 18, margin: 0 }}>AI note generation (OpenAI)</h2>
+            <p style={{ margin: "8px 0 0" }}>
+              When you use the <strong>Auto-fill from session text</strong> feature, the text you paste or type
+              into that field is sent to <strong>OpenAI</strong> via their API to structure it into session
+              notes. Your student&apos;s name and up to two recent note summaries are included as context.
+            </p>
+            <p style={{ margin: "8px 0 0" }}>
+              OpenAI&apos;s API data usage policy states that data submitted through the API is{" "}
+              <strong>not used to train their models</strong>. See{" "}
+              <a href="https://openai.com/enterprise-privacy" target="_blank" rel="noreferrer">
+                OpenAI&apos;s API data usage policy
+              </a>{" "}
+              for details. If you prefer not to send session text to OpenAI, simply do not use the
+              Auto-fill feature — it is entirely optional.
+            </p>
+          </div>
+
+          <div>
             <h2 style={{ fontSize: 18, margin: 0 }}>Where data is stored</h2>
             <p style={{ margin: "8px 0 0" }}>
               Data is stored in a PostgreSQL database hosted on <strong>Neon</strong> (US region). The

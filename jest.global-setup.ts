@@ -13,8 +13,16 @@ export default async function globalSetup() {
   process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
   process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "replace-me";
 
-  execSync("npx prisma db push --skip-generate", {
-    stdio: "inherit",
-    env: process.env,
-  });
+  try {
+    execSync("npx prisma db push --skip-generate", {
+      stdio: "inherit",
+      env: process.env,
+    });
+  } catch {
+    // DB not reachable — unit tests (mocked, no DB) will still pass.
+    // Integration tests that need the DB will fail on their own connection errors.
+    console.warn(
+      "[globalSetup] Could not reach test database — skipping db push. Unit-only tests will still run."
+    );
+  }
 }

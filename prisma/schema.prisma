@@ -49,6 +49,9 @@ model SessionNote {
   status    NoteStatus @default(DRAFT)
   sentAt    DateTime?
 
+  aiGenerated     Boolean  @default(false)
+  aiPromptVersion String?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

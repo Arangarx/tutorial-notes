@@ -8,6 +8,7 @@ import { getAdminByEmail } from "@/lib/auth-db";
 import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
+import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -65,6 +66,10 @@ export async function createNote(studentId: string, formData: FormData) {
   const homework = String(formData.get("homework") ?? "").trim();
   const nextSteps = String(formData.get("nextSteps") ?? "").trim();
   const linksText = String(formData.get("links") ?? "");
+  const aiGenerated = formData.get("aiGenerated") === "true";
+  const aiPromptVersion = aiGenerated
+    ? String(formData.get("aiPromptVersion") ?? "").trim() || null
+    : null;
 
   const links = parseLinksFromTextarea(linksText);
 
@@ -78,10 +83,74 @@ export async function createNote(studentId: string, formData: FormData) {
       nextSteps,
       linksJson: JSON.stringify(links),
       status: "DRAFT",
+      aiGenerated,
+      aiPromptVersion,
     },
   });
 
   revalidatePath(`/admin/students/${studentId}`);
+}
+
+// ---------------------------------------------------------------------------
+// AI: generate structured note from freeform session text
+// ---------------------------------------------------------------------------
+
+export type GenerateNoteResult =
+  | { ok: true; topics: string; homework: string; nextSteps: string; promptVersion: string }
+  | { ok: false; error: string };
+
+export async function generateNoteFromTextAction(
+  studentId: string,
+  sessionText: string
+): Promise<GenerateNoteResult> {
+  await assertOwnsStudent(studentId);
+
+  const trimmed = sessionText.trim();
+  if (!trimmed) return { ok: false, error: "Please enter some session text first." };
+  if (estimateTokens(trimmed) > MAX_INPUT_TOKENS) {
+    return { ok: false, error: "Session text is too long. Please shorten it and try again." };
+  }
+
+  const student = await db.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: { name: true },
+  });
+
+  const recentNotes = await db.sessionNote.findMany({
+    where: { studentId },
+    orderBy: { date: "desc" },
+    take: 2,
+    select: { date: true, topics: true, nextSteps: true, template: true },
+  });
+
+  // Use the most recent note's template as context if available.
+  const template = recentNotes[0]?.template ?? null;
+
+  const result = await generateSessionNote({
+    studentName: student.name,
+    sessionText: trimmed,
+    recentNotes: recentNotes.map((n) => ({
+      date: n.date,
+      topics: n.topics,
+      nextSteps: n.nextSteps,
+    })),
+    template,
+  });
+
+  if ("error" in result) {
+    if (result.error === "not configured") {
+      return { ok: false, error: "AI generation is not configured on this server." };
+    }
+    return { ok: false, error: result.error };
+  }
+
+  return {
+    ok: true,
+    topics: result.topics,
+    homework: result.homework,
+    nextSteps: result.nextSteps,
+    promptVersion: result.promptVersion,
+  };
 }
 
 export async function setNoteStatus(noteId: string, studentId: string, status: "DRAFT" | "READY") {

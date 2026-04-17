@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
-  createNote,
   regenerateShareLink,
   revokeShareLink,
 } from "./actions";
@@ -12,6 +11,8 @@ import { ShareLinkRow } from "./ShareLinkRow";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
 import { NoteCardActions } from "./NoteCardActions";
+import NoteEntrySection from "./NoteEntrySection";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -112,48 +113,7 @@ export default async function StudentDetailPage({
       <div className="divider" />
 
       <div className="row" style={{ alignItems: "stretch" }}>
-        <div className="card" style={{ flex: 1, minWidth: 340 }}>
-          <h3 style={{ marginTop: 0 }}>New session note</h3>
-
-          <form action={createNote.bind(null, student.id)}>
-            <div className="row">
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label htmlFor="note-date">Date</label>
-                <input id="note-date" name="date" type="date" defaultValue={formatDateInput(new Date())} />
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label htmlFor="note-template">Template (optional)</label>
-                <select id="note-template" name="template" defaultValue="">
-                  <option value="">None</option>
-                  <option value="Math session">Math session</option>
-                  <option value="Reading session">Reading session</option>
-                  <option value="Test prep">Test prep</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              <label htmlFor="note-topics">Topics covered</label>
-              <textarea id="note-topics" name="topics" rows={3} placeholder="What did you work on today?" />
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <label htmlFor="note-homework">Homework</label>
-              <textarea id="note-homework" name="homework" rows={3} placeholder="What should they do before next time?" />
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <label htmlFor="note-next-steps">Next steps</label>
-              <textarea id="note-next-steps" name="nextSteps" rows={3} placeholder="What's the plan for next session?" />
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <label htmlFor="note-links">Links (optional, one per line)</label>
-              <textarea id="note-links" name="links" rows={3} placeholder="https://..." />
-            </div>
-
-            <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
-              <SubmitButton label="Save note" />
-            </div>
-          </form>
-        </div>
+        <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} />
 
         <div className="card" style={{ flex: 1, minWidth: 340 }}>
           <h3 style={{ marginTop: 0 }}>Send update email</h3>

@@ -32,6 +32,11 @@ const EnvSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().optional()
   ),
+  /** OpenAI API key. Optional — if absent, AI features degrade gracefully. */
+  OPENAI_API_KEY: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().optional()
+  ),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -51,6 +56,7 @@ const parsed = EnvSchema.safeParse({
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GMAIL_CONNECT_ALLOWLIST: process.env.GMAIL_CONNECT_ALLOWLIST,
   OPERATOR_EMAILS: process.env.OPERATOR_EMAILS,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 });
 
 if (!parsed.success) {

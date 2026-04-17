@@ -23,6 +23,21 @@ Use this with **[GTM-READINESS.md](./GTM-READINESS.md)** (what "ready" means for
 | `SETUP_SECRET` | **Production:** long random string (≥16 chars). Required to use `/setup` — open `/setup?token=…` with the **same** value so the first admin cannot be claimed by a random visitor. Optional locally (omit for an open `/setup` on dev). |
 | `OPERATOR_EMAILS` | **Recommended in production:** comma-separated emails that may view the **global** feedback inbox and waitlist. `ADMIN_EMAIL` is always included. If no operator emails resolve, those pages are unreachable until you configure this (tutors still use `/feedback` to submit). |
 
+---
+
+## AI features (optional)
+
+| Variable | Notes |
+|----------|--------|
+| `OPENAI_API_KEY` | Optional. When set, enables the **Auto-fill from session text** AI panel on each student's detail page. If absent, the panel renders disabled — no error, no crash. |
+
+**Setup:**
+1. Create a dedicated API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Name it `tutoring-notes-prod`.
+2. Set a **monthly spend cap** at [platform.openai.com/account/limits](https://platform.openai.com/account/limits) → Usage limits → Hard limit. Start at **$5/mo** for pilot. Per-request cost is ~$0.001–$0.003 (gpt-4o-mini).
+3. Add `OPENAI_API_KEY` to Vercel → Project → Settings → Environment Variables (Production scope only).
+
+**Cost:** One paying tutor at $20/mo covers ~6,500 AI note generations. The per-request token limit in `src/lib/ai.ts` is the primary safeguard; the monthly cap is the backstop.
+
 See `.env.example` for all variables with comments.
 
 ---

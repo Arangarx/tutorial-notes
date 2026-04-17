@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { authOptions } from "@/auth-options";
+import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
 import { isEmailConfiguredAny, getGmailConnection } from "@/lib/email";
 import { disconnectGmail } from "./actions";
 import EmailConfigForm from "./EmailConfigForm";
@@ -26,6 +29,10 @@ export default async function EmailSettingsPage({
       </div>
     );
   }
+  const session = await getServerSession(authOptions);
+  const sessionEmail = session?.user?.email ?? null;
+  const canUseGmailConnect = isGmailConnectAllowedForEmail(sessionEmail);
+
   const config = await db.emailConfig.findFirst({ orderBy: { updatedAt: "desc" } });
   const configured = await isEmailConfiguredAny();
   const gmailConnection = await getGmailConnection(); // safe: null if table missing (run prisma db push)
@@ -52,6 +59,7 @@ export default async function EmailSettingsPage({
       <OAuthEmailSection
         gmailConnected={gmailConnection ? { email: gmailConnection.email } : null}
         googleOAuthAvailable={googleOAuthAvailable}
+        canUseGmailConnect={canUseGmailConnect}
         connectError={params.error}
         connectSuccess={params.connected}
       />

@@ -1,12 +1,20 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { createStudent } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { getStudentScope, studentsWhereForScope } from "@/lib/student-scope";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
-  const students = await db.student.findMany({ orderBy: { createdAt: "desc" } });
+  const scope = await getStudentScope();
+  if (scope.kind === "none") redirect("/login");
+
+  const students = await db.student.findMany({
+    where: studentsWhereForScope(scope),
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div className="card">

@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { getAdminByEmail } from "@/lib/auth-db";
 import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
-import { requireAdminSession } from "@/lib/require-admin";
+import { assertOwnsStudent } from "@/lib/student-scope";
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -31,7 +31,7 @@ async function resolveTutorDisplayName(): Promise<{ signer: string; fromDisplayN
 }
 
 export async function regenerateShareLink(studentId: string) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
   await db.shareLink.updateMany({
     where: { studentId, revokedAt: null },
     data: { revokedAt: new Date() },
@@ -45,7 +45,7 @@ export async function regenerateShareLink(studentId: string) {
 }
 
 export async function revokeShareLink(studentId: string) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
   await db.shareLink.updateMany({
     where: { studentId, revokedAt: null },
     data: { revokedAt: new Date() },
@@ -55,7 +55,7 @@ export async function revokeShareLink(studentId: string) {
 }
 
 export async function createNote(studentId: string, formData: FormData) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
   const dateStr = String(formData.get("date") ?? "");
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
@@ -85,13 +85,15 @@ export async function createNote(studentId: string, formData: FormData) {
 }
 
 export async function setNoteStatus(noteId: string, studentId: string, status: "DRAFT" | "READY") {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
+  const row = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });
+  if (!row) return;
   await db.sessionNote.update({ where: { id: noteId }, data: { status } });
   revalidatePath(`/admin/students/${studentId}`);
 }
 
 export async function renameStudent(studentId: string, formData: FormData) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Name is required");
   await db.student.update({ where: { id: studentId }, data: { name } });
@@ -99,13 +101,15 @@ export async function renameStudent(studentId: string, formData: FormData) {
 }
 
 export async function deleteStudent(studentId: string) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
   await db.student.delete({ where: { id: studentId } });
   revalidatePath("/admin/students");
 }
 
 export async function updateNote(noteId: string, studentId: string, formData: FormData) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
+  const existing = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });
+  if (!existing) return;
   const dateStr = String(formData.get("date") ?? "");
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
@@ -125,7 +129,9 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
 }
 
 export async function deleteNote(noteId: string, studentId: string) {
-  await requireAdminSession();
+  await assertOwnsStudent(studentId);
+  const existing = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });
+  if (!existing) return;
   await db.sessionNote.delete({ where: { id: noteId } });
   revalidatePath(`/admin/students/${studentId}`);
 }
@@ -142,8 +148,8 @@ export async function sendUpdateEmail(
   _prev: SendUpdateResult | null,
   formData: FormData
 ): Promise<SendUpdateResult> {
-  await requireAdminSession();
   const studentId = String(formData.get("studentId") ?? "").trim();
+  await assertOwnsStudent(studentId);
   const toEmail = String(formData.get("toEmail") ?? "").trim();
   if (!studentId || !toEmail) return { ok: false, sent: false, error: "Student and email required" };
 

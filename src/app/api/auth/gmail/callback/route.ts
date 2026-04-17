@@ -3,21 +3,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/auth-options";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
 
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const session = await getServerSession(authOptions);
   if (!session) {
-    return NextResponse.redirect(new URL("/login", process.env.NEXTAUTH_URL ?? "http://localhost:3000"));
+    return NextResponse.redirect(new URL("/login", baseUrl));
   }
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const state = searchParams.get("state");
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const returnTo = (state ? (() => { try { const s = JSON.parse(Buffer.from(state, "base64url").toString()); return s?.returnTo; } catch { return null; } })() : null) ?? "/admin/settings/email";
 
   if (error) {
     return NextResponse.redirect(new URL(`${returnTo}?error=gmail_denied`, baseUrl));
+  }
+
+  const sessionEmail = session.user?.email ?? null;
+  if (!isGmailConnectAllowedForEmail(sessionEmail)) {
+    return NextResponse.redirect(new URL(`${returnTo}?error=gmail_connect_not_allowlisted`, baseUrl));
   }
   if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.redirect(new URL(`${returnTo}?error=missing_code_or_config`, baseUrl));

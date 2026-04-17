@@ -50,6 +50,9 @@ export default function HomePage() {
             <Link className="btn" href="/feedback">
               Feedback
             </Link>
+            <Link className="btn" href="/signup">
+              Create account
+            </Link>
             <Link className="btn primary" href="/login">
               Sign in
             </Link>

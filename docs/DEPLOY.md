@@ -141,6 +141,19 @@ Longer-term, add an **invite link** flow so you never handle temp passwords.
 
 ---
 
+## Student data is per tutor account
+
+Each **student** row is tied to the signed-in **database admin** (`Student.adminUserId`). Tutors only see and edit their own students. Deploy **`20260417120000_student_admin_user_scope`** (runs with `prisma migrate deploy` on build) so existing rows are assigned to the first admin in the database.
+
+---
+
+## Public sign-up (`/signup`) and Gmail OAuth allowlist
+
+- **`/signup`** creates a new **tutor account** (email + password) in the database. No invite required. Link it from your landing page (already linked from **Home** and **Login**).
+- **`GMAIL_CONNECT_ALLOWLIST`** (optional): comma-separated emails that may use **Connect Gmail**. If **unset**, any signed-in tutor may connect Gmail (same as before). If **set** (e.g. `you@gmail.com,pilot@school.edu`), only those accounts see the **Connect Gmail** button; everyone else uses **SMTP** for outbound mail. Use this when you are fine with random signups but do not want them on Gmail OAuth.
+
+---
+
 ## First deploy checklist
 
 1. Push repo to GitHub.

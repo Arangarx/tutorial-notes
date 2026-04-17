@@ -26,8 +26,13 @@ model Student {
   name        String
   parentEmail String?      // Saved so tutor doesn't re-enter every time
   createdAt   DateTime     @default(now())
+  /** Tutor who owns this student (multi-tenant). Null = legacy rows before scoping or env-only admin. */
+  adminUserId String?
+  adminUser   AdminUser?   @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   notes       SessionNote[]
   shareLinks  ShareLink[]
+
+  @@index([adminUserId])
 }
 
 model SessionNote {
@@ -86,6 +91,7 @@ model AdminUser {
   displayName   String?  // Shown to parents in emails (e.g. "Alex Chen")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  students      Student[]
 }
 
 // One-time password reset links (hashed token, email delivery).

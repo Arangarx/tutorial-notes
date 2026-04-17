@@ -9,6 +9,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/admin/students";
   const resetOk = searchParams.get("reset") === "1";
+  const registeredOk = searchParams.get("registered") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +46,13 @@ function LoginForm() {
       <div className="card">
         <h1 style={{ marginTop: 0 }}>Login</h1>
         <p className="muted">
-          Sign in with your admin account.
+          Sign in with your tutor account.
         </p>
+        {registeredOk ? (
+          <p style={{ marginTop: 12, color: "rgba(180,255,200,0.95)" }}>
+            Account created. Sign in with the email and password you just chose.
+          </p>
+        ) : null}
         {setupHint ? (
           <p className="muted" style={{ marginTop: 12, fontSize: 14 }}>
             No admin exists yet. On production, set <code>SETUP_SECRET</code> in your host env, redeploy, then open{" "}
@@ -122,6 +128,10 @@ function LoginForm() {
             </button>
           </div>
         </form>
+
+        <p className="muted" style={{ marginTop: 20, fontSize: 14 }}>
+          New here? <Link href="/signup">Create an account</Link>
+        </p>
       </div>
     </div>
   );

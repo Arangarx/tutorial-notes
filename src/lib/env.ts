@@ -22,6 +22,11 @@ const EnvSchema = z.object({
   // Optional: for "Connect Gmail" OAuth (deployer sets once; users never touch)
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** Comma-separated admin emails allowed to use Connect Gmail. If unset, all admins may try. Use to keep OAuth off for random signups. */
+  GMAIL_CONNECT_ALLOWLIST: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().optional()
+  ),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -39,6 +44,7 @@ const parsed = EnvSchema.safeParse({
   SMTP_FROM: process.env.SMTP_FROM,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GMAIL_CONNECT_ALLOWLIST: process.env.GMAIL_CONNECT_ALLOWLIST,
 });
 
 if (!parsed.success) {

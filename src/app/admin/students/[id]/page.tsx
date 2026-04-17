@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
   createNote,
   regenerateShareLink,
   revokeShareLink,
-} from "./actions";import SendUpdateForm from "./SendUpdateForm";
+} from "./actions";
+import SendUpdateForm from "./SendUpdateForm";
+import { canAccessStudentRow, getStudentScope } from "@/lib/student-scope";
 import { ShareLinkRow } from "./ShareLinkRow";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
@@ -36,6 +38,9 @@ export default async function StudentDetailPage({
 }) {
   const { id } = await params;
 
+  const scope = await getStudentScope();
+  if (scope.kind === "none") redirect("/login");
+
   const student = await db.student.findUnique({
     where: { id },
     include: {
@@ -45,6 +50,7 @@ export default async function StudentDetailPage({
   });
 
   if (!student) notFound();
+  if (!canAccessStudentRow(scope, student)) notFound();
 
   const activeShare = student.shareLinks[0] ?? null;
 

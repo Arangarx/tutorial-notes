@@ -5,11 +5,14 @@ import { disconnectGmail } from "./actions";
 export default function OAuthEmailSection({
   gmailConnected,
   googleOAuthAvailable,
+  canUseGmailConnect,
   connectError,
   connectSuccess,
 }: {
   gmailConnected: { email: string } | null;
   googleOAuthAvailable: boolean;
+  /** When false (e.g. allowlist), hide Connect Gmail — use SMTP instead. */
+  canUseGmailConnect: boolean;
   connectError: string | undefined;
   connectSuccess: string | undefined;
 }) {
@@ -29,7 +32,7 @@ export default function OAuthEmailSection({
             </button>
           </form>
         </div>
-      ) : googleOAuthAvailable ? (
+      ) : googleOAuthAvailable && canUseGmailConnect ? (
         <div>
           {/* Full-page navigation so the server redirect to Google is followed; Link would client-navigate and can flash an error on 302 */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
@@ -37,6 +40,11 @@ export default function OAuthEmailSection({
             Connect Gmail
           </a>
         </div>
+      ) : googleOAuthAvailable && !canUseGmailConnect ? (
+        <p className="muted" style={{ fontSize: 14 }}>
+          <strong>Connect Gmail</strong> is limited to invited accounts on this deployment. Use{" "}
+          <strong>SMTP</strong> below to send mail (e.g. Resend or your provider).
+        </p>
       ) : (
         <p className="muted" style={{ fontSize: 14 }}>
           “Connect Gmail” is available once the app deployer adds Google OAuth credentials (
@@ -64,6 +72,12 @@ export default function OAuthEmailSection({
       {connectError === "db_not_ready" && (
         <p style={{ color: "#ffd700", marginTop: 12 }}>
           Run <code>npx prisma generate</code> and <code>npx prisma db push</code>, then try again.
+        </p>
+      )}
+      {connectError === "gmail_connect_not_allowlisted" && (
+        <p style={{ color: "#ffd700", marginTop: 12 }}>
+          This account isn&apos;t allowed to use Connect Gmail here. Use SMTP below, or ask the person who runs
+          this app to add your email to <code>GMAIL_CONNECT_ALLOWLIST</code>.
         </p>
       )}
 

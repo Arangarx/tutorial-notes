@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/auth-options";
 import { env } from "@/lib/env";
+import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
 
 const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
@@ -12,6 +13,15 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.redirect(new URL("/login", process.env.NEXTAUTH_URL ?? "http://localhost:3000"));
+  }
+  const sessionEmail = session.user?.email ?? null;
+  if (!isGmailConnectAllowedForEmail(sessionEmail)) {
+    return NextResponse.redirect(
+      new URL(
+        "/admin/settings/email?error=gmail_connect_not_allowlisted",
+        process.env.NEXTAUTH_URL ?? "http://localhost:3000"
+      )
+    );
   }
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;

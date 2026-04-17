@@ -284,6 +284,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
             className="btn primary"
             onClick={startRecording}
             disabled={disabled}
+            aria-label="Start recording"
             data-testid="audio-record-start"
           >
             ● Start recording
@@ -292,7 +293,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
       )}
 
       {recordState === "requesting" && (
-        <p style={{ fontSize: 14, color: "var(--color-muted, #6b7280)", textAlign: "center" }}>
+        <p role="status" style={{ fontSize: 14, color: "var(--color-muted, #6b7280)", textAlign: "center" }}>
           Waiting for microphone permission…
         </p>
       )}
@@ -301,6 +302,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
         <div data-testid="audio-record-controls">
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <span
+              aria-hidden="true"
               style={{
                 display: "inline-block",
                 width: 10,
@@ -313,6 +315,8 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
               }}
             />
             <span
+              aria-live="polite"
+              aria-label={`Recording duration: ${formatDuration(elapsed)}`}
               style={{
                 fontVariantNumeric: "tabular-nums",
                 fontWeight: 600,
@@ -323,11 +327,11 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
               {formatDuration(elapsed)}
             </span>
             {isWarning && (
-              <span style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
+              <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
                 5 min remaining — will auto-stop at 60 min
               </span>
             )}
-            <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
+            <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
               {recordState === "paused" ? "Paused" : "Recording…"}
             </span>
           </div>
@@ -338,6 +342,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
                 type="button"
                 className="btn"
                 onClick={pauseRecording}
+                aria-label="Pause recording"
                 data-testid="audio-record-pause"
               >
                 ⏸ Pause
@@ -347,6 +352,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
                 type="button"
                 className="btn"
                 onClick={resumeRecording}
+                aria-label="Resume recording"
                 data-testid="audio-record-resume"
               >
                 ▶ Resume
@@ -356,6 +362,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
               type="button"
               className="btn primary"
               onClick={stopAndUpload}
+              aria-label="Stop and save recording"
               data-testid="audio-record-stop"
             >
               ■ Stop & save
@@ -365,6 +372,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
               className="btn"
               style={{ marginLeft: "auto" }}
               onClick={handleReset}
+              aria-label="Discard recording"
             >
               Discard
             </button>
@@ -376,6 +384,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
         <>
           {error && (
             <p
+              role="alert"
               style={{ fontSize: 13, color: "var(--color-error, #dc2626)", margin: "0 0 10px" }}
               data-testid="audio-record-error"
             >

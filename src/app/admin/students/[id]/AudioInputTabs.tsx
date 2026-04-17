@@ -75,6 +75,8 @@ export default function AudioInputTabs({
   return (
     <div>
       <div
+        role="tablist"
+        aria-label="Session input method"
         style={{
           display: "flex",
           gap: 0,
@@ -82,15 +84,15 @@ export default function AudioInputTabs({
           marginBottom: 14,
         }}
       >
-        <button type="button" style={tabStyle("text")} onClick={() => switchTab("text")} data-testid="tab-text">
+        <button type="button" role="tab" aria-selected={activeTab === "text"} style={tabStyle("text")} onClick={() => switchTab("text")} data-testid="tab-text">
           Paste text
         </button>
         {blobEnabled && (
           <>
-            <button type="button" style={tabStyle("upload")} onClick={() => switchTab("upload")} data-testid="tab-upload">
+            <button type="button" role="tab" aria-selected={activeTab === "upload"} style={tabStyle("upload")} onClick={() => switchTab("upload")} data-testid="tab-upload">
               Upload audio
             </button>
-            <button type="button" style={tabStyle("record")} onClick={() => switchTab("record")} data-testid="tab-record">
+            <button type="button" role="tab" aria-selected={activeTab === "record"} style={tabStyle("record")} onClick={() => switchTab("record")} data-testid="tab-record">
               Record
             </button>
           </>

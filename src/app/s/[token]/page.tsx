@@ -150,6 +150,7 @@ export default async function SharePage({
                         <audio
                           controls
                           src={signedAudioUrl}
+                          aria-label="Session recording shared by your tutor"
                           style={{ width: "100%", maxWidth: 480 }}
                         />
                         <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>

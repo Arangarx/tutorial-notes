@@ -69,6 +69,11 @@ a {
   cursor: not-allowed;
 }
 
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .btn:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.14);
 }
@@ -91,6 +96,19 @@ select {
   background: rgba(0, 0, 0, 0.25);
   color: var(--text);
   padding: 10px 12px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+/* Suppress default outline in favour of our custom focus-visible ring */
+*:focus:not(:focus-visible) {
+  outline: none;
 }
 
 label {

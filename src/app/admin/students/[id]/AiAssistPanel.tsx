@@ -127,7 +127,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           }}
           data-testid="ai-filled-hint"
         >
-          <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, display: "block", marginBottom: 10 }}>
+          <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, display: "block", marginBottom: 10 }} role="status">
             Form filled — review and save.
           </span>
           <button
@@ -169,19 +169,25 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           />
 
           {activeTab === "text" && (
-            <textarea
-              ref={textareaRef}
-              value={sessionText}
-              onChange={(e) => setSessionText(e.target.value)}
-              rows={4}
-              placeholder="e.g. We worked on quadratic equations, factoring practice with worksheet pg 4-6, she struggled with negative coefficients..."
-              style={{ width: "100%", boxSizing: "border-box", marginTop: 2 }}
-              data-testid="ai-session-text"
-            />
+            <>
+              <label htmlFor="ai-session-text" className="muted" style={{ fontSize: 12, marginBottom: 4, display: "block" }}>
+                Session notes
+              </label>
+              <textarea
+                id="ai-session-text"
+                ref={textareaRef}
+                value={sessionText}
+                onChange={(e) => setSessionText(e.target.value)}
+                rows={4}
+                placeholder="e.g. We worked on quadratic equations, factoring practice with worksheet pg 4-6, she struggled with negative coefficients..."
+                style={{ width: "100%", boxSizing: "border-box", marginTop: 2 }}
+                data-testid="ai-session-text"
+              />
+            </>
           )}
 
           {error && (
-            <p style={{ color: "var(--color-error, #dc2626)", marginTop: 8 }}>{error}</p>
+            <p role="alert" style={{ color: "var(--color-error, #dc2626)", marginTop: 8 }}>{error}</p>
           )}
 
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 10 }}>

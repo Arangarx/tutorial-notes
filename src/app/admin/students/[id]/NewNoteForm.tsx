@@ -99,7 +99,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   }
 
   return (
-    <form onSubmit={handleSubmit} data-testid="new-note-form">
+    <form onSubmit={handleSubmit} data-testid="new-note-form" autoComplete="off">
       {/* Hidden AI provenance fields */}
       <input type="hidden" name="aiGenerated" value={String(aiGenerated)} />
       <input type="hidden" name="aiPromptVersion" value={aiPromptVersion} />

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { env } from "@/lib/env";
 
-export const PROMPT_VERSION = "2026-04-16";
+export const PROMPT_VERSION = "2026-04-16-v2";
 
 export type RecentNoteContext = {
   date: Date;
@@ -28,37 +28,25 @@ export type GenerateSessionNoteResult =
   | { error: string };
 
 function buildUserPrompt(input: GenerateSessionNoteInput): string {
-  const templateLine = input.template?.trim()
-    ? input.template.trim()
-    : "general";
+  const templateLine = input.template?.trim() ? input.template.trim() : "general";
 
-  const recentContext =
-    input.recentNotes && input.recentNotes.length > 0
-      ? input.recentNotes
-          .map((n) => {
-            const d = n.date.toISOString().slice(0, 10);
-            return `- ${d}: topics='${n.topics.trim()}' nextSteps='${n.nextSteps.trim()}'`;
-          })
-          .join("\n")
-      : "(none)";
+  return `Subject/template: ${templateLine}
 
-  return `Student: ${input.studentName}
-Subject/template: ${templateLine}
-
-Recent context (for continuity, may be empty):
-${recentContext}
-
-Tutor's notes from today's session:
+Tutor's notes from today's session (use ONLY this to fill the fields):
 ${input.sessionText}
 
-Return JSON with exactly these three fields, each a short paragraph (2–4 sentences) suitable for sending to a parent:
+Return JSON with exactly these three fields. Each field should be 1-3 sentences drawn directly from the notes above. Do not add anything not stated in the notes:
 - "topics": what was covered today
-- "homework": what the student should do before next session (empty string if nothing assigned)
-- "nextSteps": what the tutor plans to cover next time`;
+- "homework": what the student should do before next session (empty string "" if nothing assigned)
+- "nextSteps": what the tutor plans to cover next time (empty string "" if not mentioned)`;
 }
 
 const SYSTEM_PROMPT =
-  "You are a tutoring assistant. You take a tutor's freeform notes about a session and produce concise, structured session notes that the tutor can review and send to a parent. Be specific to what was actually covered. Don't invent details that aren't in the input. Use plain language a parent would understand.";
+  "You are a tutoring assistant. Convert the tutor's raw session notes into clean, structured notes for a parent. " +
+  "STRICT RULES: (1) Only include information that is explicitly stated in the tutor's notes. " +
+  "(2) Do NOT add observations, encouragement, progress statements, or context from previous sessions — even if they seem natural. " +
+  "(3) If a field has no information in the notes, return an empty string for that field. " +
+  "(4) Use plain language a parent would understand. Do not invent or infer anything.";
 
 /** Max tokens for input (~3000 words). Safeguard on top of the OpenAI spend cap. */
 const MAX_INPUT_TOKENS = 4000;

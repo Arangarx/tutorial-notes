@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,16 +11,22 @@ export default async function AdminFeedbackPage() {
 
   return (
     <div className="card">
-      <h1 style={{ marginTop: 0 }}>Feedback</h1>
+      <h1 style={{ marginTop: 0 }}>Feedback inbox</h1>
       <p className="muted">
-        Messages submitted from the public <a href="/feedback">/feedback</a> page are stored here.
-        Anyone can send feedback without signing in.
+        This is <strong>/admin/feedback</strong> — submissions left by anyone on the public{" "}
+        <Link href="/feedback">/feedback</Link> page (no login). They appear below.
       </p>
 
       <div className="divider" />
 
       {items.length === 0 ? (
-        <p className="muted">No submissions yet. Open the public feedback page to test.</p>
+        <p className="muted">
+          No submissions yet.{" "}
+          <Link href="/feedback" style={{ textDecoration: "underline", fontWeight: 600 }}>
+            Open the public form (/feedback)
+          </Link>{" "}
+          to send a test — not this URL.
+        </p>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {items.map((f) => (

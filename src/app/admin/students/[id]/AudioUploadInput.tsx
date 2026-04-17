@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
-import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/blob";
+import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/audio-constants";
 
 const ACCEPTED_ATTR = ACCEPTED_AUDIO_TYPES.join(",");
 const MAX_MB = Math.round(BLOB_MAX_BYTES / 1024 / 1024);

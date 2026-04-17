@@ -120,7 +120,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           data-testid="ai-filled-hint"
         >
           <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600 }}>
-            Filled in below — review and save.
+            Form filled — review and save.
           </span>
           <button
             type="button"
@@ -134,7 +134,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
       ) : (
         <>
           <p className="muted" style={{ marginTop: 0, marginBottom: 4 }}>
-            Paste notes, upload a recording, or record directly. AI will fill the form below — you
+            Paste notes, upload a recording, or record directly. AI will fill the note form — you
             can edit before saving.
           </p>
           <p className="muted" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>

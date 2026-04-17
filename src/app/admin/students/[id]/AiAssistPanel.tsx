@@ -86,6 +86,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
 
   function handleRegenerate() {
     setPanelState("idle");
+    setSessionText("");
     setError(null);
     setPendingAudio(null);
     setTimeout(() => textareaRef.current?.focus(), 0);

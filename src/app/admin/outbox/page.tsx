@@ -1,11 +1,19 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireOperator } from "@/lib/operator";
+import { getStudentScope, studentsWhereForScope } from "@/lib/student-scope";
 
 export const dynamic = "force-dynamic";
 
 export default async function OutboxPage() {
-  await requireOperator();
+  const scope = await getStudentScope();
+  if (scope.kind === "none") redirect("/login");
+
+  const where = scope.kind === "admin"
+    ? { adminUserId: scope.adminId }
+    : { adminUserId: null };
+
   const messages = await db.emailMessage.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -30,7 +38,7 @@ export default async function OutboxPage() {
                 <div>
                   <div style={{ fontWeight: 700 }}>{m.subject}</div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                    To {m.toEmail} • {new Date(m.createdAt).toLocaleString()}
+                    To {m.toEmail} &bull; {new Date(m.createdAt).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -49,4 +57,3 @@ export default async function OutboxPage() {
     </div>
   );
 }
-

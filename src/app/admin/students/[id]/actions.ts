@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { getAdminByEmail } from "@/lib/auth-db";
 import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
-import { assertOwnsStudent } from "@/lib/student-scope";
+import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -185,8 +185,12 @@ If the link does not open, you can reply to this email.
 
 — ${signer}`;
 
+  const scope = await requireStudentScope();
   await db.emailMessage.create({
-    data: { toEmail, subject, bodyText, linkUrl },
+    data: {
+      toEmail, subject, bodyText, linkUrl,
+      adminUserId: scope.kind === "admin" ? scope.adminId : null,
+    },
   });
 
   const { sent, error } = await sendMail({
@@ -194,6 +198,7 @@ If the link does not open, you can reply to this email.
     subject,
     text: bodyText,
     fromDisplayName,
+    adminUserId: scope.kind === "admin" ? scope.adminId : null,
   });
 
   if (error) {

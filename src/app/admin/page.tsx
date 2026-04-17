@@ -112,15 +112,13 @@ export default async function AdminDashboardPage() {
         <Link className="btn primary" href="/admin/students">
           Students
         </Link>
+        <Link className="btn" href="/admin/outbox">
+          Outbox
+        </Link>
         {operator ? (
-          <>
-            <Link className="btn" href="/admin/outbox">
-              Outbox
-            </Link>
-            <Link className="btn" href="/admin/feedback">
-              Feedback inbox
-            </Link>
-          </>
+          <Link className="btn" href="/admin/feedback">
+            Feedback inbox
+          </Link>
         ) : null}
         <Link className="btn" href="/admin/settings">
           Settings

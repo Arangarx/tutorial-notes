@@ -1,21 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import { db } from "@/lib/db";
-import { authOptions } from "@/auth-options";
 import { createStudent } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { getStudentScope, studentsWhereForScope } from "@/lib/student-scope";
-import { isOperatorEmail } from "@/lib/operator";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
   const scope = await getStudentScope();
   if (scope.kind === "none") redirect("/login");
-
-  const session = await getServerSession(authOptions);
-  const operator = isOperatorEmail(session?.user?.email);
 
   const students = await db.student.findMany({
     where: studentsWhereForScope(scope),
@@ -26,11 +20,9 @@ export default async function StudentsPage() {
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h1 style={{ margin: 0 }}>Students</h1>
-        {operator ? (
-          <Link className="btn" href="/admin/outbox">
-            View outbox
-          </Link>
-        ) : null}
+        <Link className="btn" href="/admin/outbox">
+          View outbox
+        </Link>
       </div>
 
       <div className="divider" />

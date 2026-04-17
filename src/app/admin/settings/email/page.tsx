@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
-import { isEmailConfiguredAny, getGmailConnection } from "@/lib/email";
-import { requireOperator } from "@/lib/operator";
-import { disconnectGmail } from "./actions";
+import { getStudentScope } from "@/lib/student-scope";
+import { getGmailConnectionForTutor, isEmailConfiguredForTutor } from "@/lib/email";
 import EmailConfigForm from "./EmailConfigForm";
 import OAuthEmailSection from "./OAuthEmailSection";
 
@@ -25,32 +25,39 @@ export default async function EmailSettingsPage({
           server (e.g. <code>npm run dev</code>).
         </p>
         <p className="muted" style={{ marginTop: 12 }}>
-          <Link href="/admin/students">← Back to Students</Link>
+          <Link href="/admin/students">&larr; Back to Students</Link>
         </p>
       </div>
     );
   }
-  await requireOperator();
+
+  const scope = await getStudentScope();
+  if (scope.kind === "none") redirect("/login");
+  const adminUserId = scope.kind === "admin" ? scope.adminId : null;
+
   const session = await getServerSession(authOptions);
   const sessionEmail = session?.user?.email ?? null;
   const canUseGmailConnect = isGmailConnectAllowedForEmail(sessionEmail);
 
-  const config = await db.emailConfig.findFirst({ orderBy: { updatedAt: "desc" } });
-  const configured = await isEmailConfiguredAny();
-  const gmailConnection = await getGmailConnection(); // safe: null if table missing (run prisma db push)
+  const config = await db.emailConfig.findFirst({
+    where: { adminUserId },
+    orderBy: { updatedAt: "desc" },
+  });
+  const configured = await isEmailConfiguredForTutor(adminUserId);
+  const gmailConnection = await getGmailConnectionForTutor(adminUserId);
   const googleOAuthAvailable = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return (
     <div className="card">
       <h1 style={{ marginTop: 0 }}>Email settings</h1>
       <p className="muted">
-        Choose how to send “Send update” emails. Easiest: connect your Gmail with one click. Or use
+        Choose how to send &ldquo;Send update&rdquo; emails. Easiest: connect your Gmail with one click. Or use
         SMTP (Resend, SendGrid, etc.) if you prefer.
       </p>
 
       {configured ? (
         <p style={{ color: "#90ee90", marginBottom: 16 }}>
-          Email is configured. “Send update” will deliver to the recipient’s inbox.
+          Email is configured. &ldquo;Send update&rdquo; will deliver to the recipient&rsquo;s inbox.
         </p>
       ) : (
         <p style={{ color: "#ffd700", marginBottom: 16 }}>
@@ -81,8 +88,8 @@ export default async function EmailSettingsPage({
       </div>
 
       <p className="muted" style={{ marginTop: 24, fontSize: 14 }}>
-        <Link href="/admin/settings">← All settings</Link>
-        {" · "}
+        <Link href="/admin/settings">&larr; All settings</Link>
+        {" \u00b7 "}
         <Link href="/admin/students">Students</Link>
       </p>
     </div>

@@ -4,6 +4,7 @@ import { authOptions } from "@/auth-options";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { isGmailConnectAllowedForEmail } from "@/lib/gmail-connect-allowed";
+import { getAdminByEmail } from "@/lib/auth-db";
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -28,6 +29,9 @@ export async function GET(request: NextRequest) {
   if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.redirect(new URL(`${returnTo}?error=missing_code_or_config`, baseUrl));
   }
+
+  const adminUser = sessionEmail ? await getAdminByEmail(sessionEmail) : null;
+  const adminUserId = adminUser?.id ?? null;
 
   const redirectUri = `${baseUrl}/api/auth/gmail/callback`;
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -63,9 +67,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`${returnTo}?error=db_not_ready`, baseUrl));
   }
   try {
-    await db.oAuthEmailConnection.deleteMany({ where: { provider: "gmail" } });
+    await db.oAuthEmailConnection.deleteMany({ where: { provider: "gmail", adminUserId } });
     await db.oAuthEmailConnection.create({
-      data: { provider: "gmail", refreshToken, email },
+      data: { provider: "gmail", refreshToken, email, adminUserId },
     });
   } catch {
     return NextResponse.redirect(new URL(`${returnTo}?error=db_not_ready`, baseUrl));

@@ -1,14 +1,8 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth-options";
-import { isOperatorEmail } from "@/lib/operator";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsIndexPage() {
-  const session = await getServerSession(authOptions);
-  const operator = isOperatorEmail(session?.user?.email);
-
   return (
     <div className="card">
       <h1 style={{ marginTop: 0 }}>Settings</h1>
@@ -21,18 +15,16 @@ export default async function SettingsIndexPage() {
             Your name, password, and account email.
           </p>
         </Link>
-        {operator ? (
-          <Link href="/admin/settings/email" className="card" style={{ textDecoration: "none", display: "block" }}>
-            <div style={{ fontWeight: 700 }}>Email</div>
-            <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
-              Connect Gmail or SMTP so &ldquo;Send update&rdquo; and password reset emails deliver.
-            </p>
-          </Link>
-        ) : null}
+        <Link href="/admin/settings/email" className="card" style={{ textDecoration: "none", display: "block" }}>
+          <div style={{ fontWeight: 700 }}>Email</div>
+          <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
+            Connect Gmail or SMTP so &ldquo;Send update&rdquo; and password reset emails deliver.
+          </p>
+        </Link>
       </div>
 
       <p className="muted" style={{ marginTop: 24, fontSize: 14 }}>
-        <Link href="/admin/students">← Back to Students</Link>
+        <Link href="/admin/students">&larr; Back to Students</Link>
       </p>
     </div>
   );

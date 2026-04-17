@@ -67,12 +67,16 @@ model ShareLink {
 }
 
 model EmailMessage {
-  id        String   @id @default(uuid())
-  toEmail   String
-  subject   String
-  bodyText  String
-  linkUrl   String
-  createdAt DateTime @default(now())
+  id          String     @id @default(uuid())
+  toEmail     String
+  subject     String
+  bodyText    String
+  linkUrl     String
+  createdAt   DateTime   @default(now())
+  adminUserId String?
+  adminUser   AdminUser? @relation("AdminEmailMessages", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
 }
 
 model FeedbackItem {
@@ -88,10 +92,13 @@ model AdminUser {
   id            String   @id @default(uuid())
   email         String   @unique
   passwordHash  String
-  displayName   String?  // Shown to parents in emails (e.g. "Alex Chen")
+  displayName   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   students      Student[]
+  emailMessages EmailMessage[] @relation("AdminEmailMessages")
+  emailConfigs  EmailConfig[] @relation("AdminEmailConfigs")
+  oauthConnections OAuthEmailConnection[] @relation("AdminOAuthConnections")
 }
 
 // One-time password reset links (hashed token, email delivery).
@@ -106,25 +113,31 @@ model PasswordResetToken {
   @@index([email])
 }
 
-// Singleton: one row. In-app email (SMTP) settings so deployer doesn't hunt for .env.
 model EmailConfig {
-  id        String   @id @default(uuid())
-  host      String
-  port      Int      @default(587)
-  secure    Boolean  @default(false)
-  user      String
-  password  String   // Store in DB; protect DB access in production
-  fromEmail String?
-  updatedAt DateTime @updatedAt
+  id          String     @id @default(uuid())
+  host        String
+  port        Int        @default(587)
+  secure      Boolean    @default(false)
+  user        String
+  password    String
+  fromEmail   String?
+  updatedAt   DateTime   @updatedAt
+  adminUserId String?
+  adminUser   AdminUser? @relation("AdminEmailConfigs", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
 }
 
-// OAuth email connections: "Connect Gmail" / "Connect Outlook" — one per provider.
 model OAuthEmailConnection {
-  id           String   @id @default(uuid())
-  provider     String   // "gmail" | "outlook"
+  id           String     @id @default(uuid())
+  provider     String
   refreshToken String
-  email        String   // connected address (e.g. user@gmail.com)
-  updatedAt    DateTime @updatedAt
+  email        String
+  updatedAt    DateTime   @updatedAt
+  adminUserId  String?
+  adminUser    AdminUser? @relation("AdminOAuthConnections", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
 }
 
 // Waitlist entries from the landing page interest form.

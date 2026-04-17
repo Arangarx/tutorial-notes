@@ -36,16 +36,28 @@ export async function getGmailConnection(): Promise<{ refreshToken: string; emai
     const row = await db.oAuthEmailConnection.findFirst({ where: { provider: "gmail" } });
     return row ? { refreshToken: row.refreshToken, email: row.email } : null;
   } catch {
-    return null; // e.g. table does not exist yet (run prisma db push)
+    return null;
   }
 }
 
-async function getTransportAndFrom(): Promise<{ transport: nodemailer.Transporter; fromEmail: string } | null> {
-  const gmail = await getGmailConnection();
+/** Per-tutor Gmail connection. */
+export async function getGmailConnectionForTutor(adminUserId: string | null): Promise<{ refreshToken: string; email: string } | null> {
+  if (!hasOAuthEmailConnectionModel()) return null;
+  try {
+    const row = await db.oAuthEmailConnection.findFirst({ where: { provider: "gmail", adminUserId } });
+    return row ? { refreshToken: row.refreshToken, email: row.email } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getTransportAndFrom(adminUserId?: string | null): Promise<{ transport: nodemailer.Transporter; fromEmail: string } | null> {
+  const gmail = adminUserId !== undefined
+    ? await getGmailConnectionForTutor(adminUserId)
+    : await getGmailConnection();
   if (gmail) {
     const transport = await createGmailTransport(gmail.refreshToken, gmail.email);
     if (transport) return { transport, fromEmail: gmail.email };
-    // Gmail connected but transport failed (e.g. env vars missing or token invalid). Do not fall back to SMTP.
     return null;
   }
 
@@ -66,7 +78,9 @@ async function getTransportAndFrom(): Promise<{ transport: nodemailer.Transporte
     }
     return null;
   }
-  const dbConfig = await db.emailConfig.findFirst({ orderBy: { updatedAt: "desc" } });
+
+  const configWhere = adminUserId !== undefined ? { adminUserId } : {};
+  const dbConfig = await db.emailConfig.findFirst({ where: configWhere, orderBy: { updatedAt: "desc" } });
   if (dbConfig) {
     const transport = buildTransportFromConfig({
       host: dbConfig.host,
@@ -103,16 +117,27 @@ export async function isEmailConfiguredAny(): Promise<boolean> {
   return isEmailConfigured();
 }
 
+/** Per-tutor check: is email configured for this specific tutor? */
+export async function isEmailConfiguredForTutor(adminUserId: string | null): Promise<boolean> {
+  const gmail = await getGmailConnectionForTutor(adminUserId);
+  if (gmail) return true;
+  if (!hasEmailConfigModel()) return isEmailConfigured();
+  const dbConfig = await db.emailConfig.findFirst({ where: { adminUserId } });
+  if (dbConfig) return true;
+  return isEmailConfigured();
+}
+
 export async function sendMail(options: {
   to: string;
   subject: string;
   text: string;
-  /** Full From address or email only; if display name is set, pass via fromDisplayName for Gmail API. */
   from?: string;
-  /** Shown as "Name" <fromEmail> in Gmail; ignored if using plain SMTP without from string. */
-  fromDisplayName?: string | null; // omit or null to send with address only (rare)
+  fromDisplayName?: string | null;
+  adminUserId?: string | null;
 }): Promise<{ sent: boolean; error?: string }> {
-  const gmail = await getGmailConnection();
+  const gmail = options.adminUserId !== undefined
+    ? await getGmailConnectionForTutor(options.adminUserId)
+    : await getGmailConnection();
   if (gmail) {
     const result = await sendViaGmailApi(gmail.refreshToken, gmail.email, {
       to: options.to,
@@ -124,10 +149,10 @@ export async function sendMail(options: {
     if (result.error) return { sent: false, error: result.error };
   }
 
-  const result = await getTransportAndFrom();
-  if (!result) return { sent: false };
+  const transportResult = await getTransportAndFrom(options.adminUserId);
+  if (!transportResult) return { sent: false };
 
-  const emailAddr = options.from ?? result.fromEmail;
+  const emailAddr = options.from ?? transportResult.fromEmail;
   const dn = options.fromDisplayName?.trim()
     ? asciiEmailDisplayName(options.fromDisplayName.trim())
     : "";
@@ -136,7 +161,7 @@ export async function sendMail(options: {
     : emailAddr;
 
   try {
-    await result.transport.sendMail({
+    await transportResult.transport.sendMail({
       from,
       to: options.to,
       subject: options.subject,

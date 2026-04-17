@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { upload } from "@vercel/blob/client";
+import { uploadAudioAction } from "./actions";
 import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/audio-constants";
 
 const ACCEPTED_ATTR = ACCEPTED_AUDIO_TYPES.join(",");
@@ -45,21 +45,21 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
     setState("uploading");
 
     try {
-      const result = await upload(
-        `sessions/${studentId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
-        file,
-        {
-          access: "public",
-          handleUploadUrl: "/api/upload/audio",
-          clientPayload: studentId,
-        }
-      );
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadAudioAction(studentId, formData);
+
+      if (!result.ok) {
+        setError(result.error);
+        setState("error");
+        return;
+      }
 
       setState("done");
       onUploaded({
-        blobUrl: result.url,
-        mimeType: file.type,
-        sizeBytes: file.size,
+        blobUrl: result.blobUrl,
+        mimeType: result.mimeType,
+        sizeBytes: result.sizeBytes,
         filename: file.name,
       });
     } catch (err) {

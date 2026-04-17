@@ -10,7 +10,8 @@ import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
 import { transcribeAudio } from "@/lib/transcribe";
-import { getAudioUrl, getBlobMetadata, deleteBlob } from "@/lib/blob";
+import { put } from "@vercel/blob";
+import { getAudioUrl, getBlobMetadata, deleteBlob, BLOB_MAX_BYTES } from "@/lib/blob";
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -475,5 +476,44 @@ If the link does not open, you can reply to this email.
   // outboxOnly: email not configured, message saved to outbox — still mark notes sent
   // since the tutor intentionally triggered the send and can manually deliver the link.
   return { ok: true, sent: false, outboxOnly: true, toEmail };
+}
+
+/**
+ * Server-side audio upload → Vercel Blob.
+ * Receives the file as FormData so the browser never touches blob.vercel-storage.com
+ * directly (avoids firewall/SSL-inspection issues with cross-origin PUTs).
+ * Body size limit is set to 25 MB in next.config (matching Whisper's limit).
+ */
+type UploadAudioResult =
+  | { ok: true; blobUrl: string; mimeType: string; sizeBytes: number }
+  | { ok: false; error: string };
+
+export async function uploadAudioAction(
+  studentId: string,
+  formData: FormData
+): Promise<UploadAudioResult> {
+  // assertOwnsStudent handles auth + ownership check internally
+  await assertOwnsStudent(studentId);
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { ok: false, error: "No file provided" };
+
+  if (file.size > BLOB_MAX_BYTES) {
+    return {
+      ok: false,
+      error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB.`,
+    };
+  }
+
+  const mimeType = file.type || "audio/mpeg";
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
+
+  const blob = await put(pathname, file, {
+    access: "public",
+    contentType: mimeType,
+  });
+
+  return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
 }
 

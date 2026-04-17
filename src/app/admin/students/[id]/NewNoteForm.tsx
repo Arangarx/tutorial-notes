@@ -187,16 +187,12 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
           }}
           data-testid="recording-section"
         >
-          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 500 }}>
-            Session recording attached
-          </p>
           <label
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: 8,
+              alignItems: "flex-start",
+              gap: 10,
               cursor: "pointer",
-              fontSize: 13,
             }}
             data-testid="share-recording-label"
           >
@@ -204,14 +200,19 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               type="checkbox"
               checked={shareRecordingInEmail}
               onChange={(e) => setShareRecordingInEmail(e.target.checked)}
+              style={{ marginTop: 2, flexShrink: 0 }}
               data-testid="share-recording-checkbox"
             />
-            Include audio recording in parent share link
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                Session recording attached — include in parent share link
+              </div>
+              <div style={{ fontSize: 11, color: "var(--color-muted, #6b7280)", marginTop: 3 }}>
+                Off by default. When enabled, parents can play the audio on the notes page.
+                Obtain student consent before sharing.
+              </div>
+            </div>
           </label>
-          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
-            Off by default. When enabled, parents can play the session audio on the notes page.
-            Student consent should be obtained before sharing.
-          </p>
         </div>
       )}
 

@@ -136,6 +136,7 @@ These are not features — they're things we don't yet know enough to decide. Re
 ## Operational follow-ups (small, do when convenient)
 
 - **Vercel ignored build step** — doc-only commits (changes under `docs/`, `*.md`, `BACKLOG.md`) currently trigger a full redeploy. Add an "Ignored Build Step" command in Vercel → Project Settings → Git to skip builds when only non-code files changed. Command: `git diff HEAD^ HEAD --name-only | grep -qvE '^(docs/|.*\.md$)'`
+- **AI panel / note form layout shift** — at borderline window widths the two panels (Auto-fill + New session note) flip between stacked and side-by-side depending on content height. When the AI panel collapses from "full input" to the "Form filled" banner, the reduced height can cause the flex row to reflow. Fix: use CSS grid with fixed column widths instead of a flex row with `flex-wrap`, so the two-column layout stays locked regardless of content height.
 
 - Pre-fill / saved-input audit beyond parent email (anything else she's typing twice?).
 - Friendlier empty states throughout (especially Outbox first-time, Students first-time).

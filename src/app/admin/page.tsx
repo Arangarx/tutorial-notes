@@ -1,9 +1,21 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { db } from "@/lib/db";
+import { authOptions } from "@/auth-options";
+import { getStudentScope, studentsWhereForScope } from "@/lib/student-scope";
+import { isOperatorEmail } from "@/lib/operator";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
+  const scope = await getStudentScope();
+  if (scope.kind === "none") redirect("/login");
+
+  const session = await getServerSession(authOptions);
+  const operator = isOperatorEmail(session?.user?.email);
+  const studentWhere = studentsWhereForScope(scope);
+
   const [
     studentCount,
     noteCount,
@@ -12,27 +24,38 @@ export default async function AdminDashboardPage() {
     waitlistCount,
     recentNotes,
   ] = await Promise.all([
-    db.student.count(),
-    db.sessionNote.count(),
-    db.sessionNote.count({ where: { status: "SENT" } }),
-    db.feedbackItem.count(),
-    (async () => {
-      try { return await db.waitlistEntry.count(); } catch { return 0; }
-    })(),
+    db.student.count({ where: studentWhere }),
+    db.sessionNote.count({ where: { student: studentWhere } }),
+    db.sessionNote.count({ where: { student: studentWhere, status: "SENT" } }),
+    operator ? db.feedbackItem.count() : Promise.resolve(0),
+    operator
+      ? (async () => {
+          try {
+            return await db.waitlistEntry.count();
+          } catch {
+            return 0;
+          }
+        })()
+      : Promise.resolve(0),
     db.sessionNote.findMany({
+      where: { student: studentWhere },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { student: { select: { name: true } } },
     }),
   ]);
 
-  const stats = [
+  const stats: { label: string; value: number; href: string }[] = [
     { label: "Students", value: studentCount, href: "/admin/students" },
     { label: "Total notes", value: noteCount, href: "/admin/students" },
     { label: "Notes sent", value: sentNoteCount, href: "/admin/students" },
-    { label: "Feedback items", value: unreadFeedbackCount, href: "/admin/feedback" },
-    { label: "Waitlist signups", value: waitlistCount, href: "/admin/waitlist" },
   ];
+  if (operator) {
+    stats.push(
+      { label: "Feedback items", value: unreadFeedbackCount, href: "/admin/feedback" },
+      { label: "Waitlist signups", value: waitlistCount, href: "/admin/waitlist" }
+    );
+  }
 
   return (
     <div className="card">
@@ -89,9 +112,11 @@ export default async function AdminDashboardPage() {
         <Link className="btn primary" href="/admin/students">
           Students
         </Link>
-        <Link className="btn" href="/admin/feedback">
-          Feedback
-        </Link>
+        {operator ? (
+          <Link className="btn" href="/admin/feedback">
+            Feedback inbox
+          </Link>
+        ) : null}
         <Link className="btn" href="/admin/outbox">
           Outbox
         </Link>

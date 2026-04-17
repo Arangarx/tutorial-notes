@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { requireOperator } from "@/lib/operator";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminFeedbackPage() {
+  await requireOperator();
   const items = await db.feedbackItem.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

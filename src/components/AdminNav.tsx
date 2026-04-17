@@ -5,19 +5,23 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 
-const adminLinks = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/students", label: "Students" },
-  { href: "/admin/outbox", label: "Outbox" },
-  /** Inbox of messages from the public form (not the form itself). */
-  { href: "/admin/feedback", label: "Feedback inbox" },
-  /** Public submit form — works even while signed in as admin. */
-  { href: "/feedback", label: "Send feedback" },
-  { href: "/admin/waitlist", label: "Waitlist" },
-  { href: "/admin/settings", label: "Settings" },
-];
+type AdminNavProps = {
+  /** Global feedback inbox + waitlist — only for addresses in OPERATOR_EMAILS / ADMIN_EMAIL. */
+  showOperatorLinks?: boolean;
+};
 
-export function AdminNav() {
+export function AdminNav({ showOperatorLinks = false }: AdminNavProps) {
+  const adminLinks = [
+    { href: "/admin", label: "Dashboard" },
+    { href: "/admin/students", label: "Students" },
+    { href: "/admin/outbox", label: "Outbox" },
+    ...(showOperatorLinks
+      ? [{ href: "/admin/feedback", label: "Feedback inbox" } as const]
+      : []),
+    { href: "/feedback", label: "Send feedback" },
+    ...(showOperatorLinks ? [{ href: "/admin/waitlist", label: "Waitlist" } as const] : []),
+    { href: "/admin/settings", label: "Settings" },
+  ];
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

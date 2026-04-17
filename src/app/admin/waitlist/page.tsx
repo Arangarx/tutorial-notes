@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireOperator } from "@/lib/operator";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ async function getWaitlistEntries() {
 }
 
 export default async function AdminWaitlistPage() {
+  await requireOperator();
   const entries = await getWaitlistEntries();
 
   return (

@@ -27,6 +27,11 @@ const EnvSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().optional()
   ),
+  /** Comma-separated emails that may open global feedback inbox + waitlist. `ADMIN_EMAIL` is always included. */
+  OPERATOR_EMAILS: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().optional()
+  ),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -45,6 +50,7 @@ const parsed = EnvSchema.safeParse({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GMAIL_CONNECT_ALLOWLIST: process.env.GMAIL_CONNECT_ALLOWLIST,
+  OPERATOR_EMAILS: process.env.OPERATOR_EMAILS,
 });
 
 if (!parsed.success) {

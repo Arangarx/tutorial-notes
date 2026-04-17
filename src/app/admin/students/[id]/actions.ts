@@ -9,6 +9,8 @@ import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
+import { transcribeAudio } from "@/lib/transcribe";
+import { getAudioUrl, getBlobMetadata, deleteBlob } from "@/lib/blob";
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -70,8 +72,21 @@ export async function createNote(studentId: string, formData: FormData) {
   const aiPromptVersion = aiGenerated
     ? String(formData.get("aiPromptVersion") ?? "").trim() || null
     : null;
+  const recordingId = String(formData.get("recordingId") ?? "").trim() || null;
+  const shareRecordingInEmail = formData.get("shareRecordingInEmail") === "true";
 
   const links = parseLinksFromTextarea(linksText);
+
+  // If a recordingId is provided, verify it belongs to this student before linking.
+  if (recordingId) {
+    const recording = await db.sessionRecording.findUnique({
+      where: { id: recordingId },
+      select: { studentId: true },
+    });
+    if (!recording || recording.studentId !== studentId) {
+      throw new Error("Recording not found or access denied");
+    }
+  }
 
   await db.sessionNote.create({
     data: {
@@ -85,6 +100,7 @@ export async function createNote(studentId: string, formData: FormData) {
       status: "DRAFT",
       aiGenerated,
       aiPromptVersion,
+      ...(recordingId ? { recordingId, shareRecordingInEmail } : {}),
     },
   });
 
@@ -150,6 +166,170 @@ export async function generateNoteFromTextAction(
     homework: result.homework,
     nextSteps: result.nextSteps,
     promptVersion: result.promptVersion,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// AI: transcribe audio recording and generate structured note
+// ---------------------------------------------------------------------------
+
+export type TranscribeAndGenerateResult =
+  | {
+      ok: true;
+      recordingId: string;
+      transcript: string;
+      topics: string;
+      homework: string;
+      nextSteps: string;
+      promptVersion: string;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Given a Vercel Blob URL for an uploaded audio recording:
+ * 1. Verifies tutor owns the student (multi-tenant guard).
+ * 2. Creates a SessionRecording row linked to the student + tutor.
+ * 3. Downloads the audio bytes and sends to Whisper for transcription.
+ * 4. Updates the recording row with transcript + duration.
+ * 5. Runs generateSessionNote on the transcript.
+ * 6. Returns the recording ID + generated note fields.
+ */
+export async function transcribeAndGenerateAction(
+  studentId: string,
+  blobUrl: string,
+  mimeType: string
+): Promise<TranscribeAndGenerateResult> {
+  const scope = await requireStudentScope();
+  if (scope.kind === "env") {
+    // env-only admin has no DB id — restrict for simplicity
+    return { ok: false, error: "Audio features require a DB-backed tutor account." };
+  }
+  await assertOwnsStudent(studentId);
+
+  // Validate it looks like a Vercel Blob URL (defence in depth).
+  if (!blobUrl.includes("blob.vercel-storage.com")) {
+    return { ok: false, error: "Invalid audio URL." };
+  }
+
+  let sizeBytes: number;
+  let resolvedMimeType: string;
+  try {
+    const meta = await getBlobMetadata(blobUrl);
+    sizeBytes = meta.size;
+    resolvedMimeType = meta.contentType || mimeType;
+  } catch {
+    return { ok: false, error: "Could not reach audio file. Please try uploading again." };
+  }
+
+  // Create the recording row early so we can return the ID even on transcription error.
+  const recording = await db.sessionRecording.create({
+    data: {
+      adminUserId: scope.adminId,
+      studentId,
+      blobUrl,
+      mimeType: resolvedMimeType,
+      sizeBytes,
+    },
+  });
+
+  // Download bytes for Whisper.
+  let audioBuffer: Buffer;
+  try {
+    const audioUrl = getAudioUrl(blobUrl);
+    const res = await fetch(audioUrl);
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    audioBuffer = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    // Clean up the blob + DB row if download fails — nothing is saved yet.
+    await deleteBlob(blobUrl).catch(() => undefined);
+    await db.sessionRecording.delete({ where: { id: recording.id } }).catch(() => undefined);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[transcribeAndGenerate] download failed:", msg);
+    return { ok: false, error: "Could not download audio for transcription. Please try again." };
+  }
+
+  const filename = `session-${studentId}.${resolvedMimeType.split("/")[1]?.split(";")[0] ?? "webm"}`;
+  const transcribeResult = await transcribeAudio(audioBuffer, filename, resolvedMimeType);
+
+  if ("error" in transcribeResult) {
+    if (transcribeResult.error === "not configured") {
+      return { ok: false, error: "AI transcription is not configured on this server." };
+    }
+    return { ok: false, error: transcribeResult.error };
+  }
+
+  // Persist transcript + duration.
+  await db.sessionRecording.update({
+    where: { id: recording.id },
+    data: {
+      transcript: transcribeResult.transcript,
+      durationSeconds: transcribeResult.durationSeconds,
+    },
+  });
+
+  const trimmed = transcribeResult.transcript.trim();
+  if (!trimmed) {
+    return {
+      ok: true,
+      recordingId: recording.id,
+      transcript: "",
+      topics: "",
+      homework: "",
+      nextSteps: "",
+      promptVersion: "",
+    };
+  }
+
+  // Generate structured note from transcript.
+  const student = await db.student.findUniqueOrThrow({
+    where: { id: studentId },
+    select: { name: true },
+  });
+
+  const recentNotes = await db.sessionNote.findMany({
+    where: { studentId },
+    orderBy: { date: "desc" },
+    take: 2,
+    select: { date: true, topics: true, nextSteps: true, template: true },
+  });
+  const template = recentNotes[0]?.template ?? null;
+
+  const sessionText = trimmed.length > MAX_INPUT_TOKENS * 4
+    ? trimmed.slice(0, MAX_INPUT_TOKENS * 4)
+    : trimmed;
+
+  const genResult = await generateSessionNote({
+    studentName: student.name,
+    sessionText,
+    recentNotes: recentNotes.map((n) => ({
+      date: n.date,
+      topics: n.topics,
+      nextSteps: n.nextSteps,
+    })),
+    template,
+  });
+
+  if ("error" in genResult) {
+    // Transcription succeeded — return recording + transcript even if note gen fails.
+    return {
+      ok: true,
+      recordingId: recording.id,
+      transcript: transcribeResult.transcript,
+      topics: "",
+      homework: "",
+      nextSteps: "",
+      promptVersion: "",
+    };
+  }
+
+  return {
+    ok: true,
+    recordingId: recording.id,
+    transcript: transcribeResult.transcript,
+    topics: genResult.topics,
+    homework: genResult.homework,
+    nextSteps: genResult.nextSteps,
+    promptVersion: genResult.promptVersion,
   };
 }
 

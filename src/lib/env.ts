@@ -37,6 +37,11 @@ const EnvSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().optional()
   ),
+  /** Vercel Blob read/write token. Optional — if absent, audio upload is disabled. */
+  BLOB_READ_WRITE_TOKEN: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().optional()
+  ),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -57,6 +62,7 @@ const parsed = EnvSchema.safeParse({
   GMAIL_CONNECT_ALLOWLIST: process.env.GMAIL_CONNECT_ALLOWLIST,
   OPERATOR_EMAILS: process.env.OPERATOR_EMAILS,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
 });
 
 if (!parsed.success) {

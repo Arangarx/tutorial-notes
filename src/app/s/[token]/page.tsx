@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { getAudioUrl } from "@/lib/blob";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,20 @@ export default async function SharePage({
     include: {
       student: {
         include: {
-          notes: { orderBy: { date: "desc" }, take: 12 },
+          notes: {
+            orderBy: { date: "desc" },
+            take: 12,
+            include: {
+              recording: {
+                select: {
+                  id: true,
+                  blobUrl: true,
+                  mimeType: true,
+                  durationSeconds: true,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -43,6 +57,25 @@ export default async function SharePage({
   const student = link.student;
   const tutor = await db.adminUser.findFirst({ select: { displayName: true, email: true } });
   const tutorName = tutor?.displayName?.trim() || tutor?.email?.split("@")[0] || null;
+
+  // Generate audio URLs for notes that have a shared recording.
+  const audioUrlMap = new Map<string, string>();
+  student.notes.forEach((n) => {
+    if (n.shareRecordingInEmail && n.recording?.blobUrl) {
+      try {
+        audioUrlMap.set(n.id, getAudioUrl(n.recording.blobUrl));
+      } catch {
+        // Non-fatal: audio player just won't render.
+      }
+    }
+  });
+
+  function formatDuration(seconds: number | null): string {
+    if (!seconds) return "";
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
 
   return (
     <div className="container" style={{ maxWidth: 860 }}>
@@ -60,6 +93,7 @@ export default async function SharePage({
           <div style={{ display: "grid", gap: 12 }}>
             {student.notes.map((n) => {
               const links = safeJsonArray(n.linksJson);
+              const signedAudioUrl = audioUrlMap.get(n.id) ?? null;
               return (
                 <div key={n.id} className="card">
                   <div className="row" style={{ justifyContent: "space-between" }}>
@@ -106,6 +140,27 @@ export default async function SharePage({
                         </ul>
                       </section>
                     ) : null}
+
+                    {/* Session recording — only shown when tutor opted in */}
+                    {signedAudioUrl && (
+                      <section data-testid="share-page-audio">
+                        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                          Session recording
+                          {n.recording?.durationSeconds
+                            ? ` · ${formatDuration(n.recording.durationSeconds)}`
+                            : ""}
+                        </div>
+                        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                        <audio
+                          controls
+                          src={signedAudioUrl}
+                          style={{ width: "100%", maxWidth: 480 }}
+                        />
+                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
+                          Recording shared by your tutor for your review.
+                        </p>
+                      </section>
+                    )}
                   </div>
                 </div>
               );
@@ -116,4 +171,3 @@ export default async function SharePage({
     </div>
   );
 }
-

@@ -113,7 +113,7 @@ export default async function StudentDetailPage({
       <div className="divider" />
 
       <div className="row" style={{ alignItems: "stretch" }}>
-        <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} />
+        <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} blobEnabled={!!env.BLOB_READ_WRITE_TOKEN} />
 
         <div className="card" style={{ flex: 1, minWidth: 340 }}>
           <h3 style={{ marginTop: 0 }}>Send update email</h3>

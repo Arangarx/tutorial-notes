@@ -65,9 +65,10 @@ export default function PrivacyPage() {
           <div>
             <h2 style={{ fontSize: 18, margin: 0 }}>AI note generation (OpenAI)</h2>
             <p style={{ margin: "8px 0 0" }}>
-              When you use the <strong>Auto-fill from session text</strong> feature, the text you paste or type
-              into that field is sent to <strong>OpenAI</strong> via their API to structure it into session
-              notes. Your student&apos;s name and up to two recent note summaries are included as context.
+              When you use the <strong>Auto-fill from session</strong> feature, content you provide
+              (typed notes, uploaded audio, or in-browser recording) is sent to{" "}
+              <strong>OpenAI</strong> via their API to structure it into session notes.
+              Your student&apos;s name and up to two recent note summaries are included as context.
             </p>
             <p style={{ margin: "8px 0 0" }}>
               OpenAI&apos;s API data usage policy states that data submitted through the API is{" "}
@@ -75,8 +76,29 @@ export default function PrivacyPage() {
               <a href="https://openai.com/enterprise-privacy" target="_blank" rel="noreferrer">
                 OpenAI&apos;s API data usage policy
               </a>{" "}
-              for details. If you prefer not to send session text to OpenAI, simply do not use the
+              for details. If you prefer not to send session content to OpenAI, simply do not use the
               Auto-fill feature — it is entirely optional.
+            </p>
+          </div>
+
+          <div>
+            <h2 style={{ fontSize: 18, margin: 0 }}>Session audio recordings (Vercel Blob)</h2>
+            <p style={{ margin: "8px 0 0" }}>
+              When you upload or record a session audio file using the audio feature, the recording
+              is stored in <strong>Vercel Blob</strong> (private, US region). Audio is never
+              publicly accessible — all playback links are short-lived signed URLs generated at
+              render time.
+            </p>
+            <p style={{ margin: "8px 0 0" }}>
+              Recordings are sent to <strong>OpenAI Whisper</strong> for transcription as part of
+              the note generation flow. The same API data policy applies: data is not used for
+              training. Audio is not shared with any other third party.
+            </p>
+            <p style={{ margin: "8px 0 0" }}>
+              The <strong>Include audio recording in parent share link</strong> option is{" "}
+              <strong>off by default</strong>. When you enable it, the parent or student can listen
+              to the session recording on their notes page. Obtain appropriate consent before
+              enabling this option, especially for sessions involving minors.
             </p>
           </div>
 

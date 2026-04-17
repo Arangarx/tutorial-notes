@@ -29,14 +29,22 @@ Use this with **[GTM-READINESS.md](./GTM-READINESS.md)** (what "ready" means for
 
 | Variable | Notes |
 |----------|--------|
-| `OPENAI_API_KEY` | Optional. When set, enables the **Auto-fill from session text** AI panel on each student's detail page. If absent, the panel renders disabled — no error, no crash. |
+| `OPENAI_API_KEY` | Optional. When set, enables the **Auto-fill from session** AI panel (text, upload, and record modes). If absent, the panel renders disabled — no error, no crash. |
+| `BLOB_READ_WRITE_TOKEN` | Optional. When set, enables audio upload and in-browser recording. Automatically injected by Vercel when you connect a Blob store (see below). |
 
-**Setup:**
+**Setup — OpenAI:**
 1. Create a dedicated API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Name it `tutoring-notes-prod`.
-2. Set a **monthly spend cap** at [platform.openai.com/account/limits](https://platform.openai.com/account/limits) → Usage limits → Hard limit. Start at **$5/mo** for pilot. Per-request cost is ~$0.001–$0.003 (gpt-4o-mini).
-3. Add `OPENAI_API_KEY` to Vercel → Project → Settings → Environment Variables (Production scope only).
+2. Set a **monthly spend cap** at [platform.openai.com/account/limits](https://platform.openai.com/account/limits) → Usage limits → Hard limit. Set to **$20/mo** for active pilot (Whisper costs ~$0.18/30-min session; gpt-4o-mini note generation ~$0.001–$0.003).
+3. Add `OPENAI_API_KEY` to Vercel → Project → Settings → Environment Variables (Production scope).
 
-**Cost:** One paying tutor at $20/mo covers ~6,500 AI note generations. The per-request token limit in `src/lib/ai.ts` is the primary safeguard; the monthly cap is the backstop.
+**Setup — Vercel Blob (audio storage):**
+1. Vercel dashboard → tutoring-notes project → **Storage** tab → Create Database → **Blob**.
+2. Name it `tutoring-notes-audio`, choose **private** access, accept default region.
+3. After creation, click **Connect to Project** → select `tutoring-notes` → keep all three environment scopes (Development / Preview / Production) checked and the default `BLOB` prefix → click **Connect**.
+4. `BLOB_READ_WRITE_TOKEN` is now auto-injected into all three Vercel environments. No manual copy-paste needed for production.
+5. For local dev: run `npx vercel link` then `npx vercel env pull .env.local` from the `pipeline-projects/tutoring-notes` directory.
+
+**Cost:** One paying tutor at $20/mo covers ~100 audio sessions (Whisper) or ~6,500 text note generations. Per-request token limits in `src/lib/ai.ts` and `src/lib/transcribe.ts` are the primary safeguard; the monthly cap is the backstop.
 
 See `.env.example` for all variables with comments.
 

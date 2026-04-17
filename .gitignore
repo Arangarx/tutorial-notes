@@ -8,3 +8,5 @@ test.db
 pw.db
 test-results/
 
+.vercel
+.env*.local

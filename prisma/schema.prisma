@@ -31,6 +31,7 @@ model Student {
   adminUser   AdminUser?   @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   notes       SessionNote[]
   shareLinks  ShareLink[]
+  recordings  SessionRecording[]
 
   @@index([adminUserId])
 }
@@ -52,10 +53,40 @@ model SessionNote {
   aiGenerated     Boolean  @default(false)
   aiPromptVersion String?
 
+  /** Optional recording this note was generated from. */
+  recordingId          String?          @unique
+  recording            SessionRecording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
+  /** Whether to include the recording audio player in the parent share email. Default off. */
+  shareRecordingInEmail Boolean          @default(false)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([studentId, date])
+}
+
+model SessionRecording {
+  id          String    @id @default(uuid())
+  /** Tutor who owns this recording (multi-tenant). */
+  adminUserId String
+  adminUser   AdminUser @relation("AdminRecordings", fields: [adminUserId], references: [id], onDelete: Cascade)
+  /** Student the session was for. */
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /** Private Vercel Blob URL. Never expose directly — generate signed read URLs at render time. */
+  blobUrl         String
+  mimeType        String
+  sizeBytes       Int
+  durationSeconds Int?
+  transcript      String?
+
+  note      SessionNote?
+
+  createdAt DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([studentId])
 }
 
 model ShareLink {
@@ -102,6 +133,7 @@ model AdminUser {
   emailMessages EmailMessage[] @relation("AdminEmailMessages")
   emailConfigs  EmailConfig[] @relation("AdminEmailConfigs")
   oauthConnections OAuthEmailConnection[] @relation("AdminOAuthConnections")
+  recordings    SessionRecording[] @relation("AdminRecordings")
 }
 
 // One-time password reset links (hashed token, email delivery).

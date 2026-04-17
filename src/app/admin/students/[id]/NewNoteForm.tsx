@@ -8,6 +8,8 @@ export type PopulatePayload = {
   homework: string;
   nextSteps: string;
   promptVersion: string;
+  /** Set when the note was generated from an audio recording. */
+  recordingId?: string;
 };
 
 export type NewNoteFormHandle = {
@@ -46,6 +48,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   const [links, setLinks] = useState("");
   const [aiGenerated, setAiGenerated] = useState(false);
   const [aiPromptVersion, setAiPromptVersion] = useState("");
+  const [recordingId, setRecordingId] = useState<string | undefined>(undefined);
+  const [shareRecordingInEmail, setShareRecordingInEmail] = useState(false);
   const [, startTransition] = useTransition();
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +60,11 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setNextSteps(payload.nextSteps);
       setAiGenerated(true);
       setAiPromptVersion(payload.promptVersion);
+      if (payload.recordingId) {
+        setRecordingId(payload.recordingId);
+        // Default share to off — tutor opts in explicitly.
+        setShareRecordingInEmail(false);
+      }
     },
     hasUserContent() {
       return !!(topics.trim() || homework.trim() || nextSteps.trim());
@@ -78,6 +87,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         setLinks("");
         setAiGenerated(false);
         setAiPromptVersion("");
+        setRecordingId(undefined);
+        setShareRecordingInEmail(false);
       } finally {
         setSubmitting(false);
       }
@@ -89,6 +100,10 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       {/* Hidden AI provenance fields */}
       <input type="hidden" name="aiGenerated" value={String(aiGenerated)} />
       <input type="hidden" name="aiPromptVersion" value={aiPromptVersion} />
+      {recordingId && (
+        <input type="hidden" name="recordingId" value={recordingId} />
+      )}
+      <input type="hidden" name="shareRecordingInEmail" value={String(shareRecordingInEmail)} />
 
       <div className="row">
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -156,6 +171,46 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
           onChange={(e) => setLinks(e.target.value)}
         />
       </div>
+
+      {/* Recording section — only shown when a recording was attached via AI panel */}
+      {recordingId && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: "12px 14px",
+            background: "var(--color-info-bg, #eff6ff)",
+            borderRadius: 6,
+            border: "1px solid var(--color-info-border, #bfdbfe)",
+          }}
+          data-testid="recording-section"
+        >
+          <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 500 }}>
+            Session recording attached
+          </p>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+            data-testid="share-recording-label"
+          >
+            <input
+              type="checkbox"
+              checked={shareRecordingInEmail}
+              onChange={(e) => setShareRecordingInEmail(e.target.checked)}
+              data-testid="share-recording-checkbox"
+            />
+            Include audio recording in parent share link
+          </label>
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
+            Off by default. When enabled, parents can play the session audio on the notes page.
+            Student consent should be obtained before sharing.
+          </p>
+        </div>
+      )}
 
       <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
         <button className="btn primary" type="submit" disabled={submitting}>

@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 
 export default function HomePage() {
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,12 +53,29 @@ export default function HomePage() {
             <Link className="btn" href="/feedback">
               Feedback
             </Link>
-            <Link className="btn" href="/signup">
-              Create account
-            </Link>
-            <Link className="btn primary" href="/login">
-              Sign in
-            </Link>
+            {signedIn ? (
+              <>
+                <Link className="btn primary" href="/admin">
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link className="btn" href="/signup">
+                  Create account
+                </Link>
+                <Link className="btn primary" href="/login">
+                  Sign in
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -134,7 +154,7 @@ export default function HomePage() {
       </div>
 
       <p className="muted" style={{ marginTop: 12 }}>
-        Admin area is protected by login. Parent/student views use share links. No ads, no tracking.
+        Your account is protected by login. Parent/student views use share links. No ads, no tracking.
       </p>
     </div>
   );

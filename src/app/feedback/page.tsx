@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { submitFeedback, type FeedbackResult } from "./actions";
@@ -15,6 +16,8 @@ function SendButton() {
 }
 
 export default function FeedbackPage() {
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
   const [state, formAction] = useActionState(
     submitFeedback,
     null as FeedbackResult | null
@@ -29,8 +32,8 @@ export default function FeedbackPage() {
             Your message was received. We read every submission.
           </p>
           <div style={{ marginTop: 16 }}>
-            <Link className="btn primary" href="/">
-              Back to home
+            <Link className="btn primary" href={signedIn ? "/admin" : "/"}>
+              {signedIn ? "Back to dashboard" : "Back to home"}
             </Link>
           </div>
         </div>
@@ -43,8 +46,8 @@ export default function FeedbackPage() {
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h1 style={{ margin: 0 }}>Feedback</h1>
-          <Link className="btn" href="/">
-            Home
+          <Link className="btn" href={signedIn ? "/admin" : "/"}>
+            {signedIn ? "Dashboard" : "Home"}
           </Link>
         </div>
 

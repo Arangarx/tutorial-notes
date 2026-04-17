@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth";
 import { AdminNav } from "@/components/AdminNav";
-import { Providers } from "@/components/Providers";
 import { authOptions } from "@/auth-options";
 import { isOperatorEmail } from "@/lib/operator";
 
@@ -13,9 +12,9 @@ export default async function AdminLayout({
   const showOperatorLinks = isOperatorEmail(session?.user?.email);
 
   return (
-    <Providers>
+    <>
       <AdminNav showOperatorLinks={showOperatorLinks} />
       <div className="container">{children}</div>
-    </Providers>
+    </>
   );
 }

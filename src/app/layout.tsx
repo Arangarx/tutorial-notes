@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
@@ -13,8 +14,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{ minHeight: "100%", display: "flex", flexDirection: "column", margin: 0 }}>
-        <div style={{ flex: 1 }}>{children}</div>
-        <SiteFooter />
+        <Providers>
+          <div style={{ flex: 1 }}>{children}</div>
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   );

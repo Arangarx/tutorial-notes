@@ -135,6 +135,8 @@ These are not features — they're things we don't yet know enough to decide. Re
 
 ## Operational follow-ups (small, do when convenient)
 
+- **Vercel ignored build step** — doc-only commits (changes under `docs/`, `*.md`, `BACKLOG.md`) currently trigger a full redeploy. Add an "Ignored Build Step" command in Vercel → Project Settings → Git to skip builds when only non-code files changed. Command: `git diff HEAD^ HEAD --name-only | grep -qvE '^(docs/|.*\.md$)'`
+
 - Pre-fill / saved-input audit beyond parent email (anything else she's typing twice?).
 - Friendlier empty states throughout (especially Outbox first-time, Students first-time).
 - "What's this for?" tooltips on Settings sections.

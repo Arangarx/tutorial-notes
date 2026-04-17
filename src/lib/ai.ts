@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { env } from "@/lib/env";
 
-export const PROMPT_VERSION = "2026-04-16-v2";
+export const PROMPT_VERSION = "2026-04-16-v3";
 
 export type RecentNoteContext = {
   date: Date;
@@ -35,7 +35,7 @@ function buildUserPrompt(input: GenerateSessionNoteInput): string {
 Tutor's notes from today's session (use ONLY this to fill the fields):
 ${input.sessionText}
 
-Return JSON with exactly these three fields. Each field should be 1-3 sentences drawn directly from the notes above. Do not add anything not stated in the notes:
+Return JSON with exactly these three fields. Each field should be 1-3 sentences drawn directly from the notes above. Do not add anything not stated in the notes. Do not prefix values with the field name (e.g. do not start with "Topics covered:", "Homework:", "Next steps:", etc.) — the field labels are shown separately in the UI:
 - "topics": what was covered today
 - "homework": what the student should do before next session (empty string "" if nothing assigned)
 - "nextSteps": what the tutor plans to cover next time (empty string "" if not mentioned)`;

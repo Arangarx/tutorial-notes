@@ -4,19 +4,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 import { getAdminByEmail } from "@/lib/auth-db";
 import { db } from "@/lib/db";
-import { isAcceptedAudioType, BLOB_MAX_BYTES } from "@/lib/blob";
-
+import { BLOB_MAX_BYTES } from "@/lib/blob";
 /**
  * Vercel Blob client-upload endpoint.
  *
- * Step 1 (POST): client requests a signed upload token.
+ * POST: client requests a signed upload token.
  *   - We authenticate the session and verify the tutor owns the given studentId
- *     before issuing the token. The token is scoped so only this exact blob path
- *     can be uploaded.
- *
- * Step 2 (PUT): Vercel Blob calls our callback once the upload completes.
- *   - We do a lightweight verification here (the token already encodes who
- *     uploaded what; no DB write yet — that happens in transcribeAndGenerateAction).
+ *     before issuing the token.
+ * Note: onUploadCompleted is intentionally omitted — its callback mechanism can
+ * cause client upload() to hang waiting for Vercel's infrastructure to call back.
+ * All DB writes happen in transcribeAndGenerateAction instead.
  */
 export async function POST(request: Request): Promise<Response> {
   const body = (await request.json()) as HandleUploadBody;
@@ -71,34 +68,8 @@ export async function POST(request: Request): Promise<Response> {
             "audio/x-m4a",
           ],
           maximumSizeInBytes: BLOB_MAX_BYTES,
-          // Embed the verified adminId + studentId so onUploadCompleted can trust it.
           tokenPayload: JSON.stringify({ adminId: admin.id, studentId }),
         };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // Verify payload round-trips correctly (defensive check).
-        try {
-          const payload =
-            typeof tokenPayload === "string"
-              ? (JSON.parse(tokenPayload) as unknown)
-              : tokenPayload;
-
-          if (
-            typeof payload !== "object" ||
-            payload === null ||
-            !("adminId" in payload) ||
-            !("studentId" in payload)
-          ) {
-            console.error("[upload/audio] onUploadCompleted: invalid tokenPayload", tokenPayload);
-          }
-
-          // Validate content type.
-          if (!isAcceptedAudioType(blob.contentType)) {
-            console.error("[upload/audio] Unexpected content type after upload:", blob.contentType);
-          }
-        } catch (err) {
-          console.error("[upload/audio] onUploadCompleted error:", err);
-        }
       },
     });
 

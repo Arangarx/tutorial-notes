@@ -100,8 +100,20 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Microphone access denied. Allow microphone access in your browser and try again.");
+    } catch (err) {
+      const name = err instanceof Error ? (err as DOMException).name : "";
+      console.error("[AudioRecordInput] getUserMedia failed:", err);
+      let msg: string;
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        msg = "Microphone access denied. Click the lock icon in your browser's address bar, set Microphone to Allow, then reload the page and try again.";
+      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        msg = "No microphone found. Please connect a microphone and try again.";
+      } else if (name === "NotReadableError" || name === "TrackStartError") {
+        msg = "Microphone is in use by another app (e.g. Discord, Teams). Close that app or switch its audio device, then try again.";
+      } else {
+        msg = `Microphone error (${name || "unknown"}). Try reloading the page. If the problem persists, use the Upload tab instead.`;
+      }
+      setError(msg);
       setRecordState("error");
       return;
     }

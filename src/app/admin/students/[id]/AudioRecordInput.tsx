@@ -363,7 +363,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
             <button
               type="button"
               className="btn"
-              style={{ marginLeft: "auto", color: "var(--color-muted, #6b7280)" }}
+              style={{ marginLeft: "auto" }}
               onClick={handleReset}
             >
               Discard

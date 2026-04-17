@@ -250,7 +250,22 @@ export async function transcribeAndGenerateAction(
     return { ok: false, error: "Could not download audio for transcription. Please try again." };
   }
 
-  const filename = `session-${studentId}.${resolvedMimeType.split("/")[1]?.split(";")[0] ?? "webm"}`;
+  // Map MIME types to Whisper-accepted extensions (Whisper validates by file extension).
+  const MIME_TO_EXT: Record<string, string> = {
+    "audio/x-m4a": "m4a",
+    "audio/m4a": "m4a",
+    "audio/mp4": "mp4",
+    "audio/mpeg": "mp3",
+    "audio/mpga": "mp3",
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/oga": "oga",
+    "audio/wav": "wav",
+    "audio/flac": "flac",
+  };
+  const baseMime = resolvedMimeType.split(";")[0].trim().toLowerCase();
+  const ext = MIME_TO_EXT[baseMime] ?? baseMime.split("/")[1]?.split(";")[0] ?? "webm";
+  const filename = `session-${studentId}.${ext}`;
   const transcribeResult = await transcribeAudio(audioBuffer, filename, resolvedMimeType);
 
   if ("error" in transcribeResult) {

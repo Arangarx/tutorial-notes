@@ -105,7 +105,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
       console.error("[AudioRecordInput] getUserMedia failed:", err);
       let msg: string;
       if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        msg = "Microphone access denied. Click the lock icon in your browser's address bar, set Microphone to Allow, then reload the page and try again.";
+        msg = "Microphone access denied. Click the icon at the left of the address bar (looks like a slider or tune icon), set Microphone to Allow, then reload the page and try again.";
       } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
         msg = "No microphone found. Please connect a microphone and try again.";
       } else if (name === "NotReadableError" || name === "TrackStartError") {

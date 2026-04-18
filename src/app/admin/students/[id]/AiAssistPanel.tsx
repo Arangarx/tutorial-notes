@@ -1,11 +1,68 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { generateNoteFromTextAction, transcribeAndGenerateAction } from "./actions";
 import type { NewNoteFormHandle } from "./NewNoteForm";
 import AudioInputTabs, { type AudioResult } from "./AudioInputTabs";
 
 type Tab = "text" | "upload" | "record";
+
+/**
+ * <audio> element that works around Chrome's MediaRecorder WebM bug.
+ *
+ * MediaRecorder writes a streaming WebM container with no duration in the
+ * header, so the native <audio controls> shows "0:00 / 0:00" and refuses to
+ * seek; in some Chromium versions clicking play does nothing at all.
+ *
+ * Standard fix: when metadata loads with duration=Infinity/NaN, jump
+ * currentTime to a huge value. The browser scans to the actual end, fires
+ * `durationchange` with the real duration, then we reset to 0.
+ *
+ * Works in Chrome/Edge/Firefox. Safe no-op for well-formed audio (m4a, mp3,
+ * uploaded files etc.) where duration is already known.
+ *
+ * Reference: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
+ */
+function AudioPreview({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [needsFix, setNeedsFix] = useState(false);
+
+  useEffect(() => {
+    setNeedsFix(false);
+  }, [src]);
+
+  function handleLoadedMetadata() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!Number.isFinite(audio.duration) || audio.duration === 0) {
+      setNeedsFix(true);
+      audio.currentTime = 1e101;
+    }
+  }
+
+  function handleDurationChange() {
+    const audio = audioRef.current;
+    if (!audio || !needsFix) return;
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = 0;
+      setNeedsFix(false);
+    }
+  }
+
+  return (
+    <audio
+      ref={audioRef}
+      controls
+      preload="metadata"
+      src={src}
+      onLoadedMetadata={handleLoadedMetadata}
+      onDurationChange={handleDurationChange}
+      aria-label="Preview of uploaded or recorded audio"
+      style={{ width: "100%", height: 36 }}
+      data-testid="audio-preview"
+    />
+  );
+}
 
 type Props = {
   studentId: string;
@@ -195,12 +252,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
               <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
                 Preview recording before transcribing:
               </p>
-              <audio
-                controls
-                src={pendingAudio.previewUrl}
-                aria-label="Preview of uploaded or recorded audio"
-                style={{ width: "100%", height: 36 }}
-              />
+              <AudioPreview src={pendingAudio.previewUrl} />
             </div>
           )}
 
@@ -209,7 +261,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
               <button
                 type="button"
                 className="btn"
-                style={{ marginRight: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}
+                style={{ marginRight: "auto", fontSize: 12 }}
                 onClick={handleClearAudio}
                 disabled={isPending}
               >

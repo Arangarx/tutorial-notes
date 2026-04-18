@@ -31,7 +31,7 @@ function exitIfDirectUrlLooksPooled() {
       const msg =
         "DIRECT_URL must be Neon's non-pooled (direct) host (not `…-pooler…`). " +
         "Pooled URLs break Prisma Migrate advisory locks. " +
-        "Neon → Connect: use "Direct connection" for DIRECT_URL; "Pooled" for DATABASE_URL only. See docs/DEPLOY.md.";
+        "Neon -> Connect: use 'Direct connection' for DIRECT_URL; 'Pooled' for DATABASE_URL only. See docs/DEPLOY.md.";
       // Fail fast on Vercel so we do not burn retries; locally only warn (dev .env may differ).
       if (process.env.VERCEL === "1") {
         console.error("[migrate-with-retry]", msg);

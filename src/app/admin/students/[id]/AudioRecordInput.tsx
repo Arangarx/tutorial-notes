@@ -5,13 +5,25 @@ import { uploadAudioAction } from "./actions";
 
 /**
  * Pick the best supported MIME type for MediaRecorder in priority order.
- * audio/mp4 preferred (iOS Safari + Chrome); fallback to audio/webm (most desktop).
+ *
+ * Priority is webm-first because Chrome / Firefox / Edge produce well-formed
+ * WebM that plays back reliably in <audio>. Chrome on Windows DOES report
+ * `audio/mp4` as supported in recent versions, but its MP4 output is known to
+ * have malformed container metadata (no proper duration, won't seek, often
+ * won't play back) — even though Whisper can still decode the raw audio.
+ *
+ * iOS Safari is the only browser that doesn't support audio/webm, so it falls
+ * through to audio/mp4 naturally. The no-timeslice `recorder.start()` call
+ * (see startRecording below) keeps iOS MP4 output non-fragmented and playable.
+ *
+ * If you change this list, manually verify preview playback in BOTH desktop
+ * Chrome and iOS Safari — this has regressed twice.
  */
 function chooseMimeType(): string {
   const candidates = [
-    "audio/mp4",
     "audio/webm;codecs=opus",
     "audio/webm",
+    "audio/mp4",
     "audio/ogg;codecs=opus",
     "audio/ogg",
   ];

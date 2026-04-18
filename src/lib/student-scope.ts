@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 import { env } from "@/lib/env";
 import { getAdminByEmail } from "@/lib/auth-db";
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 
 /** Who is viewing the admin UI — DB-backed tutor, legacy env-only login, or nobody. */
 export type StudentScope =
@@ -16,7 +16,7 @@ export async function getStudentScope(): Promise<StudentScope> {
   const email = session?.user?.email?.trim().toLowerCase();
   if (!email) return { kind: "none" };
 
-  const admin = await getAdminByEmail(email);
+  const admin = await withDbRetry(() => getAdminByEmail(email), { label: "getStudentScope" });
   if (admin) return { kind: "admin", adminId: admin.id, email: admin.email };
 
   if (env.ADMIN_EMAIL && email === env.ADMIN_EMAIL.trim().toLowerCase() && env.ADMIN_PASSWORD) {
@@ -52,9 +52,13 @@ export function canAccessStudentRow(
 /** Call at the start of server actions that mutate a student by id. */
 export async function assertOwnsStudent(studentId: string): Promise<void> {
   const scope = await requireStudentScope();
-  const student = await db.student.findUnique({
-    where: { id: studentId },
-    select: { adminUserId: true },
-  });
+  const student = await withDbRetry(
+    () =>
+      db.student.findUnique({
+        where: { id: studentId },
+        select: { adminUserId: true },
+      }),
+    { label: "assertOwnsStudent" }
+  );
   if (!student || !canAccessStudentRow(scope, student)) notFound();
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
-import { db } from "@/lib/db";
+import { db, withDbRetry, isTransientDbConnectionError } from "@/lib/db";
 import { getAdminByEmail } from "@/lib/auth-db";
 import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
@@ -202,6 +202,30 @@ export async function transcribeAndGenerateAction(
   blobUrl: string,
   mimeType: string
 ): Promise<TranscribeAndGenerateResult> {
+  try {
+    return await _transcribeAndGenerateImpl(studentId, blobUrl, mimeType);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[transcribeAndGenerateAction] unhandled error:", msg);
+    if (isTransientDbConnectionError(err)) {
+      return {
+        ok: false,
+        error:
+          "Brief database hiccup during transcription. Your recording is saved — please click Transcribe & generate notes again.",
+      };
+    }
+    return {
+      ok: false,
+      error: `Server error during transcription: ${msg}. Please try again.`,
+    };
+  }
+}
+
+async function _transcribeAndGenerateImpl(
+  studentId: string,
+  blobUrl: string,
+  mimeType: string
+): Promise<TranscribeAndGenerateResult> {
   const scope = await requireStudentScope();
   if (scope.kind === "env") {
     // env-only admin has no DB id — restrict for simplicity
@@ -225,15 +249,19 @@ export async function transcribeAndGenerateAction(
   }
 
   // Create the recording row early so we can return the ID even on transcription error.
-  const recording = await db.sessionRecording.create({
-    data: {
-      adminUserId: scope.adminId,
-      studentId,
-      blobUrl,
-      mimeType: resolvedMimeType,
-      sizeBytes,
-    },
-  });
+  const recording = await withDbRetry(
+    () =>
+      db.sessionRecording.create({
+        data: {
+          adminUserId: scope.adminId,
+          studentId,
+          blobUrl,
+          mimeType: resolvedMimeType,
+          sizeBytes,
+        },
+      }),
+    { label: "createSessionRecording" }
+  );
 
   // Download bytes for Whisper — private blob requires Bearer token.
   let audioBuffer: Buffer;
@@ -246,7 +274,10 @@ export async function transcribeAndGenerateAction(
   } catch (err) {
     // Clean up the blob + DB row if download fails — nothing is saved yet.
     await deleteBlob(blobUrl).catch(() => undefined);
-    await db.sessionRecording.delete({ where: { id: recording.id } }).catch(() => undefined);
+    await withDbRetry(
+      () => db.sessionRecording.delete({ where: { id: recording.id } }),
+      { label: "deleteSessionRecording" }
+    ).catch(() => undefined);
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[transcribeAndGenerate] download failed:", msg);
     return { ok: false, error: "Could not download audio for transcription. Please try again." };
@@ -278,13 +309,17 @@ export async function transcribeAndGenerateAction(
   }
 
   // Persist transcript + duration.
-  await db.sessionRecording.update({
-    where: { id: recording.id },
-    data: {
-      transcript: transcribeResult.transcript,
-      durationSeconds: transcribeResult.durationSeconds,
-    },
-  });
+  await withDbRetry(
+    () =>
+      db.sessionRecording.update({
+        where: { id: recording.id },
+        data: {
+          transcript: transcribeResult.transcript,
+          durationSeconds: transcribeResult.durationSeconds,
+        },
+      }),
+    { label: "updateSessionRecordingTranscript" }
+  );
 
   const trimmed = transcribeResult.transcript.trim();
   if (!trimmed) {
@@ -508,28 +543,55 @@ export async function uploadAudioAction(
   studentId: string,
   formData: FormData
 ): Promise<UploadAudioResult> {
-  // assertOwnsStudent handles auth + ownership check internally
-  await assertOwnsStudent(studentId);
+  try {
+    // assertOwnsStudent already retries on transient DB connection drops.
+    await assertOwnsStudent(studentId);
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { ok: false, error: "No file provided" };
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { ok: false, error: "No file provided." };
 
-  if (file.size > BLOB_MAX_BYTES) {
+    if (file.size > BLOB_MAX_BYTES) {
+      return {
+        ok: false,
+        error: `Recording is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB. Try a shorter session, or split it into multiple recordings.`,
+      };
+    }
+
+    const mimeType = file.type || "audio/mpeg";
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
+
+    let blob;
+    try {
+      blob = await put(pathname, file, {
+        access: "private",
+        contentType: mimeType,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[uploadAudioAction] Vercel Blob put failed:", msg);
+      return {
+        ok: false,
+        error:
+          "Could not save the recording to storage (server-side upload error). Please try again. If this keeps happening, switch to the Upload tab and pick the file directly.",
+      };
+    }
+
+    return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[uploadAudioAction] unhandled error:", msg);
+    if (isTransientDbConnectionError(err)) {
+      return {
+        ok: false,
+        error:
+          "Brief database hiccup while saving the recording. Please try Stop & save again — your audio is still in the browser.",
+      };
+    }
     return {
       ok: false,
-      error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB.`,
+      error: `Server error while saving recording: ${msg}. Please try again.`,
     };
   }
-
-  const mimeType = file.type || "audio/mpeg";
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
-
-  const blob = await put(pathname, file, {
-    access: "private",
-    contentType: mimeType,
-  });
-
-  return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
 }
 

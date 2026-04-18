@@ -99,6 +99,8 @@ export async function createNote(studentId: string, formData: FormData) {
   // Parse optional session times (HH:MM from <input type="time">).
   const startTimeStr = String(formData.get("startTime") ?? "").trim();
   const endTimeStr = String(formData.get("endTime") ?? "").trim();
+  // Browser's getTimezoneOffset(): minutes west of UTC (positive = behind UTC, e.g. CDT = 360).
+  const tzOffsetMinutes = parseInt(String(formData.get("timezoneOffsetMinutes") ?? "0"), 10) || 0;
   let startTime = parseTimeOnDate(dateStr, startTimeStr);
   let endTime = parseTimeOnDate(dateStr, endTimeStr);
 
@@ -159,10 +161,12 @@ export async function createNote(studentId: string, formData: FormData) {
       if (recs.length > 0) {
         if (!startTime) {
           const firstDuration = recs[0].durationSeconds ?? 0;
-          startTime = new Date(recs[0].createdAt.getTime() - firstDuration * 1000);
+          // Convert UTC recording timestamp to local by subtracting the browser's tz offset.
+          const rawStart = recs[0].createdAt.getTime() - firstDuration * 1000;
+          startTime = new Date(rawStart - tzOffsetMinutes * 60 * 1000);
         }
         if (!endTime) {
-          endTime = recs[recs.length - 1].createdAt;
+          endTime = new Date(recs[recs.length - 1].createdAt.getTime() - tzOffsetMinutes * 60 * 1000);
         }
         await db.sessionNote.update({
           where: { id: note.id },

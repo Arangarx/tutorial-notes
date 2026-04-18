@@ -80,7 +80,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
   const [notes, totalCount] = await Promise.all([
     db.sessionNote.findMany({
       where: { studentId: id, ...searchFilter },
-      orderBy: { date: "desc" },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       skip,
       take: pageSize,
       select: {

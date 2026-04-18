@@ -53,6 +53,10 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   const [links, setLinks] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  // Capture browser timezone offset once at mount so the server can localise
+  // auto-filled recording timestamps (new Date().getTimezoneOffset() returns
+  // minutes west of UTC — positive for UTC-N timezones).
+  const [tzOffset] = useState(() => new Date().getTimezoneOffset());
   const [aiGenerated, setAiGenerated] = useState(false);
   const [aiPromptVersion, setAiPromptVersion] = useState("");
   const [recordingIds, setRecordingIds] = useState<string[]>([]);
@@ -137,6 +141,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       {/* Hidden AI provenance fields */}
       <input type="hidden" name="aiGenerated" value={String(aiGenerated)} />
       <input type="hidden" name="aiPromptVersion" value={aiPromptVersion} />
+      <input type="hidden" name="timezoneOffsetMinutes" value={String(tzOffset)} />
       {recordingIds.map((id) => (
         <input key={id} type="hidden" name="recordingId" value={id} />
       ))}

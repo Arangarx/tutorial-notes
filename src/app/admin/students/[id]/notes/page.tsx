@@ -97,6 +97,53 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
     return `/admin/students/${id}/notes${qs ? `?${qs}` : ""}`;
   }
 
+  function PaginationNav({ label }: { label: string }) {
+    if (totalPages <= 1) return null;
+    return (
+      <nav
+        aria-label={label}
+        style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+      >
+        {pageNum > 1 && (
+          <Link className="btn" href={buildPageUrl(pageNum - 1)}>
+            ← Previous
+          </Link>
+        )}
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((p) => Math.abs(p - pageNum) <= 2 || p === 1 || p === totalPages)
+          .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+            if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1) {
+              acc.push("…");
+            }
+            acc.push(p);
+            return acc;
+          }, [])
+          .map((p, idx) =>
+            p === "…" ? (
+              <span key={`ellipsis-${idx}`} style={{ alignSelf: "center", padding: "0 4px" }}>
+                …
+              </span>
+            ) : (
+              <Link
+                key={p}
+                className="btn"
+                href={buildPageUrl(p as number)}
+                aria-current={p === pageNum ? "page" : undefined}
+                style={p === pageNum ? { opacity: 0.6, pointerEvents: "none" } : {}}
+              >
+                {p}
+              </Link>
+            )
+          )}
+        {pageNum < totalPages && (
+          <Link className="btn" href={buildPageUrl(pageNum + 1)}>
+            Next →
+          </Link>
+        )}
+      </nav>
+    );
+  }
+
   return (
     <div className="card">
       {/* Breadcrumb */}
@@ -121,13 +168,16 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         </div>
       </Suspense>
 
-      {/* Results count */}
-      <p className="muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
-        {q
-          ? `${totalCount} note${totalCount !== 1 ? "s" : ""} matching "${q}"`
-          : `${totalCount} note${totalCount !== 1 ? "s" : ""} total`}
-        {totalPages > 1 && ` — page ${pageNum} of ${totalPages}`}
-      </p>
+      {/* Results count + top pagination */}
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
+        <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+          {q
+            ? `${totalCount} note${totalCount !== 1 ? "s" : ""} matching "${q}"`
+            : `${totalCount} note${totalCount !== 1 ? "s" : ""} total`}
+          {totalPages > 1 && ` — page ${pageNum} of ${totalPages}`}
+        </p>
+        <PaginationNav label="Note pages (top)" />
+      </div>
 
       {notes.length === 0 ? (
         <p className="muted">{q ? "No notes match your search." : "No notes yet."}</p>
@@ -245,50 +295,10 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <nav
-          aria-label="Note pages"
-          style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}
-        >
-          {pageNum > 1 && (
-            <Link className="btn" href={buildPageUrl(pageNum - 1)}>
-              ← Previous
-            </Link>
-          )}
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((p) => Math.abs(p - pageNum) <= 2 || p === 1 || p === totalPages)
-            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-              if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1) {
-                acc.push("…");
-              }
-              acc.push(p);
-              return acc;
-            }, [])
-            .map((p, idx) =>
-              p === "…" ? (
-                <span key={`ellipsis-${idx}`} style={{ alignSelf: "center", padding: "0 4px" }}>
-                  …
-                </span>
-              ) : (
-                <Link
-                  key={p}
-                  className="btn"
-                  href={buildPageUrl(p as number)}
-                  aria-current={p === pageNum ? "page" : undefined}
-                  style={p === pageNum ? { opacity: 0.6, pointerEvents: "none" } : {}}
-                >
-                  {p}
-                </Link>
-              )
-            )}
-          {pageNum < totalPages && (
-            <Link className="btn" href={buildPageUrl(pageNum + 1)}>
-              Next →
-            </Link>
-          )}
-        </nav>
-      )}
+      {/* Bottom pagination */}
+      <div style={{ marginTop: 20 }}>
+        <PaginationNav label="Note pages (bottom)" />
+      </div>
     </div>
   );
 }

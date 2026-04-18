@@ -210,17 +210,21 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
             borderRadius: 6,
             border: "1px solid var(--color-border, #d1d5db)",
             borderLeft: "3px solid var(--color-primary, #2563eb)",
+            minWidth: 0,
             overflow: "hidden",
           }}
           data-testid="recording-section"
         >
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            🎙 Recording attached
+          </div>
           <label
             style={{
-              display: "grid",
-              gridTemplateColumns: "auto 1fr",
-              gap: 10,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
               cursor: "pointer",
-              alignItems: "start",
+              fontSize: 12,
             }}
             data-testid="share-recording-label"
           >
@@ -231,14 +235,9 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               style={{ marginTop: 2, flexShrink: 0 }}
               data-testid="share-recording-checkbox"
             />
-            <div style={{ minWidth: 0, overflow: "hidden" }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
-                Recording attached
-              </div>
-              <div style={{ fontSize: 11, color: "var(--color-muted, #6b7280)", marginTop: 3 }}>
-                Include in parent share link? Off by default. Obtain student consent before sharing.
-              </div>
-            </div>
+            <span style={{ color: "var(--color-muted, #6b7280)", overflowWrap: "break-word", wordBreak: "break-word" }}>
+              Share recording with parents/guardians via share link. Off by default — obtain student consent first.
+            </span>
           </label>
         </div>
       )}

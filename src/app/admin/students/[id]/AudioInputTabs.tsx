@@ -11,6 +11,8 @@ export type AudioResult = {
   mimeType: string;
   sizeBytes: number;
   filename: string;
+  /** Local object URL for in-browser preview before transcription. */
+  previewUrl?: string;
 };
 
 type Props = {

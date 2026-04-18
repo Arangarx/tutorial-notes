@@ -12,6 +12,7 @@ export type UploadedAudio = {
   mimeType: string;
   sizeBytes: number;
   filename: string;
+  previewUrl?: string;
 };
 
 type Props = {
@@ -56,11 +57,13 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
       }
 
       setState("done");
+      const previewUrl = URL.createObjectURL(file);
       onUploaded({
         blobUrl: result.blobUrl,
         mimeType: result.mimeType,
         sizeBytes: result.sizeBytes,
         filename: file.name,
+        previewUrl,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";

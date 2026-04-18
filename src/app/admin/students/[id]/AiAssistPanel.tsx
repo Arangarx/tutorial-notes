@@ -190,6 +190,20 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             <p role="alert" style={{ color: "var(--color-error, #dc2626)", marginTop: 8 }}>{error}</p>
           )}
 
+          {pendingAudio?.previewUrl && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
+                Preview recording before transcribing:
+              </p>
+              <audio
+                controls
+                src={pendingAudio.previewUrl}
+                aria-label="Preview of uploaded or recorded audio"
+                style={{ width: "100%", height: 36 }}
+              />
+            </div>
+          )}
+
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 10 }}>
             {pendingAudio && (
               <button

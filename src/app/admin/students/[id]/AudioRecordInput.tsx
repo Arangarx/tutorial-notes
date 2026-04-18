@@ -44,6 +44,7 @@ export type RecordedAudio = {
   mimeType: string;
   sizeBytes: number;
   filename: string;
+  previewUrl?: string;
 };
 
 type Props = {
@@ -193,11 +194,13 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
         }
 
         setRecordState("done");
+        const previewUrl = URL.createObjectURL(blob);
         onRecorded({
           blobUrl: result.blobUrl,
           mimeType,
           sizeBytes: blob.size,
           filename,
+          previewUrl,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed";

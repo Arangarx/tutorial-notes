@@ -7,7 +7,7 @@ Not in priority order within sections — that comes when items move to a sprint
 
 - **Session time logging.** malmesae requested a start/end time field on notes (e.g. "3:00 PM – 4:30 PM"). Ideal: auto-populated from recording start/stop, manually adjustable. Should be storable on `SessionNote`. Low effort, high value for billing/scheduling context.
 - **Recordings longer than 90 min.** malmesae sometimes tutors for longer than 90 min. Currently capped at 90 min and 100MB. Real fix: chunked/segmented recording that auto-saves and continues, or allow multiple recordings per note. Backlogged — requires architecture change.
-- **Tutor playback of saved recording.** malmesae asked if she/student can listen after saving. Currently only shown on the parent share page. Add playback UI to the admin note detail view.
+- **Tutor playback of saved recording.** malmesae asked if she/student can listen after saving. ✅ Preview before transcribing is now available in the AI panel (local object URL, no extra server call). Remaining: add playback UI to the admin note detail view (requires an admin-authenticated `/api/audio/admin/[recordingId]` route, separate from the public share-token-authenticated one).
 
 ---
 

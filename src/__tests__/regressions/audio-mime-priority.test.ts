@@ -17,7 +17,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const SRC = readFileSync(
-  join(__dirname, "..", "app", "admin", "students", "[id]", "AudioRecordInput.tsx"),
+  join(__dirname, "..", "..", "app", "admin", "students", "[id]", "AudioRecordInput.tsx"),
   "utf8"
 );
 

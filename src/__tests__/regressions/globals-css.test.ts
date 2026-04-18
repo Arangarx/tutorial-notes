@@ -21,7 +21,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const CSS = readFileSync(
-  join(__dirname, "..", "app", "globals.css"),
+  join(__dirname, "..", "..", "app", "globals.css"),
   "utf8"
 );
 

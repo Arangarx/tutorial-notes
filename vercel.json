@@ -1,13 +1,4 @@
 {
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Permissions-Policy",
-          "value": "microphone=(self)"
-        }
-      ]
-    }
-  ]
+  "buildCommand": "npm run test:regression && npm run build",
+  "installCommand": "npm ci"
 }

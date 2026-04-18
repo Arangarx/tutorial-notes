@@ -15,7 +15,10 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "test": "jest",
+    "test:regression": "jest --testPathPatterns=regressions",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/smoke",
+    "test:visual:update": "playwright test tests/visual --update-snapshots",
     "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
@@ -42,6 +45,7 @@
     "@types/nodemailer": "^6.4.16",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "axe-playwright": "^2.2.2",
     "eslint": "^9.33.0",
     "eslint-config-next": "^15.5.2",
     "jest": "^30.1.3",

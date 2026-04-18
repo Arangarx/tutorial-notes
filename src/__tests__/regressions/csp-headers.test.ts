@@ -17,7 +17,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const SRC = readFileSync(
-  join(__dirname, "..", "middleware.ts"),
+  join(__dirname, "..", "..", "middleware.ts"),
   "utf8"
 );
 

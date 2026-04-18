@@ -212,6 +212,15 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
 
         setRecordState("done");
         const previewUrl = URL.createObjectURL(blob);
+        // Diagnostic: temporary while investigating Chrome preview failures.
+        // Remove once preview is reliably working.
+        console.log("[AudioRecordInput] recording finalized", {
+          chosenMimeType: mimeType,
+          actualRecorderMime: recorder.mimeType,
+          blobType: blob.type,
+          blobSize: blob.size,
+          previewUrl,
+        });
         onRecorded({
           blobUrl: result.blobUrl,
           mimeType,

@@ -51,6 +51,15 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
     const audio = audioRef.current;
     if (!audio) return;
     loadedOkRef.current = true;
+    // Diagnostic: temporary while we investigate Chrome "Preview unavailable"
+    // regressions. Remove once preview is reliably working in dev + prod.
+    console.log("[AudioPreview] loadedmetadata", {
+      duration: audio.duration,
+      readyState: audio.readyState,
+      mimeType,
+      isWebm,
+      srcLen: src.length,
+    });
     if (!isWebm) return; // MP4 / m4a / mp3 already report correct duration
     if (!Number.isFinite(audio.duration) || audio.duration === 0) {
       needsFixRef.current = true;
@@ -78,6 +87,18 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
   }
 
   function handleError() {
+    const audio = audioRef.current;
+    // Diagnostic: temporary while we investigate Chrome "Preview unavailable"
+    // regressions. Remove once preview is reliably working in dev + prod.
+    console.log("[AudioPreview] error event", {
+      loadedOk: loadedOkRef.current,
+      networkState: audio?.networkState,
+      readyState: audio?.readyState,
+      errorCode: audio?.error?.code,
+      errorMessage: audio?.error?.message,
+      mimeType,
+      isWebm,
+    });
     // Newer Chrome versions fire an `error` event when our currentTime=1e101
     // hack seeks out of range, even though the audio loaded fine and plays
     // correctly. If metadata already loaded, the audio is usable — ignore.

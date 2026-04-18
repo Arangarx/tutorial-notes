@@ -62,6 +62,7 @@ model SessionNote {
 
   /** Recordings for this note (0 = no recording, 1 = single, N = multi-segment). */
   recordings SessionRecording[]
+  views      NoteView[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -96,6 +97,18 @@ model SessionRecording {
   @@index([adminUserId])
   @@index([studentId])
   @@index([noteId])
+}
+
+model NoteView {
+  id         String   @id @default(uuid())
+  /** Share link token (not an FK — survives link regeneration, old views just become orphans). */
+  shareToken String
+  noteId     String
+  note       SessionNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  seenAt     DateTime @default(now())
+
+  @@unique([shareToken, noteId])
+  @@index([shareToken])
 }
 
 model ShareLink {

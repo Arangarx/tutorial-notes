@@ -116,12 +116,33 @@ select {
   padding: 10px 12px;
 }
 
+/* The `input` rule above also matches checkboxes/radios. Without this override,
+   `width: 100%; padding: 10px 12px` stretches the checkbox to fill its flex
+   container, pushes the adjacent label text past the right edge of the card,
+   and `overflow: hidden` on the card then clips the text — making the
+   recording-share label appear blank. Keep native sizing for these inputs. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  height: auto;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
   border-color: var(--accent);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Suppress default outline in favour of our custom focus-visible ring */

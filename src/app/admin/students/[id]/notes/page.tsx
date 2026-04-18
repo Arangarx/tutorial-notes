@@ -221,7 +221,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                                 {Math.round(rec.durationSeconds)}s
                               </div>
                             )}
-                            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                            {/* Audio caption provided via aria-label on the element */}
                             <audio
                               controls
                               preload="none"

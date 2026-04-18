@@ -93,7 +93,6 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
       stopTimer();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startTimer() {

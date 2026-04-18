@@ -165,7 +165,6 @@ export default async function SharePage({
                                   {durationLabel.trim()}
                                 </div>
                               )}
-                              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                               <audio
                                 controls
                                 src={audioUrl}

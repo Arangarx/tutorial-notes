@@ -23,13 +23,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const adminUserId = scope.kind === "admin" ? scope.adminId : null;
-
+  // DB admin: scope by their adminUserId.
+  // Env-only admin (legacy): scope by student ownership (students with adminUserId: null).
   const recording = await db.sessionRecording.findFirst({
-    where: {
-      id: recordingId,
-      ...(adminUserId ? { adminUserId } : { adminUserId: null }),
-    },
+    where:
+      scope.kind === "admin"
+        ? { id: recordingId, adminUserId: scope.adminId }
+        : { id: recordingId, student: { adminUserId: null } },
     select: { blobUrl: true, mimeType: true },
   });
 

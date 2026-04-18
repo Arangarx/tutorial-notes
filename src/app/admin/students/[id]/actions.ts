@@ -24,6 +24,16 @@ function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 }
 
+/**
+ * Combine a date string ("YYYY-MM-DD") and a time string ("HH:MM") into a UTC Date.
+ * Returns null if either is missing or the result is invalid.
+ */
+function parseTimeOnDate(dateStr: string, timeStr: string): Date | null {
+  if (!timeStr) return null;
+  const d = new Date(`${dateStr}T${timeStr}:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function signerFromSessionEmail(email: string | null | undefined): string {
   if (!email) return "Your tutor";
   const local = email.split("@")[0] ?? "";
@@ -86,6 +96,12 @@ export async function createNote(studentId: string, formData: FormData) {
     .filter(Boolean);
   const shareRecordingInEmail = formData.get("shareRecordingInEmail") === "true";
 
+  // Parse optional session times (HH:MM from <input type="time">).
+  const startTimeStr = String(formData.get("startTime") ?? "").trim();
+  const endTimeStr = String(formData.get("endTime") ?? "").trim();
+  let startTime = parseTimeOnDate(dateStr, startTimeStr);
+  let endTime = parseTimeOnDate(dateStr, endTimeStr);
+
   const links = parseLinksFromTextarea(linksText);
 
   // Verify every supplied recording belongs to this student before linking.
@@ -117,6 +133,8 @@ export async function createNote(studentId: string, formData: FormData) {
       aiGenerated,
       aiPromptVersion,
       shareRecordingInEmail: recordingIds.length > 0 ? shareRecordingInEmail : false,
+      startTime,
+      endTime,
     },
   });
 
@@ -130,6 +148,28 @@ export async function createNote(studentId: string, formData: FormData) {
         })
       )
     );
+
+    // Auto-fill missing times from recording timestamps when the tutor left them blank.
+    if (!startTime || !endTime) {
+      const recs = await db.sessionRecording.findMany({
+        where: { id: { in: recordingIds } },
+        orderBy: { orderIndex: "asc" },
+        select: { createdAt: true, durationSeconds: true },
+      });
+      if (recs.length > 0) {
+        if (!startTime) {
+          const firstDuration = recs[0].durationSeconds ?? 0;
+          startTime = new Date(recs[0].createdAt.getTime() - firstDuration * 1000);
+        }
+        if (!endTime) {
+          endTime = recs[recs.length - 1].createdAt;
+        }
+        await db.sessionNote.update({
+          where: { id: note.id },
+          data: { startTime, endTime },
+        });
+      }
+    }
   }
 
   revalidatePath(`/admin/students/${studentId}`);
@@ -473,9 +513,14 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
   const linksText = String(formData.get("links") ?? "");
   const links = parseLinksFromTextarea(linksText);
 
+  const startTimeStr = String(formData.get("startTime") ?? "").trim();
+  const endTimeStr = String(formData.get("endTime") ?? "").trim();
+  const startTime = parseTimeOnDate(dateStr, startTimeStr);
+  const endTime = parseTimeOnDate(dateStr, endTimeStr);
+
   await db.sessionNote.update({
     where: { id: noteId },
-    data: { date, template, topics, homework, nextSteps, linksJson: JSON.stringify(links) },
+    data: { date, template, topics, homework, nextSteps, linksJson: JSON.stringify(links), startTime, endTime },
   });
   revalidatePath(`/admin/students/${studentId}`);
 }

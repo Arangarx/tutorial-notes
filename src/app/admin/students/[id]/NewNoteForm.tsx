@@ -51,6 +51,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   const [homework, setHomework] = useState("");
   const [nextSteps, setNextSteps] = useState("");
   const [links, setLinks] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [aiGenerated, setAiGenerated] = useState(false);
   const [aiPromptVersion, setAiPromptVersion] = useState("");
   const [recordingIds, setRecordingIds] = useState<string[]>([]);
@@ -76,6 +78,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setHomework("");
       setNextSteps("");
       setLinks("");
+      setStartTime("");
+      setEndTime("");
       setAiGenerated(false);
       setAiPromptVersion("");
       setRecordingIds([]);
@@ -93,6 +97,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
     setHomework("");
     setNextSteps("");
     setLinks("");
+    setStartTime("");
+    setEndTime("");
     setAiGenerated(false);
     setAiPromptVersion("");
     setRecordingIds([]);
@@ -113,6 +119,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         setHomework("");
         setNextSteps("");
         setLinks("");
+        setStartTime("");
+        setEndTime("");
         setAiGenerated(false);
         setAiPromptVersion("");
         setRecordingIds([]);
@@ -153,6 +161,29 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <div style={{ flex: 1, minWidth: 140 }}>
+          <label htmlFor="note-start-time">Session start (optional)</label>
+          <input
+            id="note-start-time"
+            name="startTime"
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 140 }}>
+          <label htmlFor="note-end-time">Session end (optional)</label>
+          <input
+            id="note-end-time"
+            name="endTime"
+            type="time"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+          />
         </div>
       </div>
 

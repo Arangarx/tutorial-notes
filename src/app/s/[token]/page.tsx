@@ -79,6 +79,15 @@ export default async function SharePage({
     return `${m}:${String(s).padStart(2, "0")}`;
   }
 
+  function formatTimeDisplay(d: Date | null): string {
+    if (!d) return "";
+    const h = d.getUTCHours();
+    const m = d.getUTCMinutes();
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+  }
+
   return (
     <div className="container" style={{ maxWidth: 860 }}>
       <div className="card" style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -99,8 +108,17 @@ export default async function SharePage({
               return (
                 <div key={n.id} className="card">
                   <div className="row" style={{ justifyContent: "space-between" }}>
-                    <div style={{ fontWeight: 800 }}>
-                      {new Date(n.date).toLocaleDateString()}
+                    <div>
+                      <div style={{ fontWeight: 800 }}>
+                        {new Date(n.date).toLocaleDateString()}
+                      </div>
+                      {(n.startTime || n.endTime) && (
+                        <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                          {formatTimeDisplay(n.startTime)}
+                          {n.startTime && n.endTime && " – "}
+                          {formatTimeDisplay(n.endTime)}
+                        </div>
+                      )}
                     </div>
                     <div className="muted" style={{ fontSize: 12 }}>
                       {n.template ? n.template : ""}

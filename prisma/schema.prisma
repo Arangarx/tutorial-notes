@@ -50,6 +50,10 @@ model SessionNote {
   status    NoteStatus @default(DRAFT)
   sentAt    DateTime?
 
+  /** Optional session start/end times. Auto-filled from recording timestamps when available; editable by the tutor. */
+  startTime DateTime?
+  endTime   DateTime?
+
   aiGenerated     Boolean  @default(false)
   aiPromptVersion String?
 

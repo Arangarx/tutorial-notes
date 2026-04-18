@@ -14,6 +14,9 @@ interface NoteCardActionsProps {
     homework: string;
     nextSteps: string;
     links: string;
+    /** HH:MM (24-hour) extracted from stored UTC timestamp, or empty string. */
+    startTime: string;
+    endTime: string;
   };
   status: string;
   sentAt: string | null;
@@ -71,6 +74,26 @@ export function NoteCardActions({
               <option value="Reading session">Reading session</option>
               <option value="Test prep">Test prep</option>
             </select>
+          </div>
+        </div>
+        <div className="row">
+          <div style={{ flex: 1 }}>
+            <label htmlFor={`edit-start-time-${noteId}`}>Session start</label>
+            <input
+              id={`edit-start-time-${noteId}`}
+              name="startTime"
+              type="time"
+              defaultValue={defaultValues.startTime}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor={`edit-end-time-${noteId}`}>Session end</label>
+            <input
+              id={`edit-end-time-${noteId}`}
+              name="endTime"
+              type="time"
+              defaultValue={defaultValues.endTime}
+            />
           </div>
         </div>
         <div>

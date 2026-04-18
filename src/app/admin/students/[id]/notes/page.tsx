@@ -18,6 +18,22 @@ function formatDateInput(d: Date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Extract HH:MM (24-hour, UTC) for use in <input type="time"> defaultValue. */
+function formatTimeInput(d: Date | null): string {
+  if (!d) return "";
+  return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
+}
+
+/** Format a UTC DateTime as "3:00 PM" for display. */
+function formatTimeDisplay(d: Date | null): string {
+  if (!d) return "";
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
 function safeJsonArray(value: string): string[] {
   try {
     const parsed = JSON.parse(value);
@@ -77,6 +93,8 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         template: true,
         status: true,
         sentAt: true,
+        startTime: true,
+        endTime: true,
         recordings: {
           orderBy: { orderIndex: "asc" },
           select: { id: true, mimeType: true, durationSeconds: true },
@@ -196,6 +214,12 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                       {new Date(n.date).toLocaleDateString()}
                     </div>
                     <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      {(n.startTime || n.endTime) && (
+                        <span>
+                          {formatTimeDisplay(n.startTime)} {n.startTime && n.endTime && "–"} {formatTimeDisplay(n.endTime)}
+                          {" · "}
+                        </span>
+                      )}
                       Status: {n.status}
                       {n.template && ` · ${n.template}`}
                     </div>
@@ -212,6 +236,8 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                       homework: n.homework,
                       nextSteps: n.nextSteps,
                       links: safeJsonArray(n.linksJson).join("\n"),
+                      startTime: formatTimeInput(n.startTime),
+                      endTime: formatTimeInput(n.endTime),
                     }}
                   />
                 </div>

@@ -185,8 +185,97 @@ export type TranscribeAndGenerateResult =
       nextSteps: string;
       links: string;
       promptVersion: string;
+      /**
+       * Non-fatal explanation when transcription succeeded but AI structuring
+       * failed or produced nothing useful. The recording is still attached and
+       * the raw transcript is placed in `topics` so the tutor can hand-edit
+       * instead of losing the whole session.
+       */
+      warning?: string;
     }
   | { ok: false; error: string };
+
+/**
+ * Decide what TranscribeAndGenerateResult to return given a recording ID,
+ * the transcript Whisper produced (already trimmed by caller), and the result
+ * of the AI structuring step.
+ *
+ * Extracted as a pure function so the regression test in
+ * `src/__tests__/transcribe-result-shape.test.ts` can cover the empty /
+ * gen-failure / all-empty / happy branches without mocking the full server
+ * action stack (next-auth, prisma, vercel/blob).
+ *
+ * Sarah's bug: previously, both the empty-transcript and gen-failure branches
+ * returned `ok:true` with empty fields, so the panel said "Form filled" with
+ * nothing in the form. Now empty transcript -> ok:false; gen failure ->
+ * ok:true with the raw transcript in `topics` + a `warning`.
+ */
+export function buildTranscribeAndGenerateResult(args: {
+  recordingId: string;
+  trimmedTranscript: string;
+  rawTranscript: string;
+  genResult:
+    | { topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
+    | { error: string }
+    | null;
+}): TranscribeAndGenerateResult {
+  const { recordingId, trimmedTranscript, rawTranscript, genResult } = args;
+
+  if (!trimmedTranscript) {
+    return {
+      ok: false,
+      error:
+        "We couldn't make out any words in this recording. The audio may have been silent or too quiet. Try recording again with the mic closer, then click Transcribe & generate notes.",
+    };
+  }
+
+  if (!genResult || "error" in genResult) {
+    return {
+      ok: true,
+      recordingId,
+      transcript: rawTranscript,
+      topics: trimmedTranscript,
+      homework: "",
+      nextSteps: "",
+      links: "",
+      promptVersion: "",
+      warning:
+        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Next steps before saving.",
+    };
+  }
+
+  const allEmpty =
+    !genResult.topics.trim() &&
+    !genResult.homework.trim() &&
+    !genResult.nextSteps.trim() &&
+    !genResult.links.trim();
+
+  if (allEmpty) {
+    return {
+      ok: true,
+      recordingId,
+      transcript: rawTranscript,
+      topics: trimmedTranscript,
+      homework: "",
+      nextSteps: "",
+      links: "",
+      promptVersion: genResult.promptVersion,
+      warning:
+        "AI couldn't extract structured fields from this transcript. The raw text is in Topics — please edit before saving.",
+    };
+  }
+
+  return {
+    ok: true,
+    recordingId,
+    transcript: rawTranscript,
+    topics: genResult.topics,
+    homework: genResult.homework,
+    nextSteps: genResult.nextSteps,
+    links: genResult.links,
+    promptVersion: genResult.promptVersion,
+  };
+}
 
 /**
  * Given a Vercel Blob URL for an uploaded audio recording:
@@ -323,33 +412,41 @@ async function _transcribeAndGenerateImpl(
 
   const trimmed = transcribeResult.transcript.trim();
   if (!trimmed) {
-    return {
-      ok: true,
+    // Whisper succeeded but produced no text — almost always a silent / too-quiet
+    // recording. Returning ok:true with empty fields would silently show
+    // "Form filled" and confuse the tutor (Sarah hit this).
+    console.warn(
+      "[transcribeAndGenerate] empty transcript",
+      JSON.stringify({
+        recordingId: recording.id,
+        sizeBytes,
+        mimeType: resolvedMimeType,
+        durationSeconds: transcribeResult.durationSeconds,
+      })
+    );
+    return buildTranscribeAndGenerateResult({
       recordingId: recording.id,
-      transcript: "",
-      topics: "",
-      homework: "",
-      nextSteps: "",
-      links: "",
-      promptVersion: "",
-    };
+      trimmedTranscript: "",
+      rawTranscript: transcribeResult.transcript,
+      genResult: null,
+    });
   }
 
-  // Generate structured note from transcript.
   const student = await db.student.findUniqueOrThrow({
     where: { id: studentId },
     select: { name: true },
   });
 
-  const template = await db.sessionNote.findFirst({
-    where: { studentId },
-    orderBy: { date: "desc" },
-    select: { template: true },
-  }).then((n) => n?.template ?? null);
+  const template = await db.sessionNote
+    .findFirst({
+      where: { studentId },
+      orderBy: { date: "desc" },
+      select: { template: true },
+    })
+    .then((n) => n?.template ?? null);
 
-  const sessionText = trimmed.length > MAX_INPUT_TOKENS * 4
-    ? trimmed.slice(0, MAX_INPUT_TOKENS * 4)
-    : trimmed;
+  const sessionText =
+    trimmed.length > MAX_INPUT_TOKENS * 4 ? trimmed.slice(0, MAX_INPUT_TOKENS * 4) : trimmed;
 
   const genResult = await generateSessionNote({
     studentName: student.name,
@@ -358,29 +455,34 @@ async function _transcribeAndGenerateImpl(
   });
 
   if ("error" in genResult) {
-    // Transcription succeeded — return recording + transcript even if note gen fails.
-    return {
-      ok: true,
-      recordingId: recording.id,
-      transcript: transcribeResult.transcript,
-      topics: "",
-      homework: "",
-      nextSteps: "",
-      links: "",
-      promptVersion: "",
-    };
+    console.warn(
+      "[transcribeAndGenerate] AI structuring failed",
+      JSON.stringify({
+        recordingId: recording.id,
+        error: genResult.error,
+        transcriptChars: trimmed.length,
+      })
+    );
+  } else {
+    const allEmpty =
+      !genResult.topics.trim() &&
+      !genResult.homework.trim() &&
+      !genResult.nextSteps.trim() &&
+      !genResult.links.trim();
+    if (allEmpty) {
+      console.warn(
+        "[transcribeAndGenerate] AI returned all-empty fields",
+        JSON.stringify({ recordingId: recording.id, transcriptChars: trimmed.length })
+      );
+    }
   }
 
-  return {
-    ok: true,
+  return buildTranscribeAndGenerateResult({
     recordingId: recording.id,
-    transcript: transcribeResult.transcript,
-    topics: genResult.topics,
-    homework: genResult.homework,
-    nextSteps: genResult.nextSteps,
-    links: genResult.links,
-    promptVersion: genResult.promptVersion,
-  };
+    trimmedTranscript: trimmed,
+    rawTranscript: transcribeResult.transcript,
+    genResult,
+  });
 }
 
 export async function setNoteStatus(noteId: string, studentId: string, status: "DRAFT" | "READY") {

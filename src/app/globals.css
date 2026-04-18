@@ -5,6 +5,24 @@
   --muted: rgba(255, 255, 255, 0.7);
   --border: rgba(255, 255, 255, 0.12);
   --accent: #7c5cff;
+
+  /* Status palette (dark-mode friendly).
+     Inline styles across the admin UI use var(--color-X, lightModeFallback);
+     those fallbacks are LIGHT-mode hex values (#6b7280, #d1d5db, etc.) and
+     are INVISIBLE on this dark theme. Defining the variables here is what
+     makes those inline colors actually render. Do not remove. */
+  --color-muted: rgba(255, 255, 255, 0.65);
+  --color-border: rgba(255, 255, 255, 0.18);
+  --color-primary: #7c5cff;
+  --color-success: #4ade80;
+  --color-success-bg: rgba(34, 197, 94, 0.12);
+  --color-success-border: rgba(34, 197, 94, 0.35);
+  --color-error: #fca5a5;
+  --color-error-bg: rgba(239, 68, 68, 0.12);
+  --color-error-border: rgba(239, 68, 68, 0.35);
+  --color-warning: #fde047;
+  --color-warning-bg: rgba(234, 179, 8, 0.12);
+  --color-warning-border: rgba(234, 179, 8, 0.4);
 }
 
 * {

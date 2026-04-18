@@ -82,6 +82,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   const [panelState, setPanelState] = useState<PanelState>("idle");
   const [audioTabsKey, setAudioTabsKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -97,6 +98,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
 
   function handleGenerateFromText() {
     setError(null);
+    setWarning(null);
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
@@ -120,6 +122,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   function handleGenerateFromAudio() {
     if (!pendingAudio) return;
     setError(null);
+    setWarning(null);
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
@@ -140,6 +143,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         promptVersion: result.promptVersion,
         recordingId: result.recordingId,
       });
+      if (result.warning) setWarning(result.warning);
       setPanelState("filled");
     });
   }
@@ -148,6 +152,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setPanelState("idle");
     setSessionText("");
     setError(null);
+    setWarning(null);
     setPendingAudio(null);
     setAudioTabsKey((k) => k + 1);
     formRef.current?.clear();
@@ -178,15 +183,42 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         <div
           style={{
             padding: "12px 14px",
-            background: "var(--color-success-bg, #f0fdf4)",
+            background: warning
+              ? "var(--color-warning-bg, #fefce8)"
+              : "var(--color-success-bg, #f0fdf4)",
             borderRadius: 6,
-            border: "1px solid var(--color-success-border, #bbf7d0)",
+            border: warning
+              ? "1px solid var(--color-warning-border, #fde68a)"
+              : "1px solid var(--color-success-border, #bbf7d0)",
           }}
           data-testid="ai-filled-hint"
         >
-          <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, display: "block", marginBottom: 10 }} role="status">
-            Form filled — review and save.
+          <span
+            style={{
+              color: warning
+                ? "var(--color-warning, #a16207)"
+                : "var(--color-success, #16a34a)",
+              fontWeight: 600,
+              display: "block",
+              marginBottom: warning ? 6 : 10,
+            }}
+            role="status"
+          >
+            {warning ? "Form partially filled — please review." : "Form filled — review and save."}
           </span>
+          {warning && (
+            <p
+              style={{
+                margin: "0 0 10px",
+                fontSize: 13,
+                color: "var(--color-warning, #a16207)",
+                lineHeight: 1.4,
+              }}
+              data-testid="ai-warning"
+            >
+              {warning}
+            </p>
+          )}
           <button
             type="button"
             className="btn"

@@ -21,6 +21,8 @@ type Props = {
   onTabChange: (tab: Tab) => void;
   onAudioReady: (audio: AudioResult) => void;
   onAudioCleared: () => void;
+  /** Called when a recording starts/stops so the parent can disable the Transcribe button. */
+  onRecordingActive?: (active: boolean) => void;
   disabled?: boolean;
   blobEnabled: boolean;
 };
@@ -31,6 +33,7 @@ export default function AudioInputTabs({
   onTabChange,
   onAudioReady,
   onAudioCleared,
+  onRecordingActive,
   disabled,
   blobEnabled,
 }: Props) {
@@ -113,6 +116,7 @@ export default function AudioInputTabs({
         <AudioRecordInput
           studentId={studentId}
           onRecorded={handleRecorded}
+          onRecordingActive={onRecordingActive}
           disabled={disabled}
         />
       )}

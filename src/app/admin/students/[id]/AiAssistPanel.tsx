@@ -131,6 +131,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   const [activeTab, setActiveTab] = useState<Tab>("text");
   const [sessionText, setSessionText] = useState("");
   const [pendingAudios, setPendingAudios] = useState<AudioResult[]>([]);
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
   const [panelState, setPanelState] = useState<PanelState>("idle");
   const [audioTabsKey, setAudioTabsKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setError(null);
     setWarning(null);
     setPendingAudios([]);
+    setIsRecordingActive(false);
     setAudioTabsKey((k) => k + 1);
     formRef.current?.clear();
     setTimeout(() => textareaRef.current?.focus(), 0);
@@ -365,6 +367,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             onTabChange={setActiveTab}
             onAudioReady={handleAudioReady}
             onAudioCleared={() => {/* segments list handles removal */}}
+            onRecordingActive={setIsRecordingActive}
             disabled={isPending}
             blobEnabled={blobEnabled}
           />
@@ -406,9 +409,10 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
               <button
                 type="button"
                 className="btn primary"
-                disabled={isPending || pendingAudios.length === 0}
+                disabled={isPending || isRecordingActive || pendingAudios.length === 0}
                 onClick={handleGenerateFromAudio}
                 data-testid="ai-transcribe-btn"
+                title={isRecordingActive ? "Stop the recording first" : undefined}
               >
                 {isPending
                   ? `Transcribing${pendingAudios.length > 1 ? ` ${pendingAudios.length} segments` : ""}…`

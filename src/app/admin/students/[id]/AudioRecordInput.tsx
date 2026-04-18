@@ -62,12 +62,14 @@ export type RecordedAudio = {
 type Props = {
   studentId: string;
   onRecorded: (audio: RecordedAudio) => void;
+  /** Called whenever the recording active state changes (requesting/recording/paused/uploading = true). */
+  onRecordingActive?: (active: boolean) => void;
   disabled?: boolean;
 };
 
 type RecordState = "idle" | "requesting" | "recording" | "paused" | "uploading" | "done" | "error";
 
-export default function AudioRecordInput({ studentId, onRecorded, disabled }: Props) {
+export default function AudioRecordInput({ studentId, onRecorded, onRecordingActive, disabled }: Props) {
   const [recordState, setRecordState] = useState<RecordState>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +79,13 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
+
+  // Notify parent whenever the recording active state changes.
+  const ACTIVE_STATES: RecordState[] = ["requesting", "recording", "paused", "uploading"];
+  useEffect(() => {
+    onRecordingActive?.(ACTIVE_STATES.includes(recordState));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordState]);
 
   // Cleanup on unmount
   useEffect(() => {

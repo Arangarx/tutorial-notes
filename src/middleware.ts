@@ -18,6 +18,12 @@ const securityHeaders: Record<string, string> = {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
+    // media-src must include blob: so the AI assist panel can preview a
+    // newly recorded/uploaded audio Blob via URL.createObjectURL before
+    // sending it for transcription. Without this, Chrome's CSP blocks the
+    // <audio> element with "MEDIA_ELEMENT_ERROR: Media Load rejected by
+    // URL safety check" and the user sees "Preview unavailable".
+    "media-src 'self' blob:",
     "font-src 'self'",
     "connect-src 'self'",
     "frame-ancestors 'none'",

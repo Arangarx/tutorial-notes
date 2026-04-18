@@ -46,11 +46,13 @@ END $$;
 -- 4. Add index on noteId (skip if already present)
 CREATE INDEX IF NOT EXISTS "SessionRecording_noteId_idx" ON "SessionRecording"("noteId");
 
--- 5. Drop old FK constraint from SessionNote.recordingId
+-- 6. Drop old FK constraint from SessionNote.recordingId
 ALTER TABLE "SessionNote" DROP CONSTRAINT IF EXISTS "SessionNote_recordingId_fkey";
 
--- 6. Drop unique index on SessionNote.recordingId (Prisma @unique generates _key suffix)
-DROP INDEX IF EXISTS "SessionNote_recordingId_key";
+-- 7. Drop the unique constraint on SessionNote.recordingId
+--    (this also drops the backing index — use DROP CONSTRAINT, not DROP INDEX directly,
+--     because PostgreSQL forbids dropping an index that backs a named constraint)
+ALTER TABLE "SessionNote" DROP CONSTRAINT IF EXISTS "SessionNote_recordingId_key";
 
--- 7. Drop the column itself
+-- 8. Drop the column itself
 ALTER TABLE "SessionNote" DROP COLUMN IF EXISTS "recordingId";

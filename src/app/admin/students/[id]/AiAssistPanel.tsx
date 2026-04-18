@@ -30,17 +30,26 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [needsFix, setNeedsFix] = useState(false);
   const [hasError, setHasError] = useState(false);
+  /**
+   * True once `loadedmetadata` has fired with usable info. Used to tell the
+   * difference between a real load failure (file is corrupt / unsupported
+   * codec — show fallback) and a benign error fired by Chrome AFTER the WebM
+   * duration hack seeks out of range (audio is actually fine — ignore).
+   */
+  const [loadedOk, setLoadedOk] = useState(false);
 
   const isWebm = mimeType?.toLowerCase().includes("webm") ?? false;
 
   useEffect(() => {
     setNeedsFix(false);
     setHasError(false);
+    setLoadedOk(false);
   }, [src]);
 
   function handleLoadedMetadata() {
     const audio = audioRef.current;
     if (!audio) return;
+    setLoadedOk(true);
     if (!isWebm) return; // MP4 / m4a / mp3 already report correct duration
     if (!Number.isFinite(audio.duration) || audio.duration === 0) {
       setNeedsFix(true);
@@ -67,6 +76,17 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
     }
   }
 
+  function handleError() {
+    // Newer Chrome versions fire an `error` event when our currentTime=1e101
+    // hack seeks out of range, even though the audio loaded fine and plays
+    // correctly. If metadata already loaded, the audio is usable — ignore.
+    if (loadedOk) {
+      setNeedsFix(false);
+      return;
+    }
+    setHasError(true);
+  }
+
   if (hasError) {
     return (
       <p
@@ -87,7 +107,7 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
       src={src}
       onLoadedMetadata={handleLoadedMetadata}
       onDurationChange={handleDurationChange}
-      onError={() => setHasError(true)}
+      onError={handleError}
       aria-label="Preview of uploaded or recorded audio"
       style={{ width: "100%", height: 36 }}
       data-testid="audio-preview"

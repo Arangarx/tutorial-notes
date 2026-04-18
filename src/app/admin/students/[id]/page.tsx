@@ -10,27 +10,10 @@ import { canAccessStudentRow, getStudentScope } from "@/lib/student-scope";
 import { ShareLinkRow } from "./ShareLinkRow";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
-import { NoteCardActions } from "./NoteCardActions";
 import NoteEntrySection from "./NoteEntrySection";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
-
-function formatDateInput(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function safeJsonArray(value: string): string[] {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 export default async function StudentDetailPage({
   params,
@@ -45,8 +28,9 @@ export default async function StudentDetailPage({
   const student = await db.student.findUnique({
     where: { id },
     include: {
-      notes: { orderBy: { date: "desc" }, take: 20 },
       shareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
+      _count: { select: { notes: true } },
+      notes: { orderBy: { date: "desc" }, take: 1, select: { date: true } },
     },
   });
 
@@ -127,73 +111,26 @@ export default async function StudentDetailPage({
 
       <div className="divider" />
 
-      <h3 style={{ marginTop: 0 }}>Recent notes</h3>
-      {student.notes.length === 0 ? (
-        <p className="muted">No notes yet.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {student.notes.map((n) => {
-            const links = safeJsonArray(n.linksJson);
-            return (
-              <div key={n.id} className="card">
-                <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>
-                      {new Date(n.date).toLocaleDateString()}
-                    </div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                      Status: {n.status}
-                    </div>
-                  </div>
-                  <NoteCardActions
-                    noteId={n.id}
-                    studentId={student.id}
-                    status={n.status}
-                    sentAt={n.sentAt ? n.sentAt.toISOString() : null}
-                    defaultValues={{
-                      date: formatDateInput(n.date),
-                      template: n.template ?? "",
-                      topics: n.topics,
-                      homework: n.homework,
-                      nextSteps: n.nextSteps,
-                      links: safeJsonArray(n.linksJson).join("\n"),
-                    }}
-                  />
-                </div>
-
-                <div className="divider" />
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div>
-                    <div className="muted" style={{ fontSize: 12 }}>Topics</div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{n.topics || <span className="muted">—</span>}</div>
-                  </div>
-                  <div>
-                    <div className="muted" style={{ fontSize: 12 }}>Homework</div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{n.homework || <span className="muted">—</span>}</div>
-                  </div>
-                  <div>
-                    <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{n.nextSteps || <span className="muted">—</span>}</div>
-                  </div>
-                  {links.length > 0 && (
-                    <div>
-                      <div className="muted" style={{ fontSize: 12 }}>Links</div>
-                      <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-                        {links.map((u) => (
-                          <li key={u}>
-                            <a href={u} target="_blank" rel="noreferrer">{u}</a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>Session notes</h3>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            {student._count.notes === 0 ? (
+              "No notes yet."
+            ) : (
+              <>
+                {student._count.notes} note{student._count.notes !== 1 ? "s" : ""}
+                {student.notes[0] && (
+                  <> · last {new Date(student.notes[0].date).toLocaleDateString()}</>
+                )}
+              </>
+            )}
+          </p>
         </div>
-      )}
+        <Link className="btn" href={`/admin/students/${id}/notes`}>
+          View all notes →
+        </Link>
+      </div>
     </div>
   );
 }

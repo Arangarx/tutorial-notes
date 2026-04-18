@@ -28,51 +28,52 @@ type Tab = "text" | "upload" | "record";
  */
 function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [needsFix, setNeedsFix] = useState(false);
   const [hasError, setHasError] = useState(false);
   /**
-   * True once `loadedmetadata` has fired with usable info. Used to tell the
-   * difference between a real load failure (file is corrupt / unsupported
-   * codec — show fallback) and a benign error fired by Chrome AFTER the WebM
-   * duration hack seeks out of range (audio is actually fine — ignore).
+   * Refs (not state) so the values are read synchronously inside event
+   * handlers without waiting for a React re-render. Critical for handleError:
+   * Chrome can fire `error` immediately after our seek hack, before React has
+   * committed the `loadedmetadata` state update — using a state-based flag
+   * gives a stale closure and we'd wrongly show the fallback on Chrome.
    */
-  const [loadedOk, setLoadedOk] = useState(false);
+  const loadedOkRef = useRef(false);
+  const needsFixRef = useRef(false);
 
   const isWebm = mimeType?.toLowerCase().includes("webm") ?? false;
 
   useEffect(() => {
-    setNeedsFix(false);
+    loadedOkRef.current = false;
+    needsFixRef.current = false;
     setHasError(false);
-    setLoadedOk(false);
   }, [src]);
 
   function handleLoadedMetadata() {
     const audio = audioRef.current;
     if (!audio) return;
-    setLoadedOk(true);
+    loadedOkRef.current = true;
     if (!isWebm) return; // MP4 / m4a / mp3 already report correct duration
     if (!Number.isFinite(audio.duration) || audio.duration === 0) {
-      setNeedsFix(true);
+      needsFixRef.current = true;
       try {
         audio.currentTime = 1e101;
       } catch {
         // Some browsers throw on out-of-range currentTime — harmless, the
         // user can still press play and it will work.
-        setNeedsFix(false);
+        needsFixRef.current = false;
       }
     }
   }
 
   function handleDurationChange() {
     const audio = audioRef.current;
-    if (!audio || !needsFix) return;
+    if (!audio || !needsFixRef.current) return;
     if (Number.isFinite(audio.duration) && audio.duration > 0) {
       try {
         audio.currentTime = 0;
       } catch {
         // Ignore — we just wanted to reset playback position.
       }
-      setNeedsFix(false);
+      needsFixRef.current = false;
     }
   }
 
@@ -80,8 +81,8 @@ function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
     // Newer Chrome versions fire an `error` event when our currentTime=1e101
     // hack seeks out of range, even though the audio loaded fine and plays
     // correctly. If metadata already loaded, the audio is usable — ignore.
-    if (loadedOk) {
-      setNeedsFix(false);
+    if (loadedOkRef.current) {
+      needsFixRef.current = false;
       return;
     }
     setHasError(true);

@@ -83,6 +83,23 @@ export default async function SharePage({
     select: { noteId: true },
   });
   const seenNoteIds = new Set(viewedRows.map((v) => v.noteId));
+
+  // Bootstrap fix: on first visit (no view history for this token), immediately
+  // seed all existing notes as "seen" so future visits only highlight genuinely
+  // new notes. Without this, notes created before the seen-tracking feature was
+  // deployed (or before this share link was ever opened) would all appear as "NEW"
+  // on the second visit, which is misleading.
+  if (seenNoteIds.size === 0 && student.notes.length > 0) {
+    await db.noteView.createMany({
+      data: student.notes.map((n) => ({
+        shareToken: token,
+        noteId: n.id,
+      })),
+      skipDuplicates: true,
+    });
+    student.notes.forEach((n) => seenNoteIds.add(n.id));
+  }
+
   const isReturningVisitor = seenNoteIds.size > 0;
 
   const tutor = await db.adminUser.findFirst({ select: { displayName: true, email: true } });

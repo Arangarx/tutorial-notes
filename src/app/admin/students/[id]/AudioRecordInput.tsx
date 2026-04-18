@@ -36,8 +36,8 @@ function formatDuration(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-const HARD_CAP_SECONDS = 60 * 60; // 60 minutes
-const WARN_AT_SECONDS = 55 * 60;  // 55 minutes
+const HARD_CAP_SECONDS = 90 * 60; // 90 minutes
+const WARN_AT_SECONDS = 85 * 60;  // 85 minutes
 
 export type RecordedAudio = {
   blobUrl: string;
@@ -277,7 +277,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
       {recordState === "idle" && (
         <div style={{ textAlign: "center", padding: "12px 0" }}>
           <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
-            Record up to 60 minutes. Use Pause for off-topic breaks.
+            Record up to 90 minutes. Use Pause for off-topic breaks.
           </p>
           <button
             type="button"
@@ -328,7 +328,7 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
             </span>
             {isWarning && (
               <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                5 min remaining — will auto-stop at 60 min
+                5 min remaining — will auto-stop at 90 min
               </span>
             )}
             <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       // Match Whisper's 25 MB transcription limit — anything larger won't
       // transcribe anyway, so 25 MB is the natural ceiling for audio uploads.
-      bodySizeLimit: "25mb",
+      bodySizeLimit: "100mb",
     },
   },
   async headers() {

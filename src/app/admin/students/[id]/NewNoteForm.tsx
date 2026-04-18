@@ -216,12 +216,11 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         >
           <label
             style={{
-              display: "flex",
-              alignItems: "flex-start",
+              display: "grid",
+              gridTemplateColumns: "auto 1fr",
               gap: 10,
               cursor: "pointer",
-              width: "100%",
-              minWidth: 0,
+              alignItems: "start",
             }}
             data-testid="share-recording-label"
           >
@@ -232,7 +231,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               style={{ marginTop: 2, flexShrink: 0 }}
               data-testid="share-recording-checkbox"
             />
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>
                 Recording attached
               </div>

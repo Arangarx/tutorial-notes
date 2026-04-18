@@ -519,23 +519,27 @@ export async function sendUpdateEmail(
   const student = await db.student.findUniqueOrThrow({ where: { id: studentId } });
   const { signer, fromDisplayName } = await resolveTutorDisplayName();
 
+  const noteCount = await db.sessionNote.count({ where: { studentId } });
   const latestNote = await db.sessionNote.findFirst({
     where: { studentId },
     orderBy: { date: "desc" },
   });
-  const topicsLine =
+
+  const noteCountLabel = noteCount === 1 ? "1 session note" : `${noteCount} session notes`;
+
+  const recentPreview =
     latestNote?.topics?.trim()
-      ? `\nLatest session preview: ${latestNote.topics.trim()}\n`
+      ? `\nMost recent session: ${latestNote.topics.trim()}\n`
       : "\n";
 
-  const subject = `Session notes - ${student.name}`;
+  const subject = `Session notes for ${student.name} (${noteCountLabel})`;
   const bodyText = `Hi,
 
-${signer} has shared session notes for ${student.name}.${topicsLine}
-Open the link below to read all notes, homework, and next steps (no login needed):
+${signer} has posted ${noteCountLabel} for ${student.name}.${recentPreview}
+The link below shows all notes, homework assignments, and next steps. It works on any device and does not require a login:
 ${linkUrl}
 
-If the link does not open, you can reply to this email.
+${noteCount > 1 ? `This email shows only the most recent session. Open the link to see all ${noteCount} notes.` : "Open the link to see the full note with homework and next steps."}
 
 — ${signer}`;
 

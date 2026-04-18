@@ -112,17 +112,17 @@ export default async function StudentDetailPage({
 
       <div className="divider" />
 
-      <div className="row" style={{ alignItems: "stretch" }}>
-        <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} blobEnabled={!!env.BLOB_READ_WRITE_TOKEN} />
+      <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} blobEnabled={!!env.BLOB_READ_WRITE_TOKEN} />
 
-        <div className="card" style={{ flex: 1, minWidth: 340 }}>
-          <h3 style={{ marginTop: 0 }}>Send update email</h3>
-          <p className="muted">
-            Sends the share link to the parent. The parent email address is saved for this student
-            for next time.
-          </p>
-          <SendUpdateForm studentId={student.id} defaultToEmail={student.parentEmail} />
-        </div>
+      <div className="divider" />
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Send update email</h3>
+        <p className="muted">
+          Sends the share link to the parent. The parent email address is saved for this student
+          for next time.
+        </p>
+        <SendUpdateForm studentId={student.id} defaultToEmail={student.parentEmail} />
       </div>
 
       <div className="divider" />

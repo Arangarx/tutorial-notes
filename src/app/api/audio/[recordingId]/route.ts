@@ -33,23 +33,21 @@ export async function GET(
     return NextResponse.json({ error: "Invalid or expired link" }, { status: 403 });
   }
 
-  // Verify the recording exists, belongs to this student, and is shared.
-  const note = await db.sessionNote.findFirst({
+  // Verify the recording exists, belongs to this student, and its note has sharing enabled.
+  const recording = await db.sessionRecording.findFirst({
     where: {
+      id: recordingId,
       studentId: link.studentId,
-      shareRecordingInEmail: true,
-      recording: { id: recordingId },
+      note: { shareRecordingInEmail: true },
     },
-    select: {
-      recording: { select: { blobUrl: true, mimeType: true } },
-    },
+    select: { blobUrl: true, mimeType: true },
   });
 
-  if (!note?.recording) {
+  if (!recording) {
     return NextResponse.json({ error: "Recording not found" }, { status: 404 });
   }
 
-  const { blobUrl, mimeType } = note.recording;
+  const { blobUrl, mimeType } = recording;
   const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
 
   // Fetch from Vercel Blob with auth and stream to the client.

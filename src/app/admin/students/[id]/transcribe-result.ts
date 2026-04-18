@@ -13,13 +13,14 @@
  *                                    + a `warning` so the tutor can hand-edit
  *   - happy path                  -> ok:true with structured fields, no warning
  *
- * Covered by `src/__tests__/transcribe-result-shape.test.ts`.
+ * Covered by `src/__tests__/regressions/transcribe-result-shape.test.ts`.
  */
 
 export type TranscribeAndGenerateResult =
   | {
       ok: true;
-      recordingId: string;
+      /** IDs of all SessionRecording rows created for this generation (one per segment). */
+      recordingIds: string[];
       transcript: string;
       topics: string;
       homework: string;
@@ -37,7 +38,7 @@ export type TranscribeAndGenerateResult =
   | { ok: false; error: string };
 
 export function buildTranscribeAndGenerateResult(args: {
-  recordingId: string;
+  recordingIds: string[];
   trimmedTranscript: string;
   rawTranscript: string;
   genResult:
@@ -45,7 +46,7 @@ export function buildTranscribeAndGenerateResult(args: {
     | { error: string }
     | null;
 }): TranscribeAndGenerateResult {
-  const { recordingId, trimmedTranscript, rawTranscript, genResult } = args;
+  const { recordingIds, trimmedTranscript, rawTranscript, genResult } = args;
 
   if (!trimmedTranscript) {
     return {
@@ -58,7 +59,7 @@ export function buildTranscribeAndGenerateResult(args: {
   if (!genResult || "error" in genResult) {
     return {
       ok: true,
-      recordingId,
+      recordingIds,
       transcript: rawTranscript,
       topics: trimmedTranscript,
       homework: "",
@@ -79,7 +80,7 @@ export function buildTranscribeAndGenerateResult(args: {
   if (allEmpty) {
     return {
       ok: true,
-      recordingId,
+      recordingIds,
       transcript: rawTranscript,
       topics: trimmedTranscript,
       homework: "",
@@ -93,7 +94,7 @@ export function buildTranscribeAndGenerateResult(args: {
 
   return {
     ok: true,
-    recordingId,
+    recordingIds,
     transcript: rawTranscript,
     topics: genResult.topics,
     homework: genResult.homework,

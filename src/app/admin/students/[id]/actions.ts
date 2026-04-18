@@ -80,23 +80,31 @@ export async function createNote(studentId: string, formData: FormData) {
   const aiPromptVersion = aiGenerated
     ? String(formData.get("aiPromptVersion") ?? "").trim() || null
     : null;
-  const recordingId = String(formData.get("recordingId") ?? "").trim() || null;
+  const recordingIds = formData
+    .getAll("recordingId")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
   const shareRecordingInEmail = formData.get("shareRecordingInEmail") === "true";
 
   const links = parseLinksFromTextarea(linksText);
 
-  // If a recordingId is provided, verify it belongs to this student before linking.
-  if (recordingId) {
-    const recording = await db.sessionRecording.findUnique({
-      where: { id: recordingId },
-      select: { studentId: true },
+  // Verify every supplied recording belongs to this student before linking.
+  if (recordingIds.length > 0) {
+    const recordings = await db.sessionRecording.findMany({
+      where: { id: { in: recordingIds } },
+      select: { id: true, studentId: true },
     });
-    if (!recording || recording.studentId !== studentId) {
-      throw new Error("Recording not found or access denied");
+    for (const rec of recordings) {
+      if (rec.studentId !== studentId) {
+        throw new Error("Recording not found or access denied");
+      }
+    }
+    if (recordings.length !== recordingIds.length) {
+      throw new Error("One or more recordings not found");
     }
   }
 
-  await db.sessionNote.create({
+  const note = await db.sessionNote.create({
     data: {
       studentId,
       date,
@@ -108,9 +116,21 @@ export async function createNote(studentId: string, formData: FormData) {
       status: "DRAFT",
       aiGenerated,
       aiPromptVersion,
-      ...(recordingId ? { recordingId, shareRecordingInEmail } : {}),
+      shareRecordingInEmail: recordingIds.length > 0 ? shareRecordingInEmail : false,
     },
   });
+
+  // Link all recordings to this note, assigning order by the sequence they were provided.
+  if (recordingIds.length > 0) {
+    await Promise.all(
+      recordingIds.map((id, i) =>
+        db.sessionRecording.update({
+          where: { id },
+          data: { noteId: note.id, orderIndex: i },
+        })
+      )
+    );
+  }
 
   revalidatePath(`/admin/students/${studentId}`);
 }
@@ -187,21 +207,23 @@ export async function generateNoteFromTextAction(
 // file to be an async server action). See that file for the full contract.
 
 /**
- * Given a Vercel Blob URL for an uploaded audio recording:
+ * Given one or more Vercel Blob URLs for uploaded audio recordings (segments):
  * 1. Verifies tutor owns the student (multi-tenant guard).
- * 2. Creates a SessionRecording row linked to the student + tutor.
- * 3. Downloads the audio bytes and sends to Whisper for transcription.
- * 4. Updates the recording row with transcript + duration.
- * 5. Runs generateSessionNote on the transcript.
- * 6. Returns the recording ID + generated note fields.
+ * 2. Creates a SessionRecording row per segment.
+ * 3. Downloads each audio segment and transcribes via Whisper.
+ * 4. Updates each recording row with its transcript + duration.
+ * 5. Concatenates all transcripts (in order) and runs generateSessionNote once.
+ * 6. Returns the recording IDs + generated note fields.
+ *
+ * For backwards compatibility, a single recording can still be passed as
+ * a plain blobUrl + mimeType pair (the old signature) or as an array.
  */
 export async function transcribeAndGenerateAction(
   studentId: string,
-  blobUrl: string,
-  mimeType: string
+  recordings: Array<{ blobUrl: string; mimeType: string }>
 ): Promise<TranscribeAndGenerateResult> {
   try {
-    return await _transcribeAndGenerateImpl(studentId, blobUrl, mimeType);
+    return await _transcribeAndGenerateImpl(studentId, recordings);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[transcribeAndGenerateAction] unhandled error:", msg);
@@ -221,67 +243,25 @@ export async function transcribeAndGenerateAction(
 
 async function _transcribeAndGenerateImpl(
   studentId: string,
-  blobUrl: string,
-  mimeType: string
+  recordings: Array<{ blobUrl: string; mimeType: string }>
 ): Promise<TranscribeAndGenerateResult> {
   const scope = await requireStudentScope();
   if (scope.kind === "env") {
-    // env-only admin has no DB id — restrict for simplicity
     return { ok: false, error: "Audio features require a DB-backed tutor account." };
   }
   await assertOwnsStudent(studentId);
 
-  // Validate it looks like a Vercel Blob URL (defence in depth).
-  if (!blobUrl.includes("blob.vercel-storage.com")) {
-    return { ok: false, error: "Invalid audio URL." };
+  if (recordings.length === 0) {
+    return { ok: false, error: "No recordings provided." };
   }
 
-  let sizeBytes: number;
-  let resolvedMimeType: string;
-  try {
-    const meta = await getBlobMetadata(blobUrl);
-    sizeBytes = meta.size;
-    resolvedMimeType = meta.contentType || mimeType;
-  } catch {
-    return { ok: false, error: "Could not reach audio file. Please try uploading again." };
+  // Validate all URLs look like Vercel Blob URLs (defence in depth).
+  for (const rec of recordings) {
+    if (!rec.blobUrl.includes("blob.vercel-storage.com")) {
+      return { ok: false, error: "Invalid audio URL." };
+    }
   }
 
-  // Create the recording row early so we can return the ID even on transcription error.
-  const recording = await withDbRetry(
-    () =>
-      db.sessionRecording.create({
-        data: {
-          adminUserId: scope.adminId,
-          studentId,
-          blobUrl,
-          mimeType: resolvedMimeType,
-          sizeBytes,
-        },
-      }),
-    { label: "createSessionRecording" }
-  );
-
-  // Download bytes for Whisper — private blob requires Bearer token.
-  let audioBuffer: Buffer;
-  try {
-    const res = await fetch(blobUrl, {
-      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}` },
-    });
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-    audioBuffer = Buffer.from(await res.arrayBuffer());
-  } catch (err) {
-    // Clean up the blob + DB row if download fails — nothing is saved yet.
-    await deleteBlob(blobUrl).catch(() => undefined);
-    await withDbRetry(
-      () => db.sessionRecording.delete({ where: { id: recording.id } }),
-      { label: "deleteSessionRecording" }
-    ).catch(() => undefined);
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[transcribeAndGenerate] download failed:", msg);
-    return { ok: false, error: "Could not download audio for transcription. Please try again." };
-  }
-
-  // Map MIME types to Whisper-accepted extensions (Whisper validates by file extension).
   const MIME_TO_EXT: Record<string, string> = {
     "audio/x-m4a": "m4a",
     "audio/m4a": "m4a",
@@ -294,49 +274,111 @@ async function _transcribeAndGenerateImpl(
     "audio/wav": "wav",
     "audio/flac": "flac",
   };
-  const baseMime = resolvedMimeType.split(";")[0].trim().toLowerCase();
-  const ext = MIME_TO_EXT[baseMime] ?? baseMime.split("/")[1]?.split(";")[0] ?? "webm";
-  const filename = `session-${studentId}.${ext}`;
-  const transcribeResult = await transcribeAudio(audioBuffer, filename, resolvedMimeType);
 
-  if ("error" in transcribeResult) {
-    if (transcribeResult.error === "not configured") {
-      return { ok: false, error: "AI transcription is not configured on this server." };
+  // Process each segment: create DB row, download, transcribe, persist transcript.
+  const createdRecordingIds: string[] = [];
+  const transcriptParts: string[] = [];
+
+  for (let i = 0; i < recordings.length; i++) {
+    const { blobUrl, mimeType } = recordings[i];
+
+    // Get metadata from Vercel Blob.
+    let sizeBytes: number;
+    let resolvedMimeType: string;
+    try {
+      const meta = await getBlobMetadata(blobUrl);
+      sizeBytes = meta.size;
+      resolvedMimeType = meta.contentType || mimeType;
+    } catch {
+      return { ok: false, error: `Could not reach audio file${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try uploading again.` };
     }
-    return { ok: false, error: transcribeResult.error };
+
+    // Create the recording row early so we have its ID even if transcription fails.
+    const recording = await withDbRetry(
+      () =>
+        db.sessionRecording.create({
+          data: {
+            adminUserId: scope.adminId,
+            studentId,
+            blobUrl,
+            mimeType: resolvedMimeType,
+            sizeBytes,
+            orderIndex: i,
+          },
+        }),
+      { label: "createSessionRecording" }
+    );
+    createdRecordingIds.push(recording.id);
+
+    // Download audio bytes — private blob requires Bearer token.
+    let audioBuffer: Buffer;
+    try {
+      const res = await fetch(blobUrl, {
+        headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}` },
+      });
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      audioBuffer = Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      // Clean up just this blob + DB row; already-transcribed segments are kept.
+      await deleteBlob(blobUrl).catch(() => undefined);
+      await withDbRetry(
+        () => db.sessionRecording.delete({ where: { id: recording.id } }),
+        { label: "deleteSessionRecording" }
+      ).catch(() => undefined);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[transcribeAndGenerate] download failed:", msg);
+      return { ok: false, error: `Could not download audio for transcription${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try again.` };
+    }
+
+    // Transcribe via Whisper.
+    const baseMime = resolvedMimeType.split(";")[0].trim().toLowerCase();
+    const ext = MIME_TO_EXT[baseMime] ?? baseMime.split("/")[1]?.split(";")[0] ?? "webm";
+    const filename = `session-${studentId}-part${i + 1}.${ext}`;
+    const transcribeResult = await transcribeAudio(audioBuffer, filename, resolvedMimeType);
+
+    if ("error" in transcribeResult) {
+      if (transcribeResult.error === "not configured") {
+        return { ok: false, error: "AI transcription is not configured on this server." };
+      }
+      return { ok: false, error: transcribeResult.error };
+    }
+
+    // Persist transcript + duration on the recording row.
+    await withDbRetry(
+      () =>
+        db.sessionRecording.update({
+          where: { id: recording.id },
+          data: {
+            transcript: transcribeResult.transcript,
+            durationSeconds: transcribeResult.durationSeconds,
+          },
+        }),
+      { label: "updateSessionRecordingTranscript" }
+    );
+
+    transcriptParts.push(transcribeResult.transcript);
   }
 
-  // Persist transcript + duration.
-  await withDbRetry(
-    () =>
-      db.sessionRecording.update({
-        where: { id: recording.id },
-        data: {
-          transcript: transcribeResult.transcript,
-          durationSeconds: transcribeResult.durationSeconds,
-        },
-      }),
-    { label: "updateSessionRecordingTranscript" }
-  );
+  // Concatenate all segment transcripts.
+  // Multiple parts get a "Part X of N" header so the AI and the tutor can tell them apart.
+  const rawTranscript =
+    transcriptParts.length === 1
+      ? transcriptParts[0]
+      : transcriptParts
+          .map((t, i) => `[Part ${i + 1} of ${transcriptParts.length}]\n${t}`)
+          .join("\n\n");
 
-  const trimmed = transcribeResult.transcript.trim();
+  const trimmed = rawTranscript.trim();
+
   if (!trimmed) {
-    // Whisper succeeded but produced no text — almost always a silent / too-quiet
-    // recording. Returning ok:true with empty fields would silently show
-    // "Form filled" and confuse the tutor (Sarah hit this).
     console.warn(
       "[transcribeAndGenerate] empty transcript",
-      JSON.stringify({
-        recordingId: recording.id,
-        sizeBytes,
-        mimeType: resolvedMimeType,
-        durationSeconds: transcribeResult.durationSeconds,
-      })
+      JSON.stringify({ recordingIds: createdRecordingIds, segments: recordings.length })
     );
     return buildTranscribeAndGenerateResult({
-      recordingId: recording.id,
+      recordingIds: createdRecordingIds,
       trimmedTranscript: "",
-      rawTranscript: transcribeResult.transcript,
+      rawTranscript,
       genResult: null,
     });
   }
@@ -367,7 +409,7 @@ async function _transcribeAndGenerateImpl(
     console.warn(
       "[transcribeAndGenerate] AI structuring failed",
       JSON.stringify({
-        recordingId: recording.id,
+        recordingIds: createdRecordingIds,
         error: genResult.error,
         transcriptChars: trimmed.length,
       })
@@ -381,15 +423,15 @@ async function _transcribeAndGenerateImpl(
     if (allEmpty) {
       console.warn(
         "[transcribeAndGenerate] AI returned all-empty fields",
-        JSON.stringify({ recordingId: recording.id, transcriptChars: trimmed.length })
+        JSON.stringify({ recordingIds: createdRecordingIds, transcriptChars: trimmed.length })
       );
     }
   }
 
   return buildTranscribeAndGenerateResult({
-    recordingId: recording.id,
+    recordingIds: createdRecordingIds,
     trimmedTranscript: trimmed,
-    rawTranscript: transcribeResult.transcript,
+    rawTranscript,
     genResult,
   });
 }

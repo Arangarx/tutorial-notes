@@ -130,7 +130,7 @@ type PanelState = "idle" | "filled";
 export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("text");
   const [sessionText, setSessionText] = useState("");
-  const [pendingAudio, setPendingAudio] = useState<AudioResult | null>(null);
+  const [pendingAudios, setPendingAudios] = useState<AudioResult[]>([]);
   const [panelState, setPanelState] = useState<PanelState>("idle");
   const [audioTabsKey, setAudioTabsKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -165,14 +165,14 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         nextSteps: result.nextSteps,
         links: result.links,
         promptVersion: result.promptVersion,
-        recordingId: undefined,
+        recordingIds: [],
       });
       setPanelState("filled");
     });
   }
 
   function handleGenerateFromAudio() {
-    if (!pendingAudio) return;
+    if (pendingAudios.length === 0) return;
     setError(null);
     setWarning(null);
     if (!checkOverwrite()) return;
@@ -180,8 +180,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     startTransition(async () => {
       const result = await transcribeAndGenerateAction(
         studentId,
-        pendingAudio.blobUrl,
-        pendingAudio.mimeType
+        pendingAudios.map((a) => ({ blobUrl: a.blobUrl, mimeType: a.mimeType }))
       );
       if (!result.ok) {
         setError(result.error);
@@ -193,7 +192,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         nextSteps: result.nextSteps,
         links: result.links,
         promptVersion: result.promptVersion,
-        recordingId: result.recordingId,
+        recordingIds: result.recordingIds,
       });
       if (result.warning) setWarning(result.warning);
       setPanelState("filled");
@@ -205,15 +204,20 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setSessionText("");
     setError(null);
     setWarning(null);
-    setPendingAudio(null);
+    setPendingAudios([]);
     setAudioTabsKey((k) => k + 1);
     formRef.current?.clear();
     setTimeout(() => textareaRef.current?.focus(), 0);
   }
 
-  function handleClearAudio() {
-    setPendingAudio(null);
+  function handleAudioReady(audio: AudioResult) {
+    setPendingAudios((prev) => [...prev, audio]);
+    // Reset the input tabs so the tutor can add another segment.
     setAudioTabsKey((k) => k + 1);
+  }
+
+  function handleRemoveSegment(index: number) {
+    setPendingAudios((prev) => prev.filter((_, i) => i !== index));
   }
 
   if (!enabled) {
@@ -298,13 +302,69 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             </a>
           </p>
 
+          {/* Segment list — shows all audio segments added so far */}
+          {pendingAudios.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              {pendingAudios.map((audio, i) => (
+                <div
+                  key={audio.blobUrl}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 6,
+                    padding: "6px 8px",
+                    borderRadius: 4,
+                    border: "1px solid var(--color-border, #d1d5db)",
+                    background: "var(--color-surface-subtle, rgba(0,0,0,0.02))",
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: "var(--color-muted, #6b7280)", flexShrink: 0 }}>
+                    Part {i + 1}
+                    {pendingAudios.length > 1 ? ` of ${pendingAudios.length}` : ""}
+                  </span>
+                  {audio.previewUrl ? (
+                    <AudioPreview
+                      src={audio.previewUrl}
+                      mimeType={audio.mimeType}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 12, flex: 1, color: "var(--color-muted, #6b7280)" }}>
+                      Saved — no preview
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove segment ${i + 1}`}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      color: "var(--color-muted, #6b7280)",
+                      padding: "0 2px",
+                      flexShrink: 0,
+                    }}
+                    onClick={() => handleRemoveSegment(i)}
+                    disabled={isPending}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <p style={{ margin: "0 0 8px", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
+                Add another segment below, or click Transcribe &amp; generate notes.
+              </p>
+            </div>
+          )}
+
           <AudioInputTabs
             key={audioTabsKey}
             studentId={studentId}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onAudioReady={setPendingAudio}
-            onAudioCleared={() => setPendingAudio(null)}
+            onAudioReady={handleAudioReady}
+            onAudioCleared={() => {/* segments list handles removal */}}
             disabled={isPending}
             blobEnabled={blobEnabled}
           />
@@ -331,30 +391,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             <p role="alert" style={{ color: "var(--color-error, #dc2626)", marginTop: 8 }}>{error}</p>
           )}
 
-          {pendingAudio?.previewUrl && (
-            <div style={{ marginTop: 10 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-                Preview recording before transcribing:
-              </p>
-              <AudioPreview
-                src={pendingAudio.previewUrl}
-                mimeType={pendingAudio.mimeType}
-              />
-            </div>
-          )}
-
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 10 }}>
-            {pendingAudio && (
-              <button
-                type="button"
-                className="btn"
-                style={{ marginRight: "auto", fontSize: 12 }}
-                onClick={handleClearAudio}
-                disabled={isPending}
-              >
-                × Clear audio
-              </button>
-            )}
             {activeTab === "text" ? (
               <button
                 type="button"
@@ -369,12 +406,12 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
               <button
                 type="button"
                 className="btn primary"
-                disabled={isPending || !pendingAudio}
+                disabled={isPending || pendingAudios.length === 0}
                 onClick={handleGenerateFromAudio}
                 data-testid="ai-transcribe-btn"
               >
                 {isPending
-                  ? "Transcribing…"
+                  ? `Transcribing${pendingAudios.length > 1 ? ` ${pendingAudios.length} segments` : ""}…`
                   : error
                   ? "Try again"
                   : "Transcribe & generate notes"}

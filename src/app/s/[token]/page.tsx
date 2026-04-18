@@ -36,12 +36,14 @@ export default async function SharePage({
             orderBy: { date: "desc" },
             take: 12,
             include: {
-              recording: {
+              recordings: {
+                orderBy: { orderIndex: "asc" },
                 select: {
                   id: true,
                   blobUrl: true,
                   mimeType: true,
                   durationSeconds: true,
+                  orderIndex: true,
                 },
               },
             },
@@ -57,12 +59,16 @@ export default async function SharePage({
   const tutor = await db.adminUser.findFirst({ select: { displayName: true, email: true } });
   const tutorName = tutor?.displayName?.trim() || tutor?.email?.split("@")[0] || null;
 
-  // Build proxy URLs for notes that have a shared recording.
+  // Build proxy URLs for notes that have shared recordings.
   // Proxy route handles auth so the browser never needs the blob token.
-  const audioUrlMap = new Map<string, string>();
+  // Returns a map of noteId → array of signed URLs (one per segment).
+  const audioUrlMap = new Map<string, string[]>();
   student.notes.forEach((n) => {
-    if (n.shareRecordingInEmail && n.recording?.id) {
-      audioUrlMap.set(n.id, `/api/audio/${n.recording.id}?token=${token}`);
+    if (n.shareRecordingInEmail && n.recordings.length > 0) {
+      audioUrlMap.set(
+        n.id,
+        n.recordings.map((r) => `/api/audio/${r.id}?token=${token}`)
+      );
     }
   });
 
@@ -89,7 +95,7 @@ export default async function SharePage({
           <div style={{ display: "grid", gap: 12 }}>
             {student.notes.map((n) => {
               const links = safeJsonArray(n.linksJson);
-              const signedAudioUrl = audioUrlMap.get(n.id) ?? null;
+              const signedAudioUrls = audioUrlMap.get(n.id) ?? null;
               return (
                 <div key={n.id} className="card">
                   <div className="row" style={{ justifyContent: "space-between" }}>
@@ -137,23 +143,43 @@ export default async function SharePage({
                       </section>
                     ) : null}
 
-                    {/* Session recording — only shown when tutor opted in */}
-                    {signedAudioUrl && (
+                    {/* Session recordings — only shown when tutor opted in */}
+                    {signedAudioUrls && signedAudioUrls.length > 0 && (
                       <section data-testid="share-page-audio">
                         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
-                          Session recording
-                          {n.recording?.durationSeconds
-                            ? ` · ${formatDuration(n.recording.durationSeconds)}`
-                            : ""}
+                          Session recording{signedAudioUrls.length > 1 ? "s" : ""}
                         </div>
-                        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                        <audio
-                          controls
-                          src={signedAudioUrl}
-                          aria-label="Session recording shared by your tutor"
-                          style={{ width: "100%", maxWidth: 480 }}
-                        />
-                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
+                        {signedAudioUrls.map((audioUrl, idx) => {
+                          const rec = n.recordings[idx];
+                          const durationLabel =
+                            rec?.durationSeconds ? ` · ${formatDuration(rec.durationSeconds)}` : "";
+                          return (
+                            <div key={audioUrl} style={{ marginBottom: idx < signedAudioUrls.length - 1 ? 10 : 0 }}>
+                              {signedAudioUrls.length > 1 && (
+                                <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
+                                  Part {idx + 1} of {signedAudioUrls.length}{durationLabel}
+                                </div>
+                              )}
+                              {signedAudioUrls.length === 1 && durationLabel && (
+                                <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
+                                  {durationLabel.trim()}
+                                </div>
+                              )}
+                              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                              <audio
+                                controls
+                                src={audioUrl}
+                                aria-label={
+                                  signedAudioUrls.length > 1
+                                    ? `Session recording part ${idx + 1} of ${signedAudioUrls.length}`
+                                    : "Session recording shared by your tutor"
+                                }
+                                style={{ width: "100%", maxWidth: 480, display: "block" }}
+                              />
+                            </div>
+                          );
+                        })}
+                        <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
                           Recording shared by your tutor for your review.
                         </p>
                       </section>

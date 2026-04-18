@@ -9,8 +9,8 @@ export type PopulatePayload = {
   nextSteps: string;
   links: string;
   promptVersion: string;
-  /** Set when the note was generated from an audio recording. */
-  recordingId?: string;
+  /** Set when the note was generated from one or more audio recordings. */
+  recordingIds?: string[];
 };
 
 export type NewNoteFormHandle = {
@@ -53,7 +53,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   const [links, setLinks] = useState("");
   const [aiGenerated, setAiGenerated] = useState(false);
   const [aiPromptVersion, setAiPromptVersion] = useState("");
-  const [recordingId, setRecordingId] = useState<string | undefined>(undefined);
+  const [recordingIds, setRecordingIds] = useState<string[]>([]);
   const [shareRecordingInEmail, setShareRecordingInEmail] = useState(false);
   const [, startTransition] = useTransition();
   const [submitting, setSubmitting] = useState(false);
@@ -66,8 +66,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       if (payload.links) setLinks(payload.links);
       setAiGenerated(true);
       setAiPromptVersion(payload.promptVersion);
-      if (payload.recordingId) {
-        setRecordingId(payload.recordingId);
+      if (payload.recordingIds && payload.recordingIds.length > 0) {
+        setRecordingIds(payload.recordingIds);
         setShareRecordingInEmail(true);
       }
     },
@@ -78,7 +78,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setLinks("");
       setAiGenerated(false);
       setAiPromptVersion("");
-      setRecordingId(undefined);
+      setRecordingIds([]);
       setShareRecordingInEmail(false);
     },
     hasUserContent() {
@@ -95,7 +95,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
     setLinks("");
     setAiGenerated(false);
     setAiPromptVersion("");
-    setRecordingId(undefined);
+    setRecordingIds([]);
     setShareRecordingInEmail(false);
   }
 
@@ -115,7 +115,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         setLinks("");
         setAiGenerated(false);
         setAiPromptVersion("");
-        setRecordingId(undefined);
+        setRecordingIds([]);
         setShareRecordingInEmail(false);
         onSaved?.();
       } finally {
@@ -129,9 +129,9 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       {/* Hidden AI provenance fields */}
       <input type="hidden" name="aiGenerated" value={String(aiGenerated)} />
       <input type="hidden" name="aiPromptVersion" value={aiPromptVersion} />
-      {recordingId && (
-        <input type="hidden" name="recordingId" value={recordingId} />
-      )}
+      {recordingIds.map((id) => (
+        <input key={id} type="hidden" name="recordingId" value={id} />
+      ))}
       <input type="hidden" name="shareRecordingInEmail" value={String(shareRecordingInEmail)} />
 
       <div className="row">
@@ -201,8 +201,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         />
       </div>
 
-      {/* Recording section — only shown when a recording was attached via AI panel */}
-      {recordingId && (
+      {/* Recording section — only shown when one or more recordings were attached via AI panel */}
+      {recordingIds.length > 0 && (
         <div
           style={{
             marginTop: 16,
@@ -233,7 +233,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               data-testid="share-recording-checkbox"
             />
             <span>
-              <span style={{ fontWeight: 600 }}>🎙 Attach recording to share link</span>
+              <span style={{ fontWeight: 600 }}>🎙 Attach recording{recordingIds.length > 1 ? "s" : ""} to share link</span>
               <span style={{ display: "block", fontSize: 11, color: "var(--color-muted, #6b7280)", marginTop: 2, overflowWrap: "break-word", wordBreak: "break-word" }}>
                 Confirm student consent before sharing with parents/guardians.
               </span>

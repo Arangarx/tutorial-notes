@@ -20,7 +20,7 @@ jest.mock("@/lib/auth-db", () => ({
 
 const mockStudentFindUnique = jest.fn();
 const mockStudentFindUniqueOrThrow = jest.fn();
-const mockNoteFindMany = jest.fn();
+const mockNoteFindFirst = jest.fn();
 const mockRecordingCreate = jest.fn();
 const mockRecordingUpdate = jest.fn();
 const mockRecordingDelete = jest.fn();
@@ -32,7 +32,7 @@ jest.mock("@/lib/db", () => ({
       findUniqueOrThrow: (...args: unknown[]) => mockStudentFindUniqueOrThrow(...args),
     },
     sessionNote: {
-      findMany: (...args: unknown[]) => mockNoteFindMany(...args),
+      findFirst: (...args: unknown[]) => mockNoteFindFirst(...args),
     },
     sessionRecording: {
       create: (...args: unknown[]) => mockRecordingCreate(...args),
@@ -40,6 +40,8 @@ jest.mock("@/lib/db", () => ({
       delete: (...args: unknown[]) => mockRecordingDelete(...args),
     },
   },
+  withDbRetry: (fn: () => unknown) => fn(),
+  isTransientDbConnectionError: () => false,
 }));
 
 const mockTranscribeAudio = jest.fn();
@@ -95,8 +97,8 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
     });
 
     await expect(
-      transcribeAndGenerateAction(USER_B_STUDENT_ID, BLOB_URL, "audio/webm")
-    ).rejects.toThrow();
+      transcribeAndGenerateAction(USER_B_STUDENT_ID, [{ blobUrl: BLOB_URL, mimeType: "audio/webm" }])
+    ).resolves.toMatchObject({ ok: false });
 
     expect(mockRecordingCreate).not.toHaveBeenCalled();
     expect(mockTranscribeAudio).not.toHaveBeenCalled();
@@ -115,7 +117,7 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
       durationSeconds: 1800,
     });
     mockStudentFindUniqueOrThrow.mockResolvedValue({ name: "Alex" });
-    mockNoteFindMany.mockResolvedValue([]);
+    mockNoteFindFirst.mockResolvedValue(null);
     mockGenerateSessionNote.mockResolvedValue({
       topics: "Quadratics",
       homework: "Practice problems p.42",
@@ -125,13 +127,12 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
 
     const result = await transcribeAndGenerateAction(
       USER_A_STUDENT_ID,
-      BLOB_URL,
-      "audio/webm"
+      [{ blobUrl: BLOB_URL, mimeType: "audio/webm" }]
     );
 
     expect(result).toMatchObject({
       ok: true,
-      recordingId: "recording-1",
+      recordingIds: ["recording-1"],
       topics: "Quadratics",
     });
     expect(mockRecordingCreate).toHaveBeenCalledWith(
@@ -154,15 +155,14 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
 
     const result = await transcribeAndGenerateAction(
       USER_A_STUDENT_ID,
-      "https://evil.example.com/audio.webm",
-      "audio/webm"
+      [{ blobUrl: "https://evil.example.com/audio.webm", mimeType: "audio/webm" }]
     );
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining("Invalid") });
     expect(mockRecordingCreate).not.toHaveBeenCalled();
   });
 
-  test("returns ok:true with empty fields when transcript is blank", async () => {
+  test("returns ok:false with actionable error when transcript is blank", async () => {
     mockStudentFindUnique.mockResolvedValue({
       id: USER_A_STUDENT_ID,
       adminUserId: USER_A_ID,
@@ -173,11 +173,12 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
 
     const result = await transcribeAndGenerateAction(
       USER_A_STUDENT_ID,
-      BLOB_URL,
-      "audio/webm"
+      [{ blobUrl: BLOB_URL, mimeType: "audio/webm" }]
     );
 
-    expect(result).toMatchObject({ ok: true, recordingId: "recording-2", topics: "" });
+    // Empty transcript → ok:false with an actionable error message (not a silent "Form filled"
+    // with blank fields — that was Sarah's original bug, fixed in transcribe-result.ts).
+    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/silent|too quiet|couldn't make out/i) });
     expect(mockGenerateSessionNote).not.toHaveBeenCalled();
   });
 });

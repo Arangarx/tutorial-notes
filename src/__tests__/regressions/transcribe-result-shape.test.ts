@@ -12,6 +12,9 @@
  *  - AI gen errors              -> ok:true, transcript dropped into topics, warning set
  *  - AI returns all-empty fields-> ok:true, transcript dropped into topics, warning set
  *  - happy path                 -> ok:true with structured fields, no warning
+ *
+ * Note: `recordingId` was renamed to `recordingIds: string[]` in Phase 1
+ * (multi-recording support). Tests updated accordingly.
  */
 
 // Pure helper — no module mocks needed. Lives in its own file because
@@ -21,7 +24,7 @@ import { buildTranscribeAndGenerateResult } from "@/app/admin/students/[id]/tran
 describe("buildTranscribeAndGenerateResult", () => {
   test("empty transcript returns ok:false with silent-recording error", () => {
     const r = buildTranscribeAndGenerateResult({
-      recordingId: "rec1",
+      recordingIds: ["rec1"],
       trimmedTranscript: "",
       rawTranscript: "   ",
       genResult: null,
@@ -32,16 +35,16 @@ describe("buildTranscribeAndGenerateResult", () => {
     }
   });
 
-  test("AI gen error: transcript goes into topics, warning is set, recording attached", () => {
+  test("AI gen error: transcript goes into topics, warning is set, recordings attached", () => {
     const r = buildTranscribeAndGenerateResult({
-      recordingId: "rec1",
+      recordingIds: ["rec1"],
       trimmedTranscript: "We worked on long division and she got 4/5 right.",
       rawTranscript: "  We worked on long division and she got 4/5 right.  ",
       genResult: { error: "rate limit" },
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.recordingId).toBe("rec1");
+      expect(r.recordingIds).toEqual(["rec1"]);
       expect(r.topics).toBe("We worked on long division and she got 4/5 right.");
       expect(r.homework).toBe("");
       expect(r.nextSteps).toBe("");
@@ -53,7 +56,7 @@ describe("buildTranscribeAndGenerateResult", () => {
 
   test("AI returns all-empty fields: still warn + drop transcript into topics", () => {
     const r = buildTranscribeAndGenerateResult({
-      recordingId: "rec2",
+      recordingIds: ["rec2"],
       trimmedTranscript: "Reviewed phonics for 20 minutes.",
       rawTranscript: "Reviewed phonics for 20 minutes.",
       genResult: {
@@ -74,7 +77,7 @@ describe("buildTranscribeAndGenerateResult", () => {
 
   test("happy path: structured fields preserved, no warning", () => {
     const r = buildTranscribeAndGenerateResult({
-      recordingId: "rec3",
+      recordingIds: ["rec3"],
       trimmedTranscript: "raw text",
       rawTranscript: "raw text",
       genResult: {
@@ -97,7 +100,7 @@ describe("buildTranscribeAndGenerateResult", () => {
 
   test("happy path: at least one non-empty field is enough (homework only)", () => {
     const r = buildTranscribeAndGenerateResult({
-      recordingId: "rec4",
+      recordingIds: ["rec4"],
       trimmedTranscript: "raw",
       rawTranscript: "raw",
       genResult: {
@@ -112,6 +115,26 @@ describe("buildTranscribeAndGenerateResult", () => {
     if (r.ok) {
       expect(r.homework).toBe("Read chapter 3");
       expect(r.warning).toBeUndefined();
+    }
+  });
+
+  test("multi-segment: recordingIds contains all segment IDs", () => {
+    const r = buildTranscribeAndGenerateResult({
+      recordingIds: ["rec-seg1", "rec-seg2"],
+      trimmedTranscript: "Part 1 content. Part 2 content.",
+      rawTranscript: "Part 1 content. Part 2 content.",
+      genResult: {
+        topics: "Algebra review",
+        homework: "Practice set 3",
+        nextSteps: "Start geometry",
+        links: "",
+        promptVersion: "v2",
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.recordingIds).toEqual(["rec-seg1", "rec-seg2"]);
+      expect(r.topics).toBe("Algebra review");
     }
   });
 });

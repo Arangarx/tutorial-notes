@@ -53,11 +53,11 @@ model SessionNote {
   aiGenerated     Boolean  @default(false)
   aiPromptVersion String?
 
-  /** Optional recording this note was generated from. */
-  recordingId          String?          @unique
-  recording            SessionRecording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
-  /** Whether to include the recording audio player in the parent share email. Default off. */
-  shareRecordingInEmail Boolean          @default(false)
+  /** Whether to include the session recordings in the parent share link. Default off. */
+  shareRecordingInEmail Boolean @default(false)
+
+  /** Recordings for this note (0 = no recording, 1 = single, N = multi-segment). */
+  recordings SessionRecording[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -74,6 +74,12 @@ model SessionRecording {
   studentId   String
   student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  /** Note this recording belongs to. Null until the note is saved. */
+  noteId     String?
+  note       SessionNote? @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  /** Order within the note (0-indexed). Determines Part 1 of N labeling. */
+  orderIndex Int          @default(0)
+
   /** Private Vercel Blob URL. Never expose directly — generate signed read URLs at render time. */
   blobUrl         String
   mimeType        String
@@ -81,12 +87,11 @@ model SessionRecording {
   durationSeconds Int?
   transcript      String?
 
-  note      SessionNote?
-
   createdAt DateTime @default(now())
 
   @@index([adminUserId])
   @@index([studentId])
+  @@index([noteId])
 }
 
 model ShareLink {

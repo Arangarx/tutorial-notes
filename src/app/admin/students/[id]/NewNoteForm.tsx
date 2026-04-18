@@ -68,7 +68,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setAiPromptVersion(payload.promptVersion);
       if (payload.recordingId) {
         setRecordingId(payload.recordingId);
-        setShareRecordingInEmail(false);
+        setShareRecordingInEmail(true);
       }
     },
     clear() {
@@ -215,16 +215,13 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
           }}
           data-testid="recording-section"
         >
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-            🎙 Recording attached
-          </div>
           <label
             style={{
               display: "flex",
               alignItems: "flex-start",
               gap: 8,
               cursor: "pointer",
-              fontSize: 12,
+              fontSize: 13,
             }}
             data-testid="share-recording-label"
           >
@@ -235,8 +232,11 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
               style={{ marginTop: 2, flexShrink: 0 }}
               data-testid="share-recording-checkbox"
             />
-            <span style={{ color: "var(--color-muted, #6b7280)", overflowWrap: "break-word", wordBreak: "break-word" }}>
-              Share recording with parents/guardians via share link. Off by default — obtain student consent first.
+            <span>
+              <span style={{ fontWeight: 600 }}>🎙 Attach recording to share link</span>
+              <span style={{ display: "block", fontSize: 11, color: "var(--color-muted, #6b7280)", marginTop: 2, overflowWrap: "break-word", wordBreak: "break-word" }}>
+                Confirm student consent before sharing with parents/guardians.
+              </span>
             </span>
           </label>
         </div>

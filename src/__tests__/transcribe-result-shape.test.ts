@@ -14,41 +14,9 @@
  *  - happy path                 -> ok:true with structured fields, no warning
  */
 
-// The action module imports next-auth, prisma, vercel/blob, etc. Those would
-// load at test time unless we mock them. We only need the pure helper.
-jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }));
-jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
-jest.mock("@/auth-options", () => ({ authOptions: {} }));
-jest.mock("@/lib/db", () => ({
-  db: {},
-  withDbRetry: <T>(fn: () => Promise<T>) => fn(),
-  isTransientDbConnectionError: () => false,
-}));
-jest.mock("@/lib/auth-db", () => ({ getAdminByEmail: jest.fn() }));
-jest.mock("@/lib/email", () => ({ sendMail: jest.fn() }));
-jest.mock("@/lib/security", () => ({
-  generateShareToken: jest.fn(() => "tok"),
-  parseLinksFromTextarea: jest.fn(() => []),
-}));
-jest.mock("@/lib/student-scope", () => ({
-  assertOwnsStudent: jest.fn(),
-  requireStudentScope: jest.fn(),
-}));
-jest.mock("@/lib/ai", () => ({
-  generateSessionNote: jest.fn(),
-  estimateTokens: jest.fn(() => 0),
-  MAX_INPUT_TOKENS: 4000,
-}));
-jest.mock("@/lib/transcribe", () => ({ transcribeAudio: jest.fn() }));
-jest.mock("@vercel/blob", () => ({ put: jest.fn() }));
-jest.mock("@/lib/blob", () => ({
-  getAudioUrl: jest.fn(),
-  getBlobMetadata: jest.fn(),
-  deleteBlob: jest.fn(),
-  BLOB_MAX_BYTES: 100 * 1024 * 1024,
-}));
-
-import { buildTranscribeAndGenerateResult } from "@/app/admin/students/[id]/actions";
+// Pure helper — no module mocks needed. Lives in its own file because
+// Next.js disallows non-async exports from a "use server" file.
+import { buildTranscribeAndGenerateResult } from "@/app/admin/students/[id]/transcribe-result";
 
 describe("buildTranscribeAndGenerateResult", () => {
   test("empty transcript returns ok:false with silent-recording error", () => {

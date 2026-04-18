@@ -139,7 +139,12 @@ export default function AudioRecordInput({ studentId, onRecorded, disabled }: Pr
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
 
-    recorder.start(1000); // collect chunks every second
+    // IMPORTANT: do NOT pass a timeslice argument to start(). Chunked output
+    // (start(1000)) makes iOS Safari emit fragmented MP4 pieces that don't
+    // concatenate into a playable / Whisper-decodable file. Without a
+    // timeslice, MediaRecorder buffers internally and emits one complete
+    // blob on stop() — works on Chrome, Firefox, Safari (desktop + iOS).
+    recorder.start();
     mediaRecorderRef.current = recorder;
     setRecordState("recording");
     startTimer();

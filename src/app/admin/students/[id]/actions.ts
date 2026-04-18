@@ -12,6 +12,13 @@ import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai"
 import { transcribeAudio } from "@/lib/transcribe";
 import { put } from "@vercel/blob";
 import { getAudioUrl, getBlobMetadata, deleteBlob, BLOB_MAX_BYTES } from "@/lib/blob";
+import {
+  buildTranscribeAndGenerateResult,
+  type TranscribeAndGenerateResult,
+} from "./transcribe-result";
+
+// Re-export for callers that still import the type from this module.
+export type { TranscribeAndGenerateResult };
 
 function baseUrl() {
   return process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -175,107 +182,9 @@ export async function generateNoteFromTextAction(
 // AI: transcribe audio recording and generate structured note
 // ---------------------------------------------------------------------------
 
-export type TranscribeAndGenerateResult =
-  | {
-      ok: true;
-      recordingId: string;
-      transcript: string;
-      topics: string;
-      homework: string;
-      nextSteps: string;
-      links: string;
-      promptVersion: string;
-      /**
-       * Non-fatal explanation when transcription succeeded but AI structuring
-       * failed or produced nothing useful. The recording is still attached and
-       * the raw transcript is placed in `topics` so the tutor can hand-edit
-       * instead of losing the whole session.
-       */
-      warning?: string;
-    }
-  | { ok: false; error: string };
-
-/**
- * Decide what TranscribeAndGenerateResult to return given a recording ID,
- * the transcript Whisper produced (already trimmed by caller), and the result
- * of the AI structuring step.
- *
- * Extracted as a pure function so the regression test in
- * `src/__tests__/transcribe-result-shape.test.ts` can cover the empty /
- * gen-failure / all-empty / happy branches without mocking the full server
- * action stack (next-auth, prisma, vercel/blob).
- *
- * Sarah's bug: previously, both the empty-transcript and gen-failure branches
- * returned `ok:true` with empty fields, so the panel said "Form filled" with
- * nothing in the form. Now empty transcript -> ok:false; gen failure ->
- * ok:true with the raw transcript in `topics` + a `warning`.
- */
-export function buildTranscribeAndGenerateResult(args: {
-  recordingId: string;
-  trimmedTranscript: string;
-  rawTranscript: string;
-  genResult:
-    | { topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
-    | { error: string }
-    | null;
-}): TranscribeAndGenerateResult {
-  const { recordingId, trimmedTranscript, rawTranscript, genResult } = args;
-
-  if (!trimmedTranscript) {
-    return {
-      ok: false,
-      error:
-        "We couldn't make out any words in this recording. The audio may have been silent or too quiet. Try recording again with the mic closer, then click Transcribe & generate notes.",
-    };
-  }
-
-  if (!genResult || "error" in genResult) {
-    return {
-      ok: true,
-      recordingId,
-      transcript: rawTranscript,
-      topics: trimmedTranscript,
-      homework: "",
-      nextSteps: "",
-      links: "",
-      promptVersion: "",
-      warning:
-        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Next steps before saving.",
-    };
-  }
-
-  const allEmpty =
-    !genResult.topics.trim() &&
-    !genResult.homework.trim() &&
-    !genResult.nextSteps.trim() &&
-    !genResult.links.trim();
-
-  if (allEmpty) {
-    return {
-      ok: true,
-      recordingId,
-      transcript: rawTranscript,
-      topics: trimmedTranscript,
-      homework: "",
-      nextSteps: "",
-      links: "",
-      promptVersion: genResult.promptVersion,
-      warning:
-        "AI couldn't extract structured fields from this transcript. The raw text is in Topics — please edit before saving.",
-    };
-  }
-
-  return {
-    ok: true,
-    recordingId,
-    transcript: rawTranscript,
-    topics: genResult.topics,
-    homework: genResult.homework,
-    nextSteps: genResult.nextSteps,
-    links: genResult.links,
-    promptVersion: genResult.promptVersion,
-  };
-}
+// Type + helper now live in `./transcribe-result` so they can be exported
+// from a non-server module (Next.js requires every export from a "use server"
+// file to be an async server action). See that file for the full contract.
 
 /**
  * Given a Vercel Blob URL for an uploaded audio recording:

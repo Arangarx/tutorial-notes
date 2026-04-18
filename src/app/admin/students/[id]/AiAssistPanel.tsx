@@ -18,25 +18,39 @@ type Tab = "text" | "upload" | "record";
  * currentTime to a huge value. The browser scans to the actual end, fires
  * `durationchange` with the real duration, then we reset to 0.
  *
- * Works in Chrome/Edge/Firefox. Safe no-op for well-formed audio (m4a, mp3,
- * uploaded files etc.) where duration is already known.
+ * IMPORTANT: this hack is WebM-specific. iOS Safari uses MP4 and either
+ * throws or enters an error state when assigning a wildly out-of-range
+ * currentTime to a freshly loaded audio element. We gate the hack on the
+ * mime type, wrap the assignment in try/catch, and surface a friendly
+ * fallback message if the audio element fires `error` instead of loading.
  *
  * Reference: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
  */
-function AudioPreview({ src }: { src: string }) {
+function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [needsFix, setNeedsFix] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const isWebm = mimeType?.toLowerCase().includes("webm") ?? false;
 
   useEffect(() => {
     setNeedsFix(false);
+    setHasError(false);
   }, [src]);
 
   function handleLoadedMetadata() {
     const audio = audioRef.current;
     if (!audio) return;
+    if (!isWebm) return; // MP4 / m4a / mp3 already report correct duration
     if (!Number.isFinite(audio.duration) || audio.duration === 0) {
       setNeedsFix(true);
-      audio.currentTime = 1e101;
+      try {
+        audio.currentTime = 1e101;
+      } catch {
+        // Some browsers throw on out-of-range currentTime — harmless, the
+        // user can still press play and it will work.
+        setNeedsFix(false);
+      }
     }
   }
 
@@ -44,9 +58,25 @@ function AudioPreview({ src }: { src: string }) {
     const audio = audioRef.current;
     if (!audio || !needsFix) return;
     if (Number.isFinite(audio.duration) && audio.duration > 0) {
-      audio.currentTime = 0;
+      try {
+        audio.currentTime = 0;
+      } catch {
+        // Ignore — we just wanted to reset playback position.
+      }
       setNeedsFix(false);
     }
+  }
+
+  if (hasError) {
+    return (
+      <p
+        style={{ margin: 0, fontSize: 12, color: "var(--color-muted, #6b7280)" }}
+        data-testid="audio-preview-error"
+      >
+        Preview unavailable in this browser, but the recording was saved and can
+        still be transcribed below.
+      </p>
+    );
   }
 
   return (
@@ -57,6 +87,7 @@ function AudioPreview({ src }: { src: string }) {
       src={src}
       onLoadedMetadata={handleLoadedMetadata}
       onDurationChange={handleDurationChange}
+      onError={() => setHasError(true)}
       aria-label="Preview of uploaded or recorded audio"
       style={{ width: "100%", height: 36 }}
       data-testid="audio-preview"
@@ -284,7 +315,10 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
               <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
                 Preview recording before transcribing:
               </p>
-              <AudioPreview src={pendingAudio.previewUrl} />
+              <AudioPreview
+                src={pendingAudio.previewUrl}
+                mimeType={pendingAudio.mimeType}
+              />
             </div>
           )}
 

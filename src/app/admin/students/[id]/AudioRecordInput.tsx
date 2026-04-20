@@ -50,8 +50,16 @@ function formatDuration(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-const HARD_CAP_SECONDS = 90 * 60; // 90 minutes
-const WARN_AT_SECONDS = 85 * 60;  // 85 minutes
+/**
+ * Per-segment cap: auto-save and continue without user action (no MediaRecorder
+ * timeslice — safe for iOS Safari). Server-side ffmpeg already splits huge files
+ * for Whisper; this keeps each browser blob smaller and avoids one huge tab memory spike.
+ */
+const SEGMENT_MAX_SECONDS = 50 * 60; // 50 minutes per segment
+/** Warn 5 minutes before segment rollover. */
+const WARN_SEGMENT_SECONDS = SEGMENT_MAX_SECONDS - 5 * 60;
+/** Hard stop for pathological runaway sessions (memory / tab stability). */
+const SESSION_SAFETY_MAX_SECONDS = 8 * 60 * 60;
 
 /** Base master gain; multiplied by `volume` (0.05–1). */
 const CHIME_BASE_GAIN = 0.11;
@@ -99,6 +107,34 @@ function playApproachingMaxTimeChime(volume: number) {
   }
 }
 
+/** Soft cue right before an automatic segment rollover (distinct from the 5‑min warning). */
+function playSegmentRolloverChime(volume: number) {
+  if (typeof window === "undefined") return;
+  if (volume <= 0) return;
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const master = ctx.createGain();
+    master.gain.value = CHIME_BASE_GAIN * 0.55 * Math.min(1, Math.max(0.05, volume));
+    master.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 523.25; // C5
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+    void ctx.resume();
+  } catch {
+    /* ignore */
+  }
+}
+
 const GAIN_MIN = 0.25;
 const GAIN_MAX = 3.0;
 const GAIN_DEFAULT = 1.0;
@@ -123,7 +159,8 @@ export type RecordedAudio = {
 
 type Props = {
   studentId: string;
-  onRecorded: (audio: RecordedAudio) => void;
+  /** `autoRollover` when a segment was auto-saved mid-session; parent should append without remounting the recorder. */
+  onRecorded: (audio: RecordedAudio, meta?: { autoRollover?: boolean }) => void;
   /** Called whenever the recording active state changes (acquiring/ready/recording/paused/uploading = true). */
   onRecordingActive?: (active: boolean) => void;
   disabled?: boolean;
@@ -634,6 +671,12 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   /** Local-only: approaching-max time chime (sound + optional vibration on phones). */
   const [chimeEnabled, setChimeEnabled] = useState(() => loadStoredChimeEnabled());
   const [chimeVolume, setChimeVolume] = useState(() => loadStoredChimeVolume());
+  /** Current segment index (1-based) — increments on auto-rollover. */
+  const [segmentNumber, setSegmentNumber] = useState(1);
+  /** `segment` = saving mid-session without tearing down the mic; `final` = full-screen upload. */
+  const [uploadMode, setUploadMode] = useState<null | "segment" | "final">(null);
+  /** Duration shown on the success card after Stop & save (last segment only). */
+  const [doneSegmentSeconds, setDoneSegmentSeconds] = useState(0);
   /** Last-known mic permission state, used only to pick the right hint copy. */
   const [permissionState, setPermissionState] = useState<"granted" | "prompt" | "denied" | "unknown">("unknown");
 
@@ -649,6 +692,10 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const meterColorRef = useRef<string>(meterColor(0));
   /** One audible "approaching max time" cue per recording (not on pause/resume timer restarts). */
   const approachingCapSoundPlayedRef = useRef(false);
+  /** Wall-clock session length across auto-rollovers (for safety cap). */
+  const totalSessionElapsedRef = useRef(0);
+  /** Prevents double-firing auto-rollover from the 1s timer. */
+  const rolloverInProgressRef = useRef(false);
   const chimeEnabledRef = useRef(chimeEnabled);
   const chimeVolumeRef = useRef(chimeVolume);
 
@@ -767,10 +814,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     stopTimer();
     timerRef.current = setInterval(() => {
       elapsedRef.current += 1;
+      totalSessionElapsedRef.current += 1;
       setElapsed(elapsedRef.current);
 
       if (
-        elapsedRef.current >= WARN_AT_SECONDS &&
+        elapsedRef.current >= WARN_SEGMENT_SECONDS &&
         !approachingCapSoundPlayedRef.current
       ) {
         approachingCapSoundPlayedRef.current = true;
@@ -778,8 +826,24 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         playApproachingMaxTimeChime(vol);
       }
 
-      if (elapsedRef.current >= HARD_CAP_SECONDS) {
-        stopAndUpload();
+      // Safety valve: very long continuous sessions (timer pauses when recording is paused).
+      if (
+        totalSessionElapsedRef.current >= SESSION_SAFETY_MAX_SECONDS &&
+        !rolloverInProgressRef.current
+      ) {
+        rolloverInProgressRef.current = true;
+        stopAndUpload("final");
+        return;
+      }
+
+      if (
+        elapsedRef.current >= SEGMENT_MAX_SECONDS &&
+        !rolloverInProgressRef.current
+      ) {
+        rolloverInProgressRef.current = true;
+        const vol = chimeEnabledRef.current ? chimeVolumeRef.current : 0;
+        playSegmentRolloverChime(vol);
+        stopAndUpload("rollover");
       }
     }, 1000);
   }
@@ -890,7 +954,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     }
   }
 
-  function startMediaRecorder() {
+  function startMediaRecorder(opts?: { continuation?: boolean }) {
+    const continuation = opts?.continuation ?? false;
     const stream = streamRef.current;
     if (!stream) {
       setError("No microphone stream available.");
@@ -902,6 +967,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     elapsedRef.current = 0;
     setElapsed(0);
     approachingCapSoundPlayedRef.current = false;
+    rolloverInProgressRef.current = false;
+    if (!continuation) {
+      setSegmentNumber(1);
+      totalSessionElapsedRef.current = 0;
+    }
 
     const mimeType = chooseMimeType();
     // Prefer the processed (gain-adjusted) stream; fall back to raw for browsers / tests
@@ -973,7 +1043,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     }
   }
 
-  function stopAndUpload() {
+  function stopAndUpload(mode: "final" | "rollover" = "final") {
     // No short-clip confirm: the live level meter now lets the tutor see that
     // their voice was captured, and the server-side `looksLikeSilenceHallucination`
     // guard rejects junk transcripts regardless of duration. Short legitimate
@@ -981,27 +1051,39 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     // be blocked behind a confirm popup.
     stopTimer();
     const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
+    if (!recorder) {
+      rolloverInProgressRef.current = false;
+      return;
+    }
+
+    const isRollover = mode === "rollover";
+    setUploadMode(isRollover ? "segment" : "final");
+    setRecordState("uploading");
 
     recorder.onstop = async () => {
       const mimeType = recorder.mimeType || chooseMimeType();
       const blob = new Blob(chunksRef.current, { type: mimeType });
       chunksRef.current = [];
-
-      // Tear down the mic stream + graph now that we have all the bytes.
-      teardownMicStream();
-
-      if (blob.size === 0) {
-        setError("Recording appears empty. Please try again.");
-        setRecordState("error");
-        return;
-      }
-
-      const ext = fileExtension(mimeType);
-      const filename = `session-${Date.now()}.${ext}`;
-      setRecordState("uploading");
+      const segmentSeconds = elapsedRef.current;
+      const partIndex = segmentNumber;
 
       try {
+        if (!isRollover) {
+          teardownMicStream();
+        }
+
+        if (blob.size === 0) {
+          setError("Recording appears empty. Please try again.");
+          setUploadMode(null);
+          if (isRollover) teardownMicStream();
+          setRecordState("error");
+          rolloverInProgressRef.current = false;
+          return;
+        }
+
+        const ext = fileExtension(mimeType);
+        const filename = `session-${Date.now()}-part${partIndex}.${ext}`;
+
         const runUpload = () => {
           const fd = new FormData();
           fd.append("file", new File([blob], filename, { type: mimeType }));
@@ -1015,12 +1097,37 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
         if (!result.ok) {
           setError(formatUserFacingActionError(result.error, result.debugId));
+          setUploadMode(null);
+          teardownMicStream();
           setRecordState("error");
+          rolloverInProgressRef.current = false;
           return;
         }
 
-        setRecordState("done");
         const previewUrl = URL.createObjectURL(blob);
+
+        if (isRollover) {
+          onRecorded(
+            {
+              blobUrl: result.blobUrl,
+              mimeType,
+              sizeBytes: blob.size,
+              filename,
+              previewUrl,
+            },
+            { autoRollover: true }
+          );
+          setUploadMode(null);
+          mediaRecorderRef.current = null;
+          setSegmentNumber((n) => n + 1);
+          startMediaRecorder({ continuation: true });
+          rolloverInProgressRef.current = false;
+          return;
+        }
+
+        setDoneSegmentSeconds(segmentSeconds);
+        setUploadMode(null);
+        setRecordState("done");
         onRecorded({
           blobUrl: result.blobUrl,
           mimeType,
@@ -1028,10 +1135,14 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
           filename,
           previewUrl,
         });
+        rolloverInProgressRef.current = false;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed";
         setError(msg);
+        setUploadMode(null);
+        teardownMicStream();
         setRecordState("error");
+        rolloverInProgressRef.current = false;
       }
     };
 
@@ -1047,7 +1158,12 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     chunksRef.current = [];
     elapsedRef.current = 0;
     setElapsed(0);
+    totalSessionElapsedRef.current = 0;
     approachingCapSoundPlayedRef.current = false;
+    rolloverInProgressRef.current = false;
+    setSegmentNumber(1);
+    setUploadMode(null);
+    setDoneSegmentSeconds(0);
     setError(null);
     setRecordState("idle");
 
@@ -1066,9 +1182,16 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     })();
   }
 
-  const isWarning = elapsed >= WARN_AT_SECONDS;
-  const isLive = recordState === "ready" || recordState === "recording" || recordState === "paused";
-  const lockDevice = recordState === "recording" || recordState === "paused";
+  const isWarning = elapsed >= WARN_SEGMENT_SECONDS;
+  const isLive =
+    recordState === "ready" ||
+    recordState === "recording" ||
+    recordState === "paused" ||
+    (recordState === "uploading" && uploadMode === "segment");
+  const lockDevice =
+    recordState === "recording" ||
+    recordState === "paused" ||
+    (recordState === "uploading" && uploadMode === "segment");
 
   // ----- Done / uploading short-circuits (no controls panel) -----
 
@@ -1087,7 +1210,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         data-testid="audio-record-done"
       >
         <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, fontSize: 14 }}>
-          ✓ Recording saved ({formatDuration(elapsed)})
+          ✓ Recording saved ({formatDuration(doneSegmentSeconds)})
         </span>
         <button
           type="button"
@@ -1101,7 +1224,47 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     );
   }
 
-  if (recordState === "uploading") {
+  if (recordState === "uploading" && uploadMode === "segment") {
+    const hintSeg = "Saving this segment — recording will resume automatically.";
+    return (
+      <div data-testid="audio-record-panel">
+        <MicControls
+          meterBarRef={meterBarRef}
+          devices={devices}
+          selectedDeviceId={selectedDeviceId}
+          onDeviceChange={handleDeviceChange}
+          gainLinear={gainLinear}
+          onGainChange={setGainLinear}
+          isLive={isLive}
+          lockDevice={lockDevice}
+          hint={hintSeg}
+          chimeEnabled={chimeEnabled}
+          onChimeEnabledChange={setChimeEnabled}
+          chimeVolume={chimeVolume}
+          onChimeVolumeChange={setChimeVolume}
+        />
+        <div data-testid="audio-record-uploading-segment" style={{ marginTop: 10 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
+            Saving segment {segmentNumber}… you&apos;ll keep recording in a moment.
+          </p>
+          <div style={{ height: 6, background: "var(--color-border, #e5e7eb)", borderRadius: 3, overflow: "hidden" }}>
+            <div
+              style={{
+                height: "100%",
+                width: "40%",
+                background: "var(--color-primary, #2563eb)",
+                borderRadius: 3,
+                animation: "uploadSweepSeg 1.2s ease-in-out infinite",
+              }}
+            />
+          </div>
+          <style>{`@keyframes uploadSweepSeg { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
+  if (recordState === "uploading" && uploadMode !== "segment") {
     return (
       <div data-testid="audio-record-uploading">
         <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
@@ -1183,7 +1346,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
             {recordState === "ready"
               ? "Speak — watch the level bar — then click Start."
-              : "Up to 90 minutes. Speak for at least 15 seconds."}
+              : `Long sessions auto-save every ~${Math.round(SEGMENT_MAX_SECONDS / 60)} min so you can keep recording. Speak at least 15–20 seconds per segment when possible.`}
           </span>
         </div>
       )}
@@ -1206,7 +1369,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
             />
             <span
               aria-live="polite"
-              aria-label={`Recording duration: ${formatDuration(elapsed)}`}
+              aria-label={`Segment ${segmentNumber}, duration ${formatDuration(elapsed)}`}
               style={{
                 fontVariantNumeric: "tabular-nums",
                 fontWeight: 600,
@@ -1214,11 +1377,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
                 color: isWarning ? "var(--color-error, #dc2626)" : undefined,
               }}
             >
-              {formatDuration(elapsed)}
+              Part {segmentNumber} · {formatDuration(elapsed)}
             </span>
             {isWarning && (
               <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                5 min remaining — will auto-stop at 90 min
+                ~5 min left in this segment — will save &amp; continue automatically
               </span>
             )}
             <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
@@ -1251,7 +1414,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
             <button
               type="button"
               className="btn primary"
-              onClick={stopAndUpload}
+              onClick={() => stopAndUpload("final")}
               aria-label="Stop and save recording"
               data-testid="audio-record-stop"
             >

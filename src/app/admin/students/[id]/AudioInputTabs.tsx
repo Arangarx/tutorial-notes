@@ -19,7 +19,7 @@ type Props = {
   studentId: string;
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  onAudioReady: (audio: AudioResult) => void;
+  onAudioReady: (audio: AudioResult, meta?: { keepRecorderMounted?: boolean }) => void;
   onAudioCleared: () => void;
   /** Called when a recording starts/stops so the parent can disable the Transcribe button. */
   onRecordingActive?: (active: boolean) => void;
@@ -44,9 +44,12 @@ export default function AudioInputTabs({
     onAudioReady(audio);
   }
 
-  function handleRecorded(audio: RecordedAudio) {
+  function handleRecorded(
+    audio: RecordedAudio,
+    meta?: { autoRollover?: boolean }
+  ) {
     setHasAudio(true);
-    onAudioReady(audio);
+    onAudioReady(audio, { keepRecorderMounted: !!meta?.autoRollover });
   }
 
   function switchTab(tab: Tab) {

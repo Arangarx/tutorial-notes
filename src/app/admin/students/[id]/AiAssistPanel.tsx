@@ -241,10 +241,16 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setTimeout(() => textareaRef.current?.focus(), 0);
   }
 
-  function handleAudioReady(audio: AudioResult) {
+  function handleAudioReady(
+    audio: AudioResult,
+    meta?: { keepRecorderMounted?: boolean }
+  ) {
     setPendingAudios((prev) => [...prev, audio]);
-    // Reset the input tabs so the tutor can add another segment.
-    setAudioTabsKey((k) => k + 1);
+    // Remount the audio tabs after a normal upload/record so the input resets.
+    // Auto-rollover segments append without remounting so the mic stays hot.
+    if (!meta?.keepRecorderMounted) {
+      setAudioTabsKey((k) => k + 1);
+    }
   }
 
   function handleRemoveSegment(index: number) {

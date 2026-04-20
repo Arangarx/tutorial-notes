@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { formatUserFacingActionError } from "@/lib/action-correlation";
 import { generateNoteFromTextAction, transcribeAndGenerateAction } from "./actions";
 import type { NewNoteFormHandle } from "./NewNoteForm";
 import AudioInputTabs, { type AudioResult } from "./AudioInputTabs";
@@ -155,20 +156,28 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
-      const result = await generateNoteFromTextAction(studentId, sessionText);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await generateNoteFromTextAction(studentId, sessionText);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        formRef.current?.populate({
+          topics: result.topics,
+          homework: result.homework,
+          nextSteps: result.nextSteps,
+          links: result.links,
+          promptVersion: result.promptVersion,
+          recordingIds: [],
+        });
+        setPanelState("filled");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[AiAssistPanel] generateNoteFromTextAction threw:", err);
+        setError(
+          `Request failed before the server finished (${msg}). Check your connection and try again.`
+        );
       }
-      formRef.current?.populate({
-        topics: result.topics,
-        homework: result.homework,
-        nextSteps: result.nextSteps,
-        links: result.links,
-        promptVersion: result.promptVersion,
-        recordingIds: [],
-      });
-      setPanelState("filled");
     });
   }
 
@@ -179,24 +188,37 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
-      const result = await transcribeAndGenerateAction(
-        studentId,
-        pendingAudios.map((a) => ({ blobUrl: a.blobUrl, mimeType: a.mimeType }))
-      );
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const payload = pendingAudios.map((a) => ({ blobUrl: a.blobUrl, mimeType: a.mimeType }));
+        let result = await transcribeAndGenerateAction(studentId, payload);
+        if (
+          !result.ok &&
+          /brief database|database hiccup/i.test(result.error)
+        ) {
+          await new Promise((r) => setTimeout(r, 700));
+          result = await transcribeAndGenerateAction(studentId, payload);
+        }
+        if (!result.ok) {
+          setError(formatUserFacingActionError(result.error, result.debugId));
+          return;
+        }
+        formRef.current?.populate({
+          topics: result.topics,
+          homework: result.homework,
+          nextSteps: result.nextSteps,
+          links: result.links,
+          promptVersion: result.promptVersion,
+          recordingIds: result.recordingIds,
+        });
+        if (result.warning) setWarning(result.warning);
+        setPanelState("filled");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[AiAssistPanel] transcribeAndGenerateAction threw:", err);
+        setError(
+          `Request failed before the server finished (${msg}). On iPhone, try the Upload tab instead of Record, or use Wi‑Fi.`
+        );
       }
-      formRef.current?.populate({
-        topics: result.topics,
-        homework: result.homework,
-        nextSteps: result.nextSteps,
-        links: result.links,
-        promptVersion: result.promptVersion,
-        recordingIds: result.recordingIds,
-      });
-      if (result.warning) setWarning(result.warning);
-      setPanelState("filled");
     });
   }
 

@@ -16,6 +16,11 @@ import {
   buildTranscribeAndGenerateResult,
   type TranscribeAndGenerateResult,
 } from "./transcribe-result";
+import { createActionCorrelationId } from "@/lib/action-correlation";
+import { looksLikeSilenceHallucination } from "@/lib/whisper-guardrails";
+
+const HALLUCINATION_MIC_MESSAGE =
+  "We couldn't detect clear speech in this recording. Whisper sometimes invents text when the mic picks up silence or the wrong device. Check the browser's microphone permission, choose the correct input, speak for at least 15–20 seconds, then try again. You can also use Upload and pick a file from another recorder.";
 
 // Re-export for callers that still import the type from this module.
 export type { TranscribeAndGenerateResult };
@@ -266,43 +271,60 @@ export async function transcribeAndGenerateAction(
   studentId: string,
   recordings: Array<{ blobUrl: string; mimeType: string }>
 ): Promise<TranscribeAndGenerateResult> {
+  const rid = createActionCorrelationId();
+  console.log(
+    `[transcribeAndGenerateAction] rid=${rid} studentId=${studentId} segments=${recordings.length} begin`
+  );
   try {
-    return await _transcribeAndGenerateImpl(studentId, recordings);
+    const out = await _transcribeAndGenerateImpl(studentId, recordings, rid);
+    if (out.ok) {
+      console.log(`[transcribeAndGenerateAction] rid=${rid} ok recordingIds=${out.recordingIds.length}`);
+    } else {
+      console.warn(`[transcribeAndGenerateAction] rid=${rid} returned ok:false`, out.error);
+    }
+    return out;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[transcribeAndGenerateAction] unhandled error:", msg);
+    console.error(`[transcribeAndGenerateAction] rid=${rid} thrown:`, msg);
     if (isTransientDbConnectionError(err)) {
       return {
         ok: false,
         error:
           "Brief database hiccup during transcription. Your recording is saved — please click Transcribe & generate notes again.",
+        debugId: rid,
       };
     }
     return {
       ok: false,
       error: `Server error during transcription: ${msg}. Please try again.`,
+      debugId: rid,
     };
   }
 }
 
+function transcribeFail(rid: string, error: string): TranscribeAndGenerateResult {
+  return { ok: false, error, debugId: rid };
+}
+
 async function _transcribeAndGenerateImpl(
   studentId: string,
-  recordings: Array<{ blobUrl: string; mimeType: string }>
+  recordings: Array<{ blobUrl: string; mimeType: string }>,
+  rid: string
 ): Promise<TranscribeAndGenerateResult> {
   const scope = await requireStudentScope();
   if (scope.kind === "env") {
-    return { ok: false, error: "Audio features require a DB-backed tutor account." };
+    return transcribeFail(rid, "Audio features require a DB-backed tutor account.");
   }
   await assertOwnsStudent(studentId);
 
   if (recordings.length === 0) {
-    return { ok: false, error: "No recordings provided." };
+    return transcribeFail(rid, "No recordings provided.");
   }
 
   // Validate all URLs look like Vercel Blob URLs (defence in depth).
   for (const rec of recordings) {
     if (!rec.blobUrl.includes("blob.vercel-storage.com")) {
-      return { ok: false, error: "Invalid audio URL." };
+      return transcribeFail(rid, "Invalid audio URL.");
     }
   }
 
@@ -322,6 +344,8 @@ async function _transcribeAndGenerateImpl(
   // Process each segment: create DB row, download, transcribe, persist transcript.
   const createdRecordingIds: string[] = [];
   const transcriptParts: string[] = [];
+  /** Last segment's Whisper-reported duration (used for late hallucination checks). */
+  let lastWhisperDurationSeconds: number | null = null;
 
   for (let i = 0; i < recordings.length; i++) {
     const { blobUrl, mimeType } = recordings[i];
@@ -334,7 +358,10 @@ async function _transcribeAndGenerateImpl(
       sizeBytes = meta.size;
       resolvedMimeType = meta.contentType || mimeType;
     } catch {
-      return { ok: false, error: `Could not reach audio file${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try uploading again.` };
+      return transcribeFail(
+        rid,
+        `Could not reach audio file${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try uploading again.`
+      );
     }
 
     // Create the recording row early so we have its ID even if transcription fails.
@@ -370,8 +397,11 @@ async function _transcribeAndGenerateImpl(
         { label: "deleteSessionRecording" }
       ).catch(() => undefined);
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[transcribeAndGenerate] download failed:", msg);
-      return { ok: false, error: `Could not download audio for transcription${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try again.` };
+      console.error(`[transcribeAndGenerate] rid=${rid} download failed:`, msg);
+      return transcribeFail(
+        rid,
+        `Could not download audio for transcription${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try again.`
+      );
     }
 
     // Transcribe via Whisper.
@@ -382,10 +412,37 @@ async function _transcribeAndGenerateImpl(
 
     if ("error" in transcribeResult) {
       if (transcribeResult.error === "not configured") {
-        return { ok: false, error: "AI transcription is not configured on this server." };
+        return transcribeFail(rid, "AI transcription is not configured on this server.");
       }
-      return { ok: false, error: transcribeResult.error };
+      return transcribeFail(rid, transcribeResult.error);
     }
+
+    if (
+      looksLikeSilenceHallucination(
+        transcribeResult.transcript,
+        transcribeResult.durationSeconds
+      )
+    ) {
+      console.warn(
+        `[transcribeAndGenerate] rid=${rid} likely silence/mic hallucination blocked`,
+        JSON.stringify({
+          segment: i + 1,
+          transcriptChars: transcribeResult.transcript.length,
+          durationSeconds: transcribeResult.durationSeconds,
+        })
+      );
+      await deleteBlob(blobUrl).catch(() => undefined);
+      await withDbRetry(
+        () => db.sessionRecording.delete({ where: { id: recording.id } }),
+        { label: "deleteSessionRecordingHallucination" }
+      ).catch(() => undefined);
+      return transcribeFail(
+        rid,
+        HALLUCINATION_MIC_MESSAGE
+      );
+    }
+
+    lastWhisperDurationSeconds = transcribeResult.durationSeconds;
 
     // Persist transcript + duration on the recording row.
     await withDbRetry(
@@ -416,7 +473,7 @@ async function _transcribeAndGenerateImpl(
 
   if (!trimmed) {
     console.warn(
-      "[transcribeAndGenerate] empty transcript",
+      `[transcribeAndGenerate] rid=${rid} empty transcript`,
       JSON.stringify({ recordingIds: createdRecordingIds, segments: recordings.length })
     );
     return buildTranscribeAndGenerateResult({
@@ -424,6 +481,7 @@ async function _transcribeAndGenerateImpl(
       trimmedTranscript: "",
       rawTranscript,
       genResult: null,
+      debugId: rid,
     });
   }
 
@@ -469,6 +527,27 @@ async function _transcribeAndGenerateImpl(
         "[transcribeAndGenerate] AI returned all-empty fields",
         JSON.stringify({ recordingIds: createdRecordingIds, transcriptChars: trimmed.length })
       );
+      // Defense in depth: if the structuring model returns nothing but the transcript is still
+      // obvious Whisper junk (e.g. older deploys, or a rare Unicode edge case on the pre-persist check),
+      // fail like the early guard — delete blobs + rows so tutors don't save junk in Topics.
+      if (looksLikeSilenceHallucination(trimmed, lastWhisperDurationSeconds)) {
+        console.warn(
+          `[transcribeAndGenerate] rid=${rid} late hallucination after all-empty LLM`,
+          JSON.stringify({
+            recordingIds: createdRecordingIds,
+            transcriptChars: trimmed.length,
+            durationSeconds: lastWhisperDurationSeconds,
+          })
+        );
+        for (let j = 0; j < recordings.length; j++) {
+          await deleteBlob(recordings[j].blobUrl).catch(() => undefined);
+          await withDbRetry(
+            () => db.sessionRecording.delete({ where: { id: createdRecordingIds[j] } }),
+            { label: "deleteSessionRecordingLateHallucination" }
+          ).catch(() => undefined);
+        }
+        return transcribeFail(rid, HALLUCINATION_MIC_MESSAGE);
+      }
     }
   }
 
@@ -479,6 +558,7 @@ async function _transcribeAndGenerateImpl(
     genResult,
   });
 }
+
 
 export async function setNoteStatus(noteId: string, studentId: string, status: "DRAFT" | "READY") {
   await assertOwnsStudent(studentId);
@@ -643,23 +723,29 @@ ${noteCount > 1 ? `This email shows only the most recent session. Open the link 
  */
 type UploadAudioResult =
   | { ok: true; blobUrl: string; mimeType: string; sizeBytes: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; debugId?: string };
 
 export async function uploadAudioAction(
   studentId: string,
   formData: FormData
 ): Promise<UploadAudioResult> {
+  const rid = createActionCorrelationId();
+  console.log(`[uploadAudioAction] rid=${rid} studentId=${studentId} begin`);
   try {
     // assertOwnsStudent already retries on transient DB connection drops.
     await assertOwnsStudent(studentId);
 
     const file = formData.get("file");
-    if (!(file instanceof File)) return { ok: false, error: "No file provided." };
+    if (!(file instanceof File)) {
+      console.warn(`[uploadAudioAction] rid=${rid} no file in FormData`);
+      return { ok: false, error: "No file provided.", debugId: rid };
+    }
 
     if (file.size > BLOB_MAX_BYTES) {
       return {
         ok: false,
         error: `Recording is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB. Try a shorter session, or split it into multiple recordings.`,
+        debugId: rid,
       };
     }
 
@@ -675,28 +761,32 @@ export async function uploadAudioAction(
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[uploadAudioAction] Vercel Blob put failed:", msg);
+      console.error(`[uploadAudioAction] rid=${rid} Vercel Blob put failed:`, msg);
       return {
         ok: false,
         error:
           "Could not save the recording to storage (server-side upload error). Please try again. If this keeps happening, switch to the Upload tab and pick the file directly.",
+        debugId: rid,
       };
     }
 
+    console.log(`[uploadAudioAction] rid=${rid} ok sizeBytes=${file.size} mime=${mimeType}`);
     return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[uploadAudioAction] unhandled error:", msg);
+    console.error(`[uploadAudioAction] rid=${rid} unhandled error:`, msg);
     if (isTransientDbConnectionError(err)) {
       return {
         ok: false,
         error:
           "Brief database hiccup while saving the recording. Please try Stop & save again — your audio is still in the browser.",
+        debugId: rid,
       };
     }
     return {
       ok: false,
       error: `Server error while saving recording: ${msg}. Please try again.`,
+      debugId: rid,
     };
   }
 }

@@ -7,7 +7,9 @@
  *
  * Sarah's bug: previously, both the empty-transcript and gen-failure branches
  * of the action returned `ok:true` with empty fields, so the panel said
- * "Form filled" with nothing in the form. This helper now:
+ * "Form filled" with nothing in the form. The server action may also return
+ * `ok:false` before this helper when obvious Whisper junk is detected after an
+ * all-empty LLM response (late guard in `actions.ts`). This helper now:
  *   - empty transcript            -> ok:false with actionable error
  *   - AI gen errors / all-empty   -> ok:true with raw transcript in `topics`
  *                                    + a `warning` so the tutor can hand-edit
@@ -35,7 +37,7 @@ export type TranscribeAndGenerateResult =
        */
       warning?: string;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; /** Same id as Vercel log line `rid=` for this run. */ debugId?: string };
 
 export function buildTranscribeAndGenerateResult(args: {
   recordingIds: string[];
@@ -45,14 +47,17 @@ export function buildTranscribeAndGenerateResult(args: {
     | { topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
     | { error: string }
     | null;
+  /** When `ok:false`, included so tutors can match Vercel logs. */
+  debugId?: string;
 }): TranscribeAndGenerateResult {
-  const { recordingIds, trimmedTranscript, rawTranscript, genResult } = args;
+  const { recordingIds, trimmedTranscript, rawTranscript, genResult, debugId } = args;
 
   if (!trimmedTranscript) {
     return {
       ok: false,
       error:
         "We couldn't make out any words in this recording. The audio may have been silent or too quiet. Try recording again with the mic closer, then click Transcribe & generate notes.",
+      ...(debugId ? { debugId } : {}),
     };
   }
 

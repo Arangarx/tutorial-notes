@@ -40,7 +40,7 @@ jest.mock("@/lib/db", () => ({
       delete: (...args: unknown[]) => mockRecordingDelete(...args),
     },
   },
-  withDbRetry: (fn: () => unknown) => fn(),
+  withDbRetry: (fn: () => unknown) => Promise.resolve(fn()),
   isTransientDbConnectionError: () => false,
 }));
 
@@ -57,10 +57,12 @@ jest.mock("@/lib/ai", () => ({
   MAX_INPUT_TOKENS: 4000,
 }));
 
+/** Must return a Promise — production code chains `.catch` on deleteBlob. */
+const mockDeleteBlob = jest.fn((..._args: unknown[]) => Promise.resolve(undefined));
 jest.mock("@/lib/blob", () => ({
   getAudioUrl: jest.fn().mockReturnValue("https://test.public.blob.vercel-storage.com/audio.webm?download=1"),
   getBlobMetadata: jest.fn().mockResolvedValue({ size: 1024, contentType: "audio/webm" }),
-  deleteBlob: jest.fn().mockResolvedValue(undefined),
+  deleteBlob: (...args: unknown[]) => mockDeleteBlob(...args),
   isBlobConfigured: jest.fn().mockReturnValue(true),
   isAcceptedAudioType: jest.fn().mockReturnValue(true),
   BLOB_MAX_BYTES: 100 * 1024 * 1024,
@@ -83,6 +85,7 @@ const BLOB_URL = "https://abc123.public.blob.vercel-storage.com/session.webm";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockDeleteBlob.mockImplementation((..._args: unknown[]) => Promise.resolve(undefined));
 
   mockGetServerSession.mockResolvedValue({ user: { email: USER_A_EMAIL } });
   mockGetAdminByEmail.mockResolvedValue({ id: USER_A_ID, email: USER_A_EMAIL });
@@ -178,7 +181,13 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
 
     // Empty transcript → ok:false with an actionable error message (not a silent "Form filled"
     // with blank fields — that was Sarah's original bug, fixed in transcribe-result.ts).
-    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/silent|too quiet|couldn't make out/i) });
+    expect(result).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/couldn't detect clear speech|microphone permission/i),
+    });
     expect(mockGenerateSessionNote).not.toHaveBeenCalled();
+    expect(mockDeleteBlob).toHaveBeenCalled();
+    expect(mockRecordingDelete).toHaveBeenCalled();
   });
+
 });

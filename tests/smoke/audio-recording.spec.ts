@@ -48,11 +48,35 @@ test("audio recording — preview appears without console errors", async ({
   // 1. Mock getUserMedia — no real mic needed
   // ------------------------------------------------------------------
   await guardedPage.addInitScript(() => {
-    const silentStream = { getTracks: () => [{ stop: () => {} }] } as unknown as MediaStream;
+    // Fake audio track exposes the API surface the recorder reads (label, getSettings).
+    const fakeTrack = {
+      kind: "audio",
+      label: "Mock Microphone",
+      stop: () => {},
+      getSettings: () => ({ deviceId: "mock-default" }),
+    };
+    const silentStream = {
+      getTracks: () => [fakeTrack],
+      getAudioTracks: () => [fakeTrack],
+    } as unknown as MediaStream;
+
     Object.defineProperty(navigator, "mediaDevices", {
       writable: true,
+      configurable: true,
       value: {
         getUserMedia: () => Promise.resolve(silentStream),
+        enumerateDevices: () =>
+          Promise.resolve([
+            {
+              kind: "audioinput",
+              deviceId: "mock-default",
+              label: "Mock Microphone",
+              groupId: "",
+              toJSON: () => ({}),
+            } as MediaDeviceInfo,
+          ]),
+        addEventListener: () => {},
+        removeEventListener: () => {},
       },
     });
   });

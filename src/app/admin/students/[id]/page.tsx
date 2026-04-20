@@ -15,6 +15,12 @@ import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Whisper + LLM can exceed default ~10s serverless limits.
+ * Vercel caps this by plan (e.g. 60s Hobby, 300s Pro) — higher values are clamped.
+ */
+export const maxDuration = 120;
+
 export default async function StudentDetailPage({
   params,
 }: {

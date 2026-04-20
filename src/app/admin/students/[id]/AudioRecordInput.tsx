@@ -70,20 +70,33 @@ export type RecordedAudio = {
 type Props = {
   studentId: string;
   onRecorded: (audio: RecordedAudio) => void;
-  /** Called whenever the recording active state changes (requesting/preview/recording/paused/uploading = true). */
+  /** Called whenever the recording active state changes (acquiring/ready/recording/paused/uploading = true). */
   onRecordingActive?: (active: boolean) => void;
   disabled?: boolean;
 };
 
+/**
+ * State machine:
+ *   idle       — controls visible but mic not acquired (no permission yet, or permission prompt)
+ *   acquiring  — getUserMedia is in flight
+ *   ready      — mic hot, meter live, picker populated; primary action = start recording
+ *   recording  — MediaRecorder active
+ *   paused     — MediaRecorder paused
+ *   uploading  — POST in flight
+ *   done       — success card
+ *   error      — error card with retry
+ */
 type RecordState =
   | "idle"
-  | "requesting"
-  | "preview"
+  | "acquiring"
+  | "ready"
   | "recording"
   | "paused"
   | "uploading"
   | "done"
   | "error";
+
+const ACTIVE_STATES: RecordState[] = ["acquiring", "ready", "recording", "paused", "uploading"];
 
 function loadStoredGain(): number {
   if (typeof window === "undefined") return GAIN_DEFAULT;
@@ -107,24 +120,205 @@ function meterColor(level: number): string {
   return "var(--color-muted, #9ca3af)";
 }
 
+/**
+ * Best-effort check of whether the page already has mic permission. Used to
+ * decide whether to silently acquire on mount or wait for an explicit user
+ * gesture. Returns "granted" | "prompt" | "denied" | "unknown".
+ *
+ * The Permissions API for "microphone" is not implemented in every browser
+ * (notably older Safari), so we treat any failure as "unknown" and fall back
+ * to the prompt-on-Start path.
+ */
+async function queryMicPermission(): Promise<"granted" | "prompt" | "denied" | "unknown"> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) {
+      return "unknown";
+    }
+    // The "microphone" name isn't in the typed PermissionName union in some TS
+    // lib targets, but it's the de facto standard. Cast to keep types happy.
+    const status = await navigator.permissions.query({
+      name: "microphone" as PermissionName,
+    });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+}
+
+// =====================================================================
+// MicControls — hoisted to module scope so its identity is stable across
+// parent re-renders. If this is defined inside the parent function, every
+// parent render creates a NEW component type, React unmounts/remounts the
+// subtree, and the slider drag is killed mid-gesture.
+// =====================================================================
+
+type MicControlsProps = {
+  /** Reference to the meter fill <div> so we can update its width/colour without re-rendering. */
+  meterBarRef: React.RefObject<HTMLDivElement | null>;
+  devices: MediaDeviceInfo[];
+  selectedDeviceId: string;
+  onDeviceChange: (deviceId: string) => void;
+  gainLinear: number;
+  onGainChange: (gain: number) => void;
+  /** True when mic is hot (graph running) — controls are enabled, meter is live. */
+  isLive: boolean;
+  /** True during recording/paused — picker is locked but slider stays live. */
+  lockDevice: boolean;
+  /** Optional message shown when mic isn't yet acquired. */
+  hint?: string;
+};
+
+function MicControls({
+  meterBarRef,
+  devices,
+  selectedDeviceId,
+  onDeviceChange,
+  gainLinear,
+  onGainChange,
+  isLive,
+  lockDevice,
+  hint,
+}: MicControlsProps) {
+  const pickerDisabled = lockDevice || (!isLive && devices.length === 0);
+  const sliderDisabled = !isLive;
+
+  return (
+    <div
+      data-testid="mic-controls"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: "10px 12px",
+        marginBottom: 12,
+        background: "var(--color-bg-subtle, #f9fafb)",
+        border: "1px solid var(--color-border, #e5e7eb)",
+        borderRadius: 6,
+      }}
+    >
+      {/* Device picker */}
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+        <span style={{ minWidth: 80, color: "var(--color-muted, #6b7280)" }}>Mic:</span>
+        <select
+          data-testid="mic-device-select"
+          value={selectedDeviceId}
+          disabled={pickerDisabled}
+          onChange={(e) => onDeviceChange(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "4px 8px",
+            fontSize: 13,
+            border: "1px solid var(--color-border, #d1d5db)",
+            borderRadius: 4,
+            background: "var(--color-bg, #fff)",
+          }}
+        >
+          {devices.length === 0 ? (
+            <option value="">{isLive ? "(default microphone)" : "(allow mic access to choose)"}</option>
+          ) : (
+            devices.map((d, i) => (
+              <option key={d.deviceId || `default-${i}`} value={d.deviceId}>
+                {d.label || `Microphone ${i + 1}`}
+              </option>
+            ))
+          )}
+        </select>
+      </label>
+
+      {/* Gain slider */}
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+        <span style={{ minWidth: 80, color: "var(--color-muted, #6b7280)" }}>Browser boost:</span>
+        <input
+          data-testid="mic-gain-slider"
+          type="range"
+          min={GAIN_MIN}
+          max={GAIN_MAX}
+          step={0.05}
+          value={gainLinear}
+          onChange={(e) => onGainChange(parseFloat(e.target.value))}
+          disabled={sliderDisabled}
+          style={{ flex: 1 }}
+          aria-label="Browser boost"
+        />
+        <span
+          style={{
+            minWidth: 44,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 12,
+            color: "var(--color-muted, #6b7280)",
+          }}
+        >
+          {gainLinear.toFixed(2)}×
+        </span>
+      </label>
+
+      {/* Level meter */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ minWidth: 80, fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
+          Level:
+        </span>
+        <div
+          data-testid="mic-level-meter"
+          aria-label="Microphone input level"
+          role="meter"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          style={{
+            flex: 1,
+            height: 10,
+            background: "var(--color-border, #e5e7eb)",
+            borderRadius: 5,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {/* This bar is updated imperatively via meterBarRef in the rAF loop —
+              never via React state — so the meter doesn't re-render the slider
+              60 times a second and break drag. */}
+          <div
+            ref={meterBarRef}
+            style={{
+              width: "0%",
+              height: "100%",
+              background: meterColor(0),
+              transition: "width 80ms linear, background 200ms linear",
+            }}
+          />
+        </div>
+      </div>
+
+      {hint && (
+        <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
+          {hint}
+        </p>
+      )}
+
+      <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
+        Speak normally — aim for the bar to land in the green when talking. The browser cannot change
+        your <strong>Windows / system mic level</strong>; if the bar stays grey even at 3.00× boost,
+        open <em>Settings → System → Sound → Input</em> and raise the level there (or pick a different
+        mic in the dropdown above).
+      </p>
+    </div>
+  );
+}
+
+// =====================================================================
+// AudioRecordInput
+// =====================================================================
+
 export default function AudioRecordInput({ studentId, onRecorded, onRecordingActive, disabled }: Props) {
   const [recordState, setRecordState] = useState<RecordState>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Mic setup state
-  /** Audio input devices we can show in the picker — populated after permission grant. */
+  /** Audio input devices populated after permission grant. */
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   /** Currently selected deviceId (empty string = browser default). */
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  /** Label of the actual track in use (may differ from selected if "default" was used). */
-  const [activeDeviceLabel, setActiveDeviceLabel] = useState<string>("");
   /** Digital gain applied in the browser before MediaRecorder. NOT a substitute for OS mic level. */
   const [gainLinear, setGainLinear] = useState<number>(GAIN_DEFAULT);
-  /** Smoothed RMS 0..1 for the level meter. */
-  const [meterLevel, setMeterLevel] = useState<number>(0);
-  /** True when we have a Web Audio graph running (meter visible, slider effective). */
-  const [graphActive, setGraphActive] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -133,8 +327,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-
-  const ACTIVE_STATES: RecordState[] = ["requesting", "preview", "recording", "paused", "uploading"];
+  const meterBarRef = useRef<HTMLDivElement | null>(null);
+  /** Tracks the latest meter colour so we don't thrash style.background every frame. */
+  const meterColorRef = useRef<string>(meterColor(0));
+  /** Snapshot of "did we already try the auto-acquire on mount" so React Strict Mode double-invokes don't double-prompt. */
+  const autoAcquireAttemptedRef = useRef(false);
 
   // Load persisted prefs after mount (avoid SSR/hydration mismatch).
   useEffect(() => {
@@ -155,6 +352,28 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     }
     graphRef.current?.setGain(gainLinear);
   }, [gainLinear]);
+
+  // Auto-acquire on mount if the page already has mic permission.
+  // Avoids surprise prompts: only silent-acquires when Permissions API confirms grant.
+  useEffect(() => {
+    if (autoAcquireAttemptedRef.current) return;
+    autoAcquireAttemptedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      const state = await queryMicPermission();
+      if (cancelled) return;
+      if (state === "granted") {
+        await acquireMic({
+          deviceId: loadStoredDeviceId() || undefined,
+          forRecording: false,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -177,22 +396,24 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-    setMeterLevel(0);
+    // Reset the bar to empty/grey via the ref (no re-render).
+    if (meterBarRef.current) {
+      meterBarRef.current.style.width = "0%";
+      meterBarRef.current.style.background = meterColor(0);
+    }
+    meterColorRef.current = meterColor(0);
   }
 
   function teardownMicStream() {
     stopMeter();
-    // Graph dispose stops mic tracks AND closes audio context.
     graphRef.current?.dispose();
     graphRef.current = null;
-    // Belt-and-suspenders: stop any remaining tracks (raw-stream fallback path).
     try {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     } catch {
       /* ignore */
     }
     streamRef.current = null;
-    setGraphActive(false);
   }
 
   function startTimer() {
@@ -207,10 +428,25 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     }, 1000);
   }
 
+  /**
+   * Drive the meter bar via DOM ref — never via setState. A meter that ticks
+   * 60 times/sec via state would re-render the entire panel every frame; the
+   * slider's drag gesture would get cancelled by the unmount, and CPU usage
+   * would be embarrassing.
+   */
   function startMeter(graph: MicAudioGraph) {
     stopMeter();
     const tick = () => {
-      setMeterLevel(graph.getLevel());
+      const level = graph.getLevel();
+      const bar = meterBarRef.current;
+      if (bar) {
+        bar.style.width = `${Math.round(level * 100)}%`;
+        const next = meterColor(level);
+        if (next !== meterColorRef.current) {
+          bar.style.background = next;
+          meterColorRef.current = next;
+        }
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -224,7 +460,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   async function acquireMic(opts: { deviceId?: string; forRecording: boolean }) {
     setError(null);
     teardownMicStream();
-    setRecordState("requesting");
+    setRecordState("acquiring");
 
     let stream: MediaStream;
     try {
@@ -251,7 +487,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
           }
           setSelectedDeviceId("");
           msg =
-            "The previously selected microphone is no longer available. Tap Test microphone again to pick a different one.";
+            "The previously selected microphone is no longer available. Try clicking Start recording again to use the default mic.";
         } else {
           msg = "Microphone constraints not satisfied. Try choosing a different device.";
         }
@@ -265,7 +501,6 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
     streamRef.current = stream;
     const audioTrack = stream.getAudioTracks?.()[0];
-    setActiveDeviceLabel(audioTrack?.label?.trim() ?? "");
 
     // Persist the actual deviceId in use (browsers sometimes resolve "default" to a real id).
     const settings = audioTrack?.getSettings?.();
@@ -289,14 +524,13 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     graphRef.current = graph;
 
     if (graph) {
-      setGraphActive(true);
       startMeter(graph);
     }
 
     if (opts.forRecording) {
       startMediaRecorder();
     } else {
-      setRecordState("preview");
+      setRecordState("ready");
     }
   }
 
@@ -340,13 +574,14 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     startTimer();
   }
 
-  async function handleTestMic() {
-    await acquireMic({ deviceId: selectedDeviceId || undefined, forRecording: false });
-  }
-
+  /**
+   * Single primary action. Acquires mic + starts recording in one shot for
+   * first-time users (permission prompt → acquire → record). For users whose
+   * mic was auto-acquired on mount, just starts the recorder reusing the live
+   * graph (no re-prompt, no flicker).
+   */
   async function handleStartRecording() {
-    if ((recordState === "preview") && streamRef.current) {
-      // Mic already running from preview — go straight to recording, reusing graph.
+    if (recordState === "ready" && streamRef.current) {
       startMediaRecorder();
     } else {
       await acquireMic({ deviceId: selectedDeviceId || undefined, forRecording: true });
@@ -359,8 +594,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
       if (newDeviceId) window.localStorage.setItem(STORAGE_DEVICE_KEY, newDeviceId);
       else window.localStorage.removeItem(STORAGE_DEVICE_KEY);
     }
-    // Re-acquire only when previewing (we disable the picker mid-recording).
-    if (recordState === "preview") {
+    // Re-acquire only when ready (we lock the picker mid-recording).
+    if (recordState === "ready") {
       await acquireMic({ deviceId: newDeviceId || undefined, forRecording: false });
     }
   }
@@ -458,137 +693,15 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     elapsedRef.current = 0;
     setElapsed(0);
     setError(null);
-    setActiveDeviceLabel("");
-    setRecordState("idle");
-  }
-
-  function handleStopPreview() {
-    teardownMicStream();
-    setActiveDeviceLabel("");
+    autoAcquireAttemptedRef.current = false; // allow re-attempt on next mount cycle
     setRecordState("idle");
   }
 
   const isWarning = elapsed >= WARN_AT_SECONDS;
+  const isLive = recordState === "ready" || recordState === "recording" || recordState === "paused";
+  const lockDevice = recordState === "recording" || recordState === "paused";
 
-  // ---------- Reusable mic-control panel (picker + slider + meter) -----------
-  // Shown in `preview`, `recording`, and `paused` states. Device picker is locked
-  // during recording/paused; gain slider stays live so tutors can fix levels mid-session.
-  function MicControls({ lockDevice }: { lockDevice: boolean }) {
-    return (
-      <div
-        data-testid="mic-controls"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          padding: "10px 12px",
-          marginBottom: 12,
-          background: "var(--color-bg-subtle, #f9fafb)",
-          border: "1px solid var(--color-border, #e5e7eb)",
-          borderRadius: 6,
-        }}
-      >
-        {/* Device picker */}
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <span style={{ minWidth: 56, color: "var(--color-muted, #6b7280)" }}>Mic:</span>
-          <select
-            data-testid="mic-device-select"
-            value={selectedDeviceId}
-            disabled={lockDevice || devices.length === 0}
-            onChange={(e) => handleDeviceChange(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "4px 8px",
-              fontSize: 13,
-              border: "1px solid var(--color-border, #d1d5db)",
-              borderRadius: 4,
-              background: "var(--color-bg, #fff)",
-            }}
-          >
-            {devices.length === 0 && (
-              <option value="">{activeDeviceLabel || "(default microphone)"}</option>
-            )}
-            {devices.map((d, i) => (
-              <option key={d.deviceId || `default-${i}`} value={d.deviceId}>
-                {d.label || `Microphone ${i + 1}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Gain slider */}
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <span style={{ minWidth: 56, color: "var(--color-muted, #6b7280)" }}>Boost:</span>
-          <input
-            data-testid="mic-gain-slider"
-            type="range"
-            min={GAIN_MIN}
-            max={GAIN_MAX}
-            step={0.05}
-            value={gainLinear}
-            onChange={(e) => setGainLinear(parseFloat(e.target.value))}
-            disabled={!graphActive}
-            style={{ flex: 1 }}
-            aria-label="Microphone boost"
-          />
-          <span
-            style={{
-              minWidth: 44,
-              textAlign: "right",
-              fontVariantNumeric: "tabular-nums",
-              fontSize: 12,
-              color: "var(--color-muted, #6b7280)",
-            }}
-          >
-            {gainLinear.toFixed(2)}×
-          </span>
-        </label>
-
-        {/* Level meter */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ minWidth: 56, fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
-            Level:
-          </span>
-          <div
-            data-testid="mic-level-meter"
-            aria-label="Microphone input level"
-            role="meter"
-            aria-valuenow={Math.round(meterLevel * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            style={{
-              flex: 1,
-              height: 10,
-              background: "var(--color-border, #e5e7eb)",
-              borderRadius: 5,
-              overflow: "hidden",
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                width: `${Math.round(meterLevel * 100)}%`,
-                height: "100%",
-                background: meterColor(meterLevel),
-                transition: "width 80ms linear, background 200ms linear",
-              }}
-            />
-          </div>
-        </div>
-
-        {!graphActive && (
-          <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
-            Live level meter not available in this browser. Recording will still work.
-          </p>
-        )}
-
-        <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
-          Speak normally — aim for the bar to land in the green when talking. If it stays grey, raise
-          your <strong>OS microphone level</strong> too (the boost slider only amplifies in the browser).
-        </p>
-      </div>
-    );
-  }
+  // ----- Done / uploading short-circuits (no controls panel) -----
 
   if (recordState === "done") {
     return (
@@ -638,79 +751,70 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     );
   }
 
+  if (recordState === "error") {
+    return (
+      <div data-testid="audio-record-panel">
+        {error && (
+          <p
+            role="alert"
+            style={{ fontSize: 13, color: "var(--color-error, #dc2626)", margin: "0 0 10px" }}
+            data-testid="audio-record-error"
+          >
+            {error}
+          </p>
+        )}
+        <button type="button" className="btn" onClick={handleReset}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // ----- Main panel: controls always visible, single primary action -----
+
+  const hint =
+    recordState === "idle"
+      ? "Click Start recording — your browser will ask for microphone access the first time. After that, the picker, boost, and meter will be live before you start."
+      : recordState === "acquiring"
+        ? "Requesting microphone access…"
+        : undefined;
+
   return (
     <div data-testid="audio-record-panel">
-      {recordState === "idle" && (
-        <div style={{ textAlign: "center", padding: "12px 0" }}>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
-            Record up to 90 minutes. Speak clearly for at least <strong>15 seconds</strong> — very short clips often fail. Use Pause for off-topic breaks.
-          </p>
-          <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--color-muted, #6b7280)", lineHeight: 1.4 }}>
-            Tap <strong>Test microphone</strong> first to pick the right input and verify your voice is being heard. If the browser never asks for the microphone, use the site menu (lock or sliders icon in the address bar) and set Microphone to <strong>Allow</strong>, then reload.
-          </p>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="btn"
-              onClick={handleTestMic}
-              disabled={disabled}
-              data-testid="audio-record-test-mic"
-            >
-              Test microphone
-            </button>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={handleStartRecording}
-              disabled={disabled}
-              aria-label="Start recording"
-              data-testid="audio-record-start"
-            >
-              ● Start recording
-            </button>
-          </div>
-        </div>
-      )}
+      <MicControls
+        meterBarRef={meterBarRef}
+        devices={devices}
+        selectedDeviceId={selectedDeviceId}
+        onDeviceChange={handleDeviceChange}
+        gainLinear={gainLinear}
+        onGainChange={setGainLinear}
+        isLive={isLive}
+        lockDevice={lockDevice}
+        hint={hint}
+      />
 
-      {recordState === "requesting" && (
-        <p role="status" style={{ fontSize: 14, color: "var(--color-muted, #6b7280)", textAlign: "center" }}>
-          Waiting for microphone permission…
-        </p>
-      )}
-
-      {recordState === "preview" && (
-        <div data-testid="audio-record-preview">
-          <MicControls lockDevice={false} />
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={handleStartRecording}
-              disabled={disabled}
-              aria-label="Start recording"
-              data-testid="audio-record-start"
-            >
-              ● Start recording
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={handleStopPreview}
-              aria-label="Stop preview"
-              data-testid="audio-record-stop-preview"
-            >
-              Cancel
-            </button>
-            <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-              Speak — watch the level bar.
-            </span>
-          </div>
+      {(recordState === "idle" || recordState === "acquiring" || recordState === "ready") && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={handleStartRecording}
+            disabled={disabled || recordState === "acquiring"}
+            aria-label="Start recording"
+            data-testid="audio-record-start"
+          >
+            {recordState === "acquiring" ? "● Connecting…" : "● Start recording"}
+          </button>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
+            {recordState === "ready"
+              ? "Speak — watch the level bar — then click Start."
+              : "Up to 90 minutes. Speak for at least 15 seconds."}
+          </span>
         </div>
       )}
 
       {(recordState === "recording" || recordState === "paused") && (
         <div data-testid="audio-record-controls">
-          <MicControls lockDevice={true} />
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <span
               aria-hidden="true"
@@ -789,23 +893,6 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
             </button>
           </div>
         </div>
-      )}
-
-      {(recordState === "error") && (
-        <>
-          {error && (
-            <p
-              role="alert"
-              style={{ fontSize: 13, color: "var(--color-error, #dc2626)", margin: "0 0 10px" }}
-              data-testid="audio-record-error"
-            >
-              {error}
-            </p>
-          )}
-          <button type="button" className="btn" onClick={handleReset}>
-            Try again
-          </button>
-        </>
       )}
 
       <style>{`

@@ -137,6 +137,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   const [audioTabsKey, setAudioTabsKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [warningKind, setWarningKind] = useState<"skipped-only" | "ai-fallback" | null>(null);
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -153,6 +154,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
   function handleGenerateFromText() {
     setError(null);
     setWarning(null);
+    setWarningKind(null);
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
@@ -185,6 +187,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     if (pendingAudios.length === 0) return;
     setError(null);
     setWarning(null);
+    setWarningKind(null);
     if (!checkOverwrite()) return;
 
     startTransition(async () => {
@@ -209,8 +212,11 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
           links: result.links,
           promptVersion: result.promptVersion,
           recordingIds: result.recordingIds,
+          sessionStartedAt: result.sessionStartedAt,
+          sessionEndedAt: result.sessionEndedAt,
         });
         if (result.warning) setWarning(result.warning);
+        if (result.warningKind) setWarningKind(result.warningKind);
         setPanelState("filled");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -227,6 +233,7 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
     setSessionText("");
     setError(null);
     setWarning(null);
+    setWarningKind(null);
     setPendingAudios([]);
     setIsRecordingActive(false);
     setAudioTabsKey((k) => k + 1);
@@ -284,7 +291,11 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             }}
             role="status"
           >
-            {warning ? "Form partially filled — please review." : "Form filled — review and save."}
+            {!warning
+              ? "Form filled — review and save."
+              : warningKind === "ai-fallback"
+              ? "Form needs your edits — please review."
+              : "Form filled — heads up below."}
           </span>
           {warning && (
             <p

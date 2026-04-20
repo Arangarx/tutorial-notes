@@ -11,7 +11,24 @@ export type PopulatePayload = {
   promptVersion: string;
   /** Set when the note was generated from one or more audio recordings. */
   recordingIds?: string[];
+  /**
+   * UTC ISO timestamps derived server-side from the recordings' createdAt /
+   * durationSeconds. We format them as local-time HH:MM here so the time
+   * inputs show what the server would otherwise auto-fill at save time.
+   * Only set when the note was generated from audio.
+   */
+  sessionStartedAt?: string;
+  sessionEndedAt?: string;
 };
+
+/** Format a UTC ISO timestamp as `HH:MM` in the browser's local timezone. */
+function formatLocalTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
 
 export type NewNoteFormHandle = {
   populate: (payload: PopulatePayload) => void;
@@ -75,6 +92,17 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       if (payload.recordingIds && payload.recordingIds.length > 0) {
         setRecordingIds(payload.recordingIds);
         setShareRecordingInEmail(true);
+      }
+      // Don't clobber a time the tutor already typed in by hand. Server still
+      // auto-fills missing times at save (see createNote), so this is purely a
+      // preview convenience — they can clear/edit before clicking Save note.
+      if (payload.sessionStartedAt && !startTime) {
+        const formatted = formatLocalTime(payload.sessionStartedAt);
+        if (formatted) setStartTime(formatted);
+      }
+      if (payload.sessionEndedAt && !endTime) {
+        const formatted = formatLocalTime(payload.sessionEndedAt);
+        if (formatted) setEndTime(formatted);
       }
     },
     clear() {

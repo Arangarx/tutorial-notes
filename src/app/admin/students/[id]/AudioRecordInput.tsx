@@ -96,7 +96,15 @@ type RecordState =
   | "done"
   | "error";
 
-const ACTIVE_STATES: RecordState[] = ["acquiring", "ready", "recording", "paused", "uploading"];
+/**
+ * States the parent panel should treat as "recording in progress" — used to
+ * disable the "Transcribe & generate notes" button so the user can't kick off
+ * transcription mid-capture. With auto-acquire-on-mount, the mic stays hot
+ * (graph + meter live) in `ready` even when no recording is happening, so
+ * `ready` and `acquiring` deliberately do NOT count as active — otherwise the
+ * Transcribe button would be permanently greyed out after each save.
+ */
+const ACTIVE_STATES: RecordState[] = ["recording", "paused", "uploading"];
 
 function loadStoredGain(): number {
   if (typeof window === "undefined") return GAIN_DEFAULT;
@@ -181,6 +189,9 @@ function MicControls({
 }: MicControlsProps) {
   const pickerDisabled = lockDevice || (!isLive && devices.length === 0);
   const sliderDisabled = !isLive;
+  // Visual percentage of the gain slider — used to drive the custom track fill
+  // (so the filled portion grows from 0% at min to 100% at max with the thumb).
+  const gainPct = ((gainLinear - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * 100;
 
   return (
     <div
@@ -188,33 +199,58 @@ function MicControls({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        padding: "10px 12px",
+        gap: 12,
+        padding: "12px 14px",
         marginBottom: 12,
-        background: "var(--color-bg-subtle, #f9fafb)",
-        border: "1px solid var(--color-border, #e5e7eb)",
-        borderRadius: 6,
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
       }}
     >
       {/* Device picker */}
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-        <span style={{ minWidth: 80, color: "var(--color-muted, #6b7280)" }}>Mic:</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            minWidth: 92,
+            fontSize: 13,
+            color: "var(--muted)",
+            fontWeight: 500,
+          }}
+        >
+          Mic:
+        </span>
         <select
           data-testid="mic-device-select"
+          aria-label="Microphone device"
           value={selectedDeviceId}
           disabled={pickerDisabled}
           onChange={(e) => onDeviceChange(e.target.value)}
+          title={
+            devices.find((d) => d.deviceId === selectedDeviceId)?.label || undefined
+          }
           style={{
             flex: 1,
-            padding: "4px 8px",
+            // `min-width: 0` lets a flex item shrink below its content size —
+            // without this, a long device name (e.g. "Microphone (Brio 101)
+            // (046d:094d)") forces the select wider than its slot and overflows
+            // the panel. The `max-width: 100%` is belt-and-suspenders for older
+            // engines that don't honour min-width: 0 on selects.
+            minWidth: 0,
+            maxWidth: "100%",
+            width: "auto", // override globals.css `select { width: 100% }`
+            padding: "6px 10px",
             fontSize: 13,
-            border: "1px solid var(--color-border, #d1d5db)",
-            borderRadius: 4,
-            background: "var(--color-bg, #fff)",
+            margin: 0,
+            borderRadius: 6,
+            textOverflow: "ellipsis",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
           }}
         >
           {devices.length === 0 ? (
-            <option value="">{isLive ? "(default microphone)" : "(allow mic access to choose)"}</option>
+            <option value="">
+              {isLive ? "(default microphone)" : "(allow mic access to choose)"}
+            </option>
           ) : (
             devices.map((d, i) => (
               <option key={d.deviceId || `default-${i}`} value={d.deviceId}>
@@ -223,13 +259,23 @@ function MicControls({
             ))
           )}
         </select>
-      </label>
+      </div>
 
       {/* Gain slider */}
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-        <span style={{ minWidth: 80, color: "var(--color-muted, #6b7280)" }}>Browser boost:</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            minWidth: 92,
+            fontSize: 13,
+            color: "var(--muted)",
+            fontWeight: 500,
+          }}
+        >
+          Browser boost:
+        </span>
         <input
           data-testid="mic-gain-slider"
+          className="mic-gain-slider"
           type="range"
           min={GAIN_MIN}
           max={GAIN_MAX}
@@ -237,25 +283,34 @@ function MicControls({
           value={gainLinear}
           onChange={(e) => onGainChange(parseFloat(e.target.value))}
           disabled={sliderDisabled}
-          style={{ flex: 1 }}
           aria-label="Browser boost"
+          /* CSS variable consumed by .mic-gain-slider rule below to fill the
+             track from 0 → gainPct% with the accent colour. */
+          style={{ ["--gain-pct" as string]: `${gainPct}%` } as React.CSSProperties}
         />
         <span
           style={{
-            minWidth: 44,
+            minWidth: 48,
             textAlign: "right",
             fontVariantNumeric: "tabular-nums",
             fontSize: 12,
-            color: "var(--color-muted, #6b7280)",
+            color: "var(--muted)",
           }}
         >
           {gainLinear.toFixed(2)}×
         </span>
-      </label>
+      </div>
 
       {/* Level meter */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ minWidth: 80, fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            minWidth: 92,
+            fontSize: 13,
+            color: "var(--muted)",
+            fontWeight: 500,
+          }}
+        >
           Level:
         </span>
         <div
@@ -267,15 +322,16 @@ function MicControls({
           style={{
             flex: 1,
             height: 10,
-            background: "var(--color-border, #e5e7eb)",
+            background: "rgba(255, 255, 255, 0.08)",
+            border: "1px solid var(--border)",
             borderRadius: 5,
             overflow: "hidden",
             position: "relative",
           }}
         >
-          {/* This bar is updated imperatively via meterBarRef in the rAF loop —
-              never via React state — so the meter doesn't re-render the slider
-              60 times a second and break drag. */}
+          {/* Updated imperatively via meterBarRef in the rAF loop — never via
+              React state — so the meter doesn't re-render the slider 60×/sec
+              and break drag. */}
           <div
             ref={meterBarRef}
             style={{
@@ -289,17 +345,84 @@ function MicControls({
       </div>
 
       {hint && (
-        <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
           {hint}
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 11, color: "var(--color-muted, #9ca3af)", lineHeight: 1.35 }}>
+      <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
         Speak normally — aim for the bar to land in the green when talking. The browser cannot change
         your <strong>Windows / system mic level</strong>; if the bar stays grey even at 3.00× boost,
         open <em>Settings → System → Sound → Input</em> and raise the level there (or pick a different
         mic in the dropdown above).
       </p>
+
+      {/* Custom slider styling — without `appearance: none` the native control
+          renders as a giant browser-default bar in Chrome on Windows dark mode.
+          We render a thin track filled to `--gain-pct` with the accent colour
+          and a small circular thumb that visually centres at the value. */}
+      <style>{`
+        .mic-gain-slider {
+          flex: 1;
+          width: 100%;
+          height: 18px;
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          border: none;
+          appearance: none;
+          -webkit-appearance: none;
+          cursor: pointer;
+        }
+        .mic-gain-slider:disabled { cursor: not-allowed; opacity: 0.5; }
+        .mic-gain-slider:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 4px;
+          border-radius: 4px;
+        }
+        .mic-gain-slider::-webkit-slider-runnable-track {
+          height: 4px;
+          border-radius: 2px;
+          background: linear-gradient(
+            to right,
+            var(--accent) 0%,
+            var(--accent) var(--gain-pct, 0%),
+            rgba(255, 255, 255, 0.15) var(--gain-pct, 0%),
+            rgba(255, 255, 255, 0.15) 100%
+          );
+        }
+        .mic-gain-slider::-moz-range-track {
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.15);
+        }
+        .mic-gain-slider::-moz-range-progress {
+          height: 4px;
+          border-radius: 2px;
+          background: var(--accent);
+        }
+        .mic-gain-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          margin-top: -5px; /* centre the 14px thumb on the 4px track */
+          border-radius: 50%;
+          background: #fff;
+          border: 2px solid var(--accent);
+          cursor: pointer;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        .mic-gain-slider::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #fff;
+          border: 2px solid var(--accent);
+          cursor: pointer;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+      `}</style>
     </div>
   );
 }
@@ -319,6 +442,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   /** Digital gain applied in the browser before MediaRecorder. NOT a substitute for OS mic level. */
   const [gainLinear, setGainLinear] = useState<number>(GAIN_DEFAULT);
+  /** Last-known mic permission state, used only to pick the right hint copy. */
+  const [permissionState, setPermissionState] = useState<"granted" | "prompt" | "denied" | "unknown">("unknown");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -330,8 +455,6 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const meterBarRef = useRef<HTMLDivElement | null>(null);
   /** Tracks the latest meter colour so we don't thrash style.background every frame. */
   const meterColorRef = useRef<string>(meterColor(0));
-  /** Snapshot of "did we already try the auto-acquire on mount" so React Strict Mode double-invokes don't double-prompt. */
-  const autoAcquireAttemptedRef = useRef(false);
 
   // Load persisted prefs after mount (avoid SSR/hydration mismatch).
   useEffect(() => {
@@ -353,21 +476,30 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     graphRef.current?.setGain(gainLinear);
   }, [gainLinear]);
 
-  // Auto-acquire on mount if the page already has mic permission.
-  // Avoids surprise prompts: only silent-acquires when Permissions API confirms grant.
+  // Acquire mic on mount unless permission is already denied. The user opened
+  // the Record tab — that's a clear intent signal, the same as opening Google
+  // Meet's join page. We let the browser show its prompt if needed (state =
+  // "prompt" or "unknown"). On "denied" we stay idle so we don't fire a
+  // getUserMedia call that we know will reject and pollute the console.
+  //
+  // StrictMode-safe: in dev React mounts effects twice. We use a per-effect
+  // `cancelled` flag (the first run bails after its cleanup fires) plus a
+  // `streamRef.current` short-circuit (the second run won't double-acquire if
+  // the first already succeeded). No module/instance-level "already attempted"
+  // ref — that pattern blocks the legitimate post-remount auto-acquire after
+  // the parent re-keys this component on save.
   useEffect(() => {
-    if (autoAcquireAttemptedRef.current) return;
-    autoAcquireAttemptedRef.current = true;
     let cancelled = false;
     (async () => {
-      const state = await queryMicPermission();
+      const permission = await queryMicPermission();
       if (cancelled) return;
-      if (state === "granted") {
-        await acquireMic({
-          deviceId: loadStoredDeviceId() || undefined,
-          forRecording: false,
-        });
-      }
+      setPermissionState(permission);
+      if (permission === "denied") return;
+      if (streamRef.current) return; // already acquired (e.g. StrictMode race)
+      await acquireMic({
+        deviceId: loadStoredDeviceId() || undefined,
+        forRecording: false,
+      });
     })();
     return () => {
       cancelled = true;
@@ -617,13 +749,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   }
 
   function stopAndUpload() {
-    if (elapsedRef.current > 0 && elapsedRef.current < 8) {
-      const ok = window.confirm(
-        "This clip is very short. Speech recognition often fails or invents text when there isn’t enough speech. Record at least 10–15 seconds, or stop anyway if you meant to."
-      );
-      if (!ok) return;
-    }
-
+    // No short-clip confirm: the live level meter now lets the tutor see that
+    // their voice was captured, and the server-side `looksLikeSilenceHallucination`
+    // guard rejects junk transcripts regardless of duration. Short legitimate
+    // utterances ("bring the worksheet next time") are valid notes and shouldn't
+    // be blocked behind a confirm popup.
     stopTimer();
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
@@ -693,8 +823,21 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     elapsedRef.current = 0;
     setElapsed(0);
     setError(null);
-    autoAcquireAttemptedRef.current = false; // allow re-attempt on next mount cycle
     setRecordState("idle");
+
+    // Re-acquire the mic immediately if we have permission, so the meter and
+    // picker come back to life without requiring an extra Start click. (The
+    // auto-acquire useEffect only runs on mount; this same-instance reset
+    // path needs an explicit kick.)
+    void (async () => {
+      const permission = await queryMicPermission();
+      setPermissionState(permission);
+      if (permission === "denied") return;
+      await acquireMic({
+        deviceId: loadStoredDeviceId() || undefined,
+        forRecording: false,
+      });
+    })();
   }
 
   const isWarning = elapsed >= WARN_AT_SECONDS;
@@ -774,7 +917,9 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
   const hint =
     recordState === "idle"
-      ? "Click Start recording — your browser will ask for microphone access the first time. After that, the picker, boost, and meter will be live before you start."
+      ? permissionState === "denied"
+        ? "Microphone access is blocked for this site. Click the icon left of the address bar (lock or sliders), set Microphone to Allow, then reload."
+        : "Click Start recording to allow mic access — after that the picker, boost slider, and meter will be live before each session."
       : recordState === "acquiring"
         ? "Requesting microphone access…"
         : undefined;

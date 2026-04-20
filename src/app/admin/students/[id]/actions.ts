@@ -346,6 +346,21 @@ async function _transcribeAndGenerateImpl(
   const transcriptParts: string[] = [];
   /** Last segment's Whisper-reported duration (used for late hallucination checks). */
   let lastWhisperDurationSeconds: number | null = null;
+  /**
+   * Per-segment hallucinations don't fail the whole batch — we drop the bad segment
+   * (delete blob + DB row) and keep going. Only if every segment was empty/junk do
+   * we hard-fail with HALLUCINATION_MIC_MESSAGE. Surfacing this as a warning lets
+   * tutors recover from "I accidentally stopped one of two recordings early".
+   */
+  let skippedHallucinationSegments = 0;
+  /**
+   * Per kept segment: when the row was created (≈ when MediaRecorder stopped) plus
+   * Whisper-reported duration. Used to derive sessionStartedAt / sessionEndedAt so
+   * the form can pre-fill Session start / end before the tutor saves. Skipped
+   * (silent) segments are excluded so a 4-second silent stop doesn't pull the
+   * derived end time forward.
+   */
+  const keptSegmentTimings: Array<{ createdAt: Date; durationSeconds: number }> = [];
 
   for (let i = 0; i < recordings.length; i++) {
     const { blobUrl, mimeType } = recordings[i];
@@ -365,6 +380,9 @@ async function _transcribeAndGenerateImpl(
     }
 
     // Create the recording row early so we have its ID even if transcription fails.
+    // We push to `createdRecordingIds` only after the per-segment guards pass, so the
+    // returned list reflects only segments we actually used (a skipped silent segment
+    // gets its row deleted below and stays out of the list).
     const recording = await withDbRetry(
       () =>
         db.sessionRecording.create({
@@ -379,7 +397,6 @@ async function _transcribeAndGenerateImpl(
         }),
       { label: "createSessionRecording" }
     );
-    createdRecordingIds.push(recording.id);
 
     // Download audio bytes — private blob requires Bearer token.
     let audioBuffer: Buffer;
@@ -424,9 +441,10 @@ async function _transcribeAndGenerateImpl(
       )
     ) {
       console.warn(
-        `[transcribeAndGenerate] rid=${rid} likely silence/mic hallucination blocked`,
+        `[transcribeAndGenerate] rid=${rid} likely silence/mic hallucination — skipping segment`,
         JSON.stringify({
           segment: i + 1,
+          totalSegments: recordings.length,
           transcriptChars: transcribeResult.transcript.length,
           durationSeconds: transcribeResult.durationSeconds,
         })
@@ -436,10 +454,11 @@ async function _transcribeAndGenerateImpl(
         () => db.sessionRecording.delete({ where: { id: recording.id } }),
         { label: "deleteSessionRecordingHallucination" }
       ).catch(() => undefined);
-      return transcribeFail(
-        rid,
-        HALLUCINATION_MIC_MESSAGE
-      );
+      skippedHallucinationSegments += 1;
+      // Skip this segment instead of failing the whole batch — earlier good segments
+      // are kept and reported via `warning` in the result. If every segment is bad,
+      // we hard-fail after the loop with HALLUCINATION_MIC_MESSAGE.
+      continue;
     }
 
     lastWhisperDurationSeconds = transcribeResult.durationSeconds;
@@ -457,7 +476,35 @@ async function _transcribeAndGenerateImpl(
       { label: "updateSessionRecordingTranscript" }
     );
 
+    createdRecordingIds.push(recording.id);
     transcriptParts.push(transcribeResult.transcript);
+    keptSegmentTimings.push({
+      createdAt: recording.createdAt,
+      durationSeconds: transcribeResult.durationSeconds ?? 0,
+    });
+  }
+
+  // Derive session start/end from kept segments so the form can pre-fill the time
+  // inputs. recordings are processed in submission order (orderIndex i), so the
+  // first kept entry is the earliest and the last kept entry is the latest.
+  let sessionStartedAt: string | undefined;
+  let sessionEndedAt: string | undefined;
+  if (keptSegmentTimings.length > 0) {
+    const first = keptSegmentTimings[0];
+    const last = keptSegmentTimings[keptSegmentTimings.length - 1];
+    sessionStartedAt = new Date(
+      first.createdAt.getTime() - first.durationSeconds * 1000
+    ).toISOString();
+    sessionEndedAt = last.createdAt.toISOString();
+  }
+
+  // Every segment was silent/junk — fail like the original early guard.
+  if (transcriptParts.length === 0 && skippedHallucinationSegments > 0) {
+    console.warn(
+      `[transcribeAndGenerate] rid=${rid} all segments skipped as silence/hallucination`,
+      JSON.stringify({ totalSegments: recordings.length })
+    );
+    return transcribeFail(rid, HALLUCINATION_MIC_MESSAGE);
   }
 
   // Concatenate all segment transcripts.
@@ -482,6 +529,9 @@ async function _transcribeAndGenerateImpl(
       rawTranscript,
       genResult: null,
       debugId: rid,
+      skippedHallucinationSegments,
+      sessionStartedAt,
+      sessionEndedAt,
     });
   }
 
@@ -539,13 +589,22 @@ async function _transcribeAndGenerateImpl(
             durationSeconds: lastWhisperDurationSeconds,
           })
         );
-        for (let j = 0; j < recordings.length; j++) {
-          await deleteBlob(recordings[j].blobUrl).catch(() => undefined);
-          await withDbRetry(
-            () => db.sessionRecording.delete({ where: { id: createdRecordingIds[j] } }),
-            { label: "deleteSessionRecordingLateHallucination" }
-          ).catch(() => undefined);
-        }
+        // Only delete the rows we actually kept. Per-segment skipped rows are already
+        // gone, so iterating recordings.length with parallel indexing is unsafe now.
+        await Promise.all(
+          createdRecordingIds.map((id) =>
+            withDbRetry(
+              () => db.sessionRecording.delete({ where: { id } }),
+              { label: "deleteSessionRecordingLateHallucination" }
+            ).catch(() => undefined)
+          )
+        );
+        // For blobs we still need the URL — look them up from the original input by
+        // matching index after filtering out the ones we already deleted is fragile,
+        // so just delete every blob in the batch (idempotent on already-deleted blobs).
+        await Promise.all(
+          recordings.map((rec) => deleteBlob(rec.blobUrl).catch(() => undefined))
+        );
         return transcribeFail(rid, HALLUCINATION_MIC_MESSAGE);
       }
     }
@@ -556,6 +615,9 @@ async function _transcribeAndGenerateImpl(
     trimmedTranscript: trimmed,
     rawTranscript,
     genResult,
+    skippedHallucinationSegments,
+    sessionStartedAt,
+    sessionEndedAt,
   });
 }
 

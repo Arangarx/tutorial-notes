@@ -113,7 +113,8 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
       id: USER_A_STUDENT_ID,
       adminUserId: USER_A_ID,
     });
-    mockRecordingCreate.mockResolvedValue({ id: "recording-1" });
+    const recCreatedAt = new Date("2026-04-20T22:30:00.000Z");
+    mockRecordingCreate.mockResolvedValue({ id: "recording-1", createdAt: recCreatedAt });
     mockRecordingUpdate.mockResolvedValue({});
     mockTranscribeAudio.mockResolvedValue({
       transcript: "We covered quadratics today.",
@@ -137,6 +138,9 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
       ok: true,
       recordingIds: ["recording-1"],
       topics: "Quadratics",
+      // 1800s before recCreatedAt = 22:00:00.000Z; createdAt itself = 22:30:00.000Z.
+      sessionStartedAt: "2026-04-20T22:00:00.000Z",
+      sessionEndedAt: "2026-04-20T22:30:00.000Z",
     });
     expect(mockRecordingCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -170,7 +174,7 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
       id: USER_A_STUDENT_ID,
       adminUserId: USER_A_ID,
     });
-    mockRecordingCreate.mockResolvedValue({ id: "recording-2" });
+    mockRecordingCreate.mockResolvedValue({ id: "recording-2", createdAt: new Date("2026-04-20T22:30:00.000Z") });
     mockRecordingUpdate.mockResolvedValue({});
     mockTranscribeAudio.mockResolvedValue({ transcript: "   ", durationSeconds: 10 });
 
@@ -188,6 +192,95 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
     expect(mockGenerateSessionNote).not.toHaveBeenCalled();
     expect(mockDeleteBlob).toHaveBeenCalled();
     expect(mockRecordingDelete).toHaveBeenCalled();
+  });
+
+  test("partial silent segment: skips bad one, keeps good ones, surfaces warning (no hard fail)", async () => {
+    // Reproduces Andrew's "I accidentally stopped one without it but left it intentionally"
+    // scenario: two recordings, second one is silent / hallucinated. Old behavior bailed the
+    // entire batch with the scary mic error. New behavior keeps the good segment, deletes the
+    // bad one, and surfaces a non-fatal warning.
+    mockStudentFindUnique.mockResolvedValue({
+      id: USER_A_STUDENT_ID,
+      adminUserId: USER_A_ID,
+    });
+    const goodCreatedAt = new Date("2026-04-20T22:30:00.000Z");
+    const badCreatedAt = new Date("2026-04-20T22:31:00.000Z");
+    mockRecordingCreate
+      .mockResolvedValueOnce({ id: "rec-good", createdAt: goodCreatedAt })
+      .mockResolvedValueOnce({ id: "rec-bad", createdAt: badCreatedAt });
+    mockRecordingUpdate.mockResolvedValue({});
+    mockTranscribeAudio
+      .mockResolvedValueOnce({
+        transcript: "We worked on quadratic equations and factoring practice today.",
+        durationSeconds: 1800,
+      })
+      // Second segment: known Whisper hallucination on silence — early guard catches it.
+      .mockResolvedValueOnce({
+        transcript: "Thank you for watching.",
+        durationSeconds: 4,
+      });
+    mockStudentFindUniqueOrThrow.mockResolvedValue({ name: "Alex" });
+    mockNoteFindFirst.mockResolvedValue(null);
+    mockGenerateSessionNote.mockResolvedValue({
+      topics: "Quadratics",
+      homework: "Practice problems p.42",
+      nextSteps: "Graphing quadratics",
+      links: "",
+      promptVersion: "v-test",
+    });
+
+    const result = await transcribeAndGenerateAction(USER_A_STUDENT_ID, [
+      { blobUrl: BLOB_URL, mimeType: "audio/webm" },
+      { blobUrl: "https://abc123.public.blob.vercel-storage.com/session-2.webm", mimeType: "audio/webm" },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: true,
+      recordingIds: ["rec-good"],
+      topics: "Quadratics",
+      warning: expect.stringMatching(/no clear audio|skipped/i),
+      // Skipped segment must NOT pull sessionEndedAt forward to 22:31. The end
+      // time should be the good segment's createdAt (22:30), not the bad one's.
+      sessionStartedAt: "2026-04-20T22:00:00.000Z",
+      sessionEndedAt: "2026-04-20T22:30:00.000Z",
+    });
+    // The bad segment's blob + DB row got cleaned up.
+    expect(mockDeleteBlob).toHaveBeenCalledWith(
+      "https://abc123.public.blob.vercel-storage.com/session-2.webm"
+    );
+    expect(mockRecordingDelete).toHaveBeenCalledWith({ where: { id: "rec-bad" } });
+    // The good segment's blob is NOT deleted.
+    expect(mockDeleteBlob).not.toHaveBeenCalledWith(BLOB_URL);
+    // LLM still ran on the good segment's transcript.
+    expect(mockGenerateSessionNote).toHaveBeenCalledTimes(1);
+  });
+
+  test("every segment silent: still hard-fails with mic message", async () => {
+    mockStudentFindUnique.mockResolvedValue({
+      id: USER_A_STUDENT_ID,
+      adminUserId: USER_A_ID,
+    });
+    mockRecordingCreate
+      .mockResolvedValueOnce({ id: "rec-bad-1", createdAt: new Date("2026-04-20T22:30:00.000Z") })
+      .mockResolvedValueOnce({ id: "rec-bad-2", createdAt: new Date("2026-04-20T22:31:00.000Z") });
+    mockRecordingUpdate.mockResolvedValue({});
+    mockTranscribeAudio.mockResolvedValue({
+      transcript: "Thank you for watching.",
+      durationSeconds: 3,
+    });
+
+    const result = await transcribeAndGenerateAction(USER_A_STUDENT_ID, [
+      { blobUrl: BLOB_URL, mimeType: "audio/webm" },
+      { blobUrl: "https://abc123.public.blob.vercel-storage.com/session-2.webm", mimeType: "audio/webm" },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/couldn't detect clear speech|microphone permission/i),
+    });
+    // Both bad segments cleaned up.
+    expect(mockRecordingDelete).toHaveBeenCalledTimes(2);
+    expect(mockGenerateSessionNote).not.toHaveBeenCalled();
   });
 
 });

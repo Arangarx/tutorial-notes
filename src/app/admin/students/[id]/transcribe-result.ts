@@ -30,12 +30,30 @@ export type TranscribeAndGenerateResult =
       links: string;
       promptVersion: string;
       /**
-       * Non-fatal explanation when transcription succeeded but AI structuring
-       * failed or produced nothing useful. The recording is still attached and
-       * the raw transcript is placed in `topics` so the tutor can hand-edit
-       * instead of losing the whole session.
+       * Non-fatal explanation when something noteworthy happened during the run.
+       * The UI uses `warningKind` to pick the right framing — "form filled, FYI"
+       * for skipped-only vs "form needs your edits" for AI fallback.
        */
       warning?: string;
+      /**
+       * What the warning is about, so the UI can avoid the misleading "Form
+       * partially filled — please review." header when the form is in fact
+       * fully filled and the notice is just "we ignored an empty recording."
+       *  - `"skipped-only"` — AI succeeded; a silent segment was dropped. Form is complete.
+       *  - `"ai-fallback"` — Topics has raw transcript; Homework / Next steps are empty.
+       *    Tutor must hand-split the content. May also include a skipped notice.
+       */
+      warningKind?: "skipped-only" | "ai-fallback";
+      /**
+       * UTC ISO timestamp of the earliest recording's start (createdAt minus its
+       * durationSeconds). The form formats these as local-time HH:MM and pre-fills
+       * `Session start` / `Session end` so the tutor can see/edit the auto-derived
+       * times before saving. (At save time the server still derives them as a
+       * fallback when blank — see `createNote`.)
+       */
+      sessionStartedAt?: string;
+      /** UTC ISO timestamp of the latest recording's createdAt (i.e. when it stopped). */
+      sessionEndedAt?: string;
     }
   | { ok: false; error: string; /** Same id as Vercel log line `rid=` for this run. */ debugId?: string };
 
@@ -49,8 +67,32 @@ export function buildTranscribeAndGenerateResult(args: {
     | null;
   /** When `ok:false`, included so tutors can match Vercel logs. */
   debugId?: string;
+  /**
+   * Number of segments dropped pre-LLM because Whisper returned silence/hallucination
+   * text. The kept segments still produced real content; we surface this as a warning
+   * so the tutor knows one of their recordings was empty (e.g. an accidental short
+   * stop) without losing the good ones.
+   */
+  skippedHallucinationSegments?: number;
+  /** UTC ISO timestamp — see TranscribeAndGenerateResult.sessionStartedAt. */
+  sessionStartedAt?: string;
+  /** UTC ISO timestamp — see TranscribeAndGenerateResult.sessionEndedAt. */
+  sessionEndedAt?: string;
 }): TranscribeAndGenerateResult {
-  const { recordingIds, trimmedTranscript, rawTranscript, genResult, debugId } = args;
+  const {
+    recordingIds,
+    trimmedTranscript,
+    rawTranscript,
+    genResult,
+    debugId,
+    skippedHallucinationSegments = 0,
+    sessionStartedAt,
+    sessionEndedAt,
+  } = args;
+  const sessionTimes = {
+    ...(sessionStartedAt ? { sessionStartedAt } : {}),
+    ...(sessionEndedAt ? { sessionEndedAt } : {}),
+  };
 
   if (!trimmedTranscript) {
     return {
@@ -59,6 +101,17 @@ export function buildTranscribeAndGenerateResult(args: {
         "We couldn't make out any words in this recording. The audio may have been silent or too quiet. Try recording again with the mic closer, then click Transcribe & generate notes.",
       ...(debugId ? { debugId } : {}),
     };
+  }
+
+  const skippedNotice =
+    skippedHallucinationSegments > 0
+      ? skippedHallucinationSegments === 1
+        ? "One of your recordings had no clear audio (silent or too quiet) and was skipped. The form was filled from the other segment(s)."
+        : `${skippedHallucinationSegments} of your recordings had no clear audio and were skipped. The form was filled from the other segment(s).`
+      : null;
+
+  function combineWarning(extra: string): string {
+    return skippedNotice ? `${skippedNotice} ${extra}` : extra;
   }
 
   if (!genResult || "error" in genResult) {
@@ -71,8 +124,11 @@ export function buildTranscribeAndGenerateResult(args: {
       nextSteps: "",
       links: "",
       promptVersion: "",
-      warning:
-        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Next steps before saving.",
+      warning: combineWarning(
+        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Next steps before saving."
+      ),
+      warningKind: "ai-fallback",
+      ...sessionTimes,
     };
   }
 
@@ -92,8 +148,11 @@ export function buildTranscribeAndGenerateResult(args: {
       nextSteps: "",
       links: "",
       promptVersion: genResult.promptVersion,
-      warning:
-        "AI couldn't extract structured fields from this transcript. The raw text is in Topics — please edit before saving.",
+      warning: combineWarning(
+        "AI couldn't extract structured fields from this transcript. The raw text is in Topics — please edit before saving."
+      ),
+      warningKind: "ai-fallback",
+      ...sessionTimes,
     };
   }
 
@@ -106,5 +165,7 @@ export function buildTranscribeAndGenerateResult(args: {
     nextSteps: genResult.nextSteps,
     links: genResult.links,
     promptVersion: genResult.promptVersion,
+    ...(skippedNotice ? { warning: skippedNotice, warningKind: "skipped-only" as const } : {}),
+    ...sessionTimes,
   };
 }

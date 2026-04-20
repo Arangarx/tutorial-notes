@@ -99,7 +99,10 @@ describe("transcribeAndGenerateAction — late hallucination guard", () => {
       id: USER_A_STUDENT_ID,
       adminUserId: USER_A_ID,
     });
-    mockRecordingCreate.mockResolvedValue({ id: "recording-hallucination" });
+    mockRecordingCreate.mockResolvedValue({
+      id: "recording-hallucination",
+      createdAt: new Date("2026-04-20T22:30:00.000Z"),
+    });
     mockRecordingUpdate.mockResolvedValue({});
     mockTranscribeAudio.mockResolvedValue({
       transcript: "Thank you for watching.",

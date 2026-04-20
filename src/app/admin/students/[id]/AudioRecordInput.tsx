@@ -53,6 +53,47 @@ function formatDuration(seconds: number): string {
 const HARD_CAP_SECONDS = 90 * 60; // 90 minutes
 const WARN_AT_SECONDS = 85 * 60;  // 85 minutes
 
+/**
+ * Short, gentle two-tone chime when approaching HARD_CAP (visual warning already shown).
+ * Uses Web Audio API; no external assets. Fails silently if AudioContext is unavailable.
+ */
+function playApproachingMaxTimeChime() {
+  if (typeof window === "undefined") return;
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const master = ctx.createGain();
+    master.gain.value = 0.11;
+    master.connect(ctx.destination);
+
+    const tone = (freq: number, t0: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(1, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    };
+
+    const t0 = ctx.currentTime;
+    tone(880, t0, 0.11);
+    tone(660, t0 + 0.13, 0.12);
+    void ctx.resume();
+
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate([70, 35, 70]);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 const GAIN_MIN = 0.25;
 const GAIN_MAX = 3.0;
 const GAIN_DEFAULT = 1.0;
@@ -455,6 +496,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const meterBarRef = useRef<HTMLDivElement | null>(null);
   /** Tracks the latest meter colour so we don't thrash style.background every frame. */
   const meterColorRef = useRef<string>(meterColor(0));
+  /** One audible "approaching max time" cue per recording (not on pause/resume timer restarts). */
+  const approachingCapSoundPlayedRef = useRef(false);
 
   // Load persisted prefs after mount (avoid SSR/hydration mismatch).
   useEffect(() => {
@@ -553,6 +596,14 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     timerRef.current = setInterval(() => {
       elapsedRef.current += 1;
       setElapsed(elapsedRef.current);
+
+      if (
+        elapsedRef.current >= WARN_AT_SECONDS &&
+        !approachingCapSoundPlayedRef.current
+      ) {
+        approachingCapSoundPlayedRef.current = true;
+        playApproachingMaxTimeChime();
+      }
 
       if (elapsedRef.current >= HARD_CAP_SECONDS) {
         stopAndUpload();
@@ -677,6 +728,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     chunksRef.current = [];
     elapsedRef.current = 0;
     setElapsed(0);
+    approachingCapSoundPlayedRef.current = false;
 
     const mimeType = chooseMimeType();
     // Prefer the processed (gain-adjusted) stream; fall back to raw for browsers / tests
@@ -822,6 +874,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     chunksRef.current = [];
     elapsedRef.current = 0;
     setElapsed(0);
+    approachingCapSoundPlayedRef.current = false;
     setError(null);
     setRecordState("idle");
 

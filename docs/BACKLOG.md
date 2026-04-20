@@ -43,9 +43,9 @@ Reported via Discord after testing **Record → Transcribe** on phone. Treat as 
 
 **Backlog — best UX for multi-hour sessions:**
 
-1. **Seamless auto-rollover (client):** Without `MediaRecorder` **timeslice** (breaks **iOS Safari** MP4), implement **stop → immediately start** a new segment at a policy interval — e.g. **whichever is tighter:** a **time** segment (e.g. 45–90 min) **or** a future **size** trigger once we have a safe signal post-stop only (live byte estimates remain unreliable without timeslice). Each segment becomes another entry in the **existing multi-segment** flow. Optional **small transition chime** (different timbre than the 85-min warning) during the ~1s gap so tutors know recording resumed.
+1. ✅ **Shipped (initial):** **Time-based auto-rollover** — ~**50 min** per `MediaRecorder` segment (`SEGMENT_MAX_SECONDS`); **5 min** segment warning; soft **rollover chime** before auto split; **8h** session safety cap (`SESSION_SAFETY_MAX_SECONDS`). On rollover: upload segment → append to pending list with **`keepRecorderMounted`** (`AiAssistPanel` / `AudioInputTabs`) so the **mic stays hot** — no iOS-breaking timeslice. Files: `AudioRecordInput.tsx`, `AudioInputTabs.tsx`, `AiAssistPanel.tsx`. **Follow-ups:** overlap + merge for gapless splice (hard); optional **total session** clock; tune segment length vs real-world uploads.
 2. **Alert sound library:** Presets (gentle chime / single beep / silent + vibrate-only on mobile). **Vibrate-only** when sound is off (accessibility). Optional mirror in a future **Settings** page.
-3. **Revisit the hard 90m stop** after rollover ships — cap may become **per segment** rather than **total session**, with automatic continuation so tutors rarely think about limits.
+3. ~~**Revisit the hard 90m stop**~~ — Superseded by per-segment rollover + safety cap; only **tune segment length** if needed.
 
 ---
 

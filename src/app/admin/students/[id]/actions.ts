@@ -365,14 +365,32 @@ async function _transcribeAndGenerateImpl(
   for (let i = 0; i < recordings.length; i++) {
     const { blobUrl, mimeType } = recordings[i];
 
-    // Get metadata from Vercel Blob.
+    // Get metadata from Vercel Blob. Retry once after a short pause to absorb
+    // transient Vercel Blob CDN hiccups (the same retry pattern we use for
+    // Neon cold starts, just lighter — blob fetches are usually fast).
     let sizeBytes: number;
     let resolvedMimeType: string;
     try {
-      const meta = await getBlobMetadata(blobUrl);
+      let meta;
+      try {
+        meta = await getBlobMetadata(blobUrl);
+      } catch (firstErr) {
+        const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+        console.warn(
+          `[transcribeAndGenerate] rid=${rid} getBlobMetadata first attempt failed; retrying once:`,
+          firstMsg
+        );
+        await new Promise((r) => setTimeout(r, 500));
+        meta = await getBlobMetadata(blobUrl);
+      }
       sizeBytes = meta.size;
       resolvedMimeType = meta.contentType || mimeType;
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[transcribeAndGenerate] rid=${rid} getBlobMetadata failed twice:`,
+        msg
+      );
       return transcribeFail(
         rid,
         `Could not reach audio file${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try uploading again.`

@@ -22,12 +22,19 @@ if (process.env.NODE_ENV !== "production") global.__prisma = db;
  *   prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
  *   PrismaClientUnknownRequestError: ... Error { kind: Closed, ... }
  *   PrismaClientInitializationError: ... server has gone away
+ *   PrismaClientInitializationError: P1001: Can't reach database server
+ *     (Neon free-tier autosuspend cold start; first request after ~5min idle)
  *
  * See docs/learning-prisma.md.
  */
 export function isTransientDbConnectionError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message.toLowerCase();
+  // Match Prisma's P1001 by code as well as text — `PrismaClientInitializationError`
+  // exposes `errorCode` on the instance. Use `unknown`-safe access.
+  const code = (err as { code?: string; errorCode?: string }).code
+    ?? (err as { code?: string; errorCode?: string }).errorCode;
+  if (code === "P1001" || code === "P1002" || code === "P1017") return true;
   return (
     msg.includes("kind: closed") ||
     msg.includes("connection is closed") ||
@@ -35,7 +42,15 @@ export function isTransientDbConnectionError(err: unknown): boolean {
     msg.includes("server closed the connection") ||
     msg.includes("connection terminated") ||
     msg.includes("connection reset") ||
-    msg.includes("econnreset")
+    msg.includes("econnreset") ||
+    // Neon cold-start / serverless PG wake-up.
+    msg.includes("p1001") ||
+    msg.includes("can't reach database server") ||
+    msg.includes("cant reach database server") ||
+    msg.includes("connection refused") ||
+    msg.includes("econnrefused") ||
+    msg.includes("etimedout") ||
+    msg.includes("connection timed out")
   );
 }
 
@@ -53,8 +68,11 @@ export async function withDbRetry<T>(
   fn: () => Promise<T>,
   opts: { maxRetries?: number; baseDelayMs?: number; label?: string } = {}
 ): Promise<T> {
-  const maxRetries = opts.maxRetries ?? 2;
-  const baseDelayMs = opts.baseDelayMs ?? 100;
+  // Defaults tuned for Neon free-tier cold starts (~1s wake-up):
+  // 3 retries with 300ms base = 300ms / 600ms / 1200ms backoff (~2.1s total wait
+  // worst case before throwing). Still snappy when the DB is hot.
+  const maxRetries = opts.maxRetries ?? 3;
+  const baseDelayMs = opts.baseDelayMs ?? 300;
 
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

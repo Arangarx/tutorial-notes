@@ -31,6 +31,22 @@ Reported via Discord after testing **Record → Transcribe** on phone. Treat as 
 
 - **Session timer stops when phone idles / screensaver.** Elapsed timer uses `setInterval` — **iOS throttles or suspends timers** when the screen locks or Safari is backgrounded, so displayed duration drifts from real time. **Mitigations (pick one or combine):** on `visibilitychange` / `pageshow`, **reconcile elapsed** with `Date.now() - startedAt` instead of relying only on tick count; show a **muted note** on iOS: “Timer may pause when the screen locks; recording still runs” if the platform cannot guarantee ticks; optional **Screen Wake Lock** (`navigator.wakeLock`) while recording **if** user gesture allows (Safari support varies) — research before promising.
 
+### Recording — long sessions, Whisper limits, alerts (2026)
+
+**Facts (so we don’t conflate limits):**
+
+- **Whisper / OpenAI:** **25 MB per transcription request** (hard). ✅ **Shipped:** server-side **ffmpeg** time-split + bisect for oversized uploads (`src/lib/transcribe-ffmpeg.ts` + `src/lib/transcribe.ts`) so tutors are not blocked by a single huge file, subject to infra timeouts and available RAM/CPU on the serverless function.
+- **90 minutes** (`HARD_CAP_SECONDS` in `AudioRecordInput.tsx`) is **client-only** — it is **not** a Whisper duration limit. It exists as a **safety / UX** guard: one continuous `MediaRecorder` blob, browser memory, and a clear “this session is long” boundary.
+- **Still binding for “one take forever”:** **upload body size** (`next.config` server action limit, ~100 MB), **Vercel Blob** max (`BLOB_MAX_BYTES` 100 MB), **serverless timeout** on `transcribeAndGenerateAction`, and **browser stability** with very large blobs — so “record as long as she wants” in **one** uninterrupted capture is not guaranteed without **client-side segmentation**.
+
+**✅ Shipped (recorder UI):** **Time alert sound** — checkbox + **volume** slider for the “approaching max length” chime (persisted per browser: `tn-recording-chime-enabled`, `tn-recording-chime-volume`). Muting disables **sound and vibration** for that alert.
+
+**Backlog — best UX for multi-hour sessions:**
+
+1. **Seamless auto-rollover (client):** Without `MediaRecorder` **timeslice** (breaks **iOS Safari** MP4), implement **stop → immediately start** a new segment at a policy interval — e.g. **whichever is tighter:** a **time** segment (e.g. 45–90 min) **or** a future **size** trigger once we have a safe signal post-stop only (live byte estimates remain unreliable without timeslice). Each segment becomes another entry in the **existing multi-segment** flow. Optional **small transition chime** (different timbre than the 85-min warning) during the ~1s gap so tutors know recording resumed.
+2. **Alert sound library:** Presets (gentle chime / single beep / silent + vibrate-only on mobile). **Vibrate-only** when sound is off (accessibility). Optional mirror in a future **Settings** page.
+3. **Revisit the hard 90m stop** after rollover ships — cap may become **per segment** rather than **total session**, with automatic continuation so tutors rarely think about limits.
+
 ---
 
 ## Adversarial review + UX audit (post-Phase-5, 2026-04-19)
@@ -180,7 +196,7 @@ Is "started writing mid-session, not ready for parent eyes yet" a real workflow,
 ## Pilot feedback — action items
 
 - **Session time logging.** ✅ **Shipped** — optional `startTime` / `endTime` on `SessionNote`, auto-fill from recording timestamps when blank, tutor-editable in new-note and edit flows; shown on admin history and share pages. **Follow-up (not blocking):** true timezone-aware storage if cross-zone display matters — see adversarial section "Time-storage tech debt."
-- **Recordings longer than 90 min.** malmesae sometimes tutors for longer than 90 min. Currently capped at 90 min and 100MB. Real fix: chunked/segmented recording that auto-saves and continues, or allow multiple recordings per note. Backlogged — requires architecture change.
+- **Recordings longer than 90 min.** Some tutors run longer than the **client** 90 min cap (`HARD_CAP_SECONDS`). **Whisper** is limited by **25 MB per API request** (server **ffmpeg** split shipped). Remaining gap is **continuous capture**: single blob + upload limits. **Backlog:** seamless **auto-rollover** segments (stop + start new `MediaRecorder` without iOS-breaking timeslice) — see **“Recording — long sessions, Whisper limits, alerts (2026)”** above.
 - **Tutor playback of saved recording.** ✅ **Shipped** — preview before transcribe in the AI panel (local object URL); playback on admin notes history (`/admin/students/[id]/notes`) via `GET /api/audio/admin/[recordingId]` (session auth). **Known limitation:** env-only (legacy) admin scope may not work for that route — see adversarial review "Admin audio proxy broken for env-only admins."
 - **AI link extraction from spoken/typed URLs.** Currently the AI lifts brand mentions verbatim — e.g. "go to google for more info" becomes a "Google" entry in the Links field, not a real URL. Desired behavior: when an actual URL or domain is spoken/typed (`www.google.com`, `khanacademy.org/algebra`), normalize to `https://...` and put it in Links. When only a brand name is mentioned with no domain, leave it out of Links (don't guess). Implementation: tighten the system prompt in `generateNoteFromTextAction` and add a regex post-pass to validate/normalize what the model returns. Add a unit test covering: (a) spoken URL → captured, (b) brand-only → not captured, (c) bare domain → `https://` prepended.
 - **AI note generation — context hygiene & regression tests.** Prior production issues: stale UI text feeding the prompt, model asserting facts not present in session text, bleeding content from prior sessions. Backlog: tests and/or prompt-contract checks around `generateSessionNote` / `generateNoteFromTextAction` (e.g. placeholder-only input, no duplicate client state in prompt, optional snapshot of prompt shape). Complements "AI link extraction" above.

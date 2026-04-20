@@ -53,18 +53,23 @@ function formatDuration(seconds: number): string {
 const HARD_CAP_SECONDS = 90 * 60; // 90 minutes
 const WARN_AT_SECONDS = 85 * 60;  // 85 minutes
 
+/** Base master gain; multiplied by `volume` (0.05–1). */
+const CHIME_BASE_GAIN = 0.11;
+
 /**
  * Short, gentle two-tone chime when approaching HARD_CAP (visual warning already shown).
  * Uses Web Audio API; no external assets. Fails silently if AudioContext is unavailable.
+ * @param volume 0 = silent (also skips vibration). 0.05–1 scales loudness.
  */
-function playApproachingMaxTimeChime() {
+function playApproachingMaxTimeChime(volume: number) {
   if (typeof window === "undefined") return;
+  if (volume <= 0) return;
   try {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
     const ctx = new AC();
     const master = ctx.createGain();
-    master.gain.value = 0.11;
+    master.gain.value = CHIME_BASE_GAIN * Math.min(1, Math.max(0.05, volume));
     master.connect(ctx.destination);
 
     const tone = (freq: number, t0: number, dur: number) => {
@@ -99,6 +104,14 @@ const GAIN_MAX = 3.0;
 const GAIN_DEFAULT = 1.0;
 const STORAGE_DEVICE_KEY = "tn-mic-device-id";
 const STORAGE_GAIN_KEY = "tn-mic-gain";
+/** When approaching max recording length — sound + optional vibration (if not muted). */
+const STORAGE_CHIME_ENABLED_KEY = "tn-recording-chime-enabled";
+/** 0.05–1.0 — scales alert loudness (stored as string float). */
+const STORAGE_CHIME_VOLUME_KEY = "tn-recording-chime-volume";
+
+const CHIME_VOL_MIN = 0.05;
+const CHIME_VOL_MAX = 1;
+const CHIME_VOL_DEFAULT = 0.75;
 
 export type RecordedAudio = {
   blobUrl: string;
@@ -161,6 +174,22 @@ function loadStoredDeviceId(): string {
   return window.localStorage.getItem(STORAGE_DEVICE_KEY) ?? "";
 }
 
+function loadStoredChimeEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  const v = window.localStorage.getItem(STORAGE_CHIME_ENABLED_KEY);
+  if (v === null) return true;
+  return v === "1" || v === "true";
+}
+
+function loadStoredChimeVolume(): number {
+  if (typeof window === "undefined") return CHIME_VOL_DEFAULT;
+  const raw = window.localStorage.getItem(STORAGE_CHIME_VOLUME_KEY);
+  if (!raw) return CHIME_VOL_DEFAULT;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n) || n < CHIME_VOL_MIN || n > CHIME_VOL_MAX) return CHIME_VOL_DEFAULT;
+  return n;
+}
+
 /** Decide bar colour by level — green/yellow/red zones for visible feedback. */
 function meterColor(level: number): string {
   if (level >= 0.85) return "var(--color-error, #dc2626)";
@@ -215,6 +244,12 @@ type MicControlsProps = {
   lockDevice: boolean;
   /** Optional message shown when mic isn't yet acquired. */
   hint?: string;
+  /** Play a short sound (and vibrate on mobile) when approaching max recording length. */
+  chimeEnabled: boolean;
+  onChimeEnabledChange: (enabled: boolean) => void;
+  /** 0.05–1 — alert loudness when chime is on. */
+  chimeVolume: number;
+  onChimeVolumeChange: (volume: number) => void;
 };
 
 function MicControls({
@@ -227,12 +262,18 @@ function MicControls({
   isLive,
   lockDevice,
   hint,
+  chimeEnabled,
+  onChimeEnabledChange,
+  chimeVolume,
+  onChimeVolumeChange,
 }: MicControlsProps) {
   const pickerDisabled = lockDevice || (!isLive && devices.length === 0);
   const sliderDisabled = !isLive;
   // Visual percentage of the gain slider — used to drive the custom track fill
   // (so the filled portion grows from 0% at min to 100% at max with the thumb).
   const gainPct = ((gainLinear - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * 100;
+  const chimeVolPct =
+    ((chimeVolume - CHIME_VOL_MIN) / (CHIME_VOL_MAX - CHIME_VOL_MIN)) * 100;
 
   return (
     <div
@@ -385,6 +426,57 @@ function MicControls({
         </div>
       </div>
 
+      {/* Approaching max time — sound + volume (this recorder only; persisted locally). */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 10,
+          rowGap: 8,
+          paddingTop: 4,
+          borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+        }}
+      >
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 13,
+            color: "var(--muted)",
+            fontWeight: 500,
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={chimeEnabled}
+            onChange={(e) => onChimeEnabledChange(e.target.checked)}
+            data-testid="recording-chime-enabled"
+            aria-label="Sound alert when approaching max recording length"
+          />
+          Time alert sound
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 160px", minWidth: 0 }}>
+          <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>Volume:</span>
+          <input
+            type="range"
+            className="mic-chime-slider"
+            min={CHIME_VOL_MIN}
+            max={CHIME_VOL_MAX}
+            step={0.05}
+            value={chimeVolume}
+            onChange={(e) => onChimeVolumeChange(parseFloat(e.target.value))}
+            disabled={!chimeEnabled}
+            aria-label="Time alert volume"
+            data-testid="recording-chime-volume"
+            style={{ ["--chime-pct" as string]: `${chimeVolPct}%` } as React.CSSProperties}
+          />
+        </div>
+      </div>
+
       {hint && (
         <p style={{ margin: 0, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
           {hint}
@@ -463,6 +555,62 @@ function MicControls({
           cursor: pointer;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
+        .mic-chime-slider {
+          flex: 1;
+          width: 100%;
+          min-width: 0;
+          height: 18px;
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          border: none;
+          appearance: none;
+          -webkit-appearance: none;
+          cursor: pointer;
+        }
+        .mic-chime-slider:disabled { cursor: not-allowed; opacity: 0.45; }
+        .mic-chime-slider::-webkit-slider-runnable-track {
+          height: 4px;
+          border-radius: 2px;
+          background: linear-gradient(
+            to right,
+            var(--accent) 0%,
+            var(--accent) var(--chime-pct, 0%),
+            rgba(255, 255, 255, 0.15) var(--chime-pct, 0%),
+            rgba(255, 255, 255, 0.15) 100%
+          );
+        }
+        .mic-chime-slider::-moz-range-track {
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.15);
+        }
+        .mic-chime-slider::-moz-range-progress {
+          height: 4px;
+          border-radius: 2px;
+          background: var(--accent);
+        }
+        .mic-chime-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          margin-top: -4px;
+          border-radius: 50%;
+          background: #fff;
+          border: 2px solid var(--accent);
+          cursor: pointer;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        .mic-chime-slider::-moz-range-thumb {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #fff;
+          border: 2px solid var(--accent);
+          cursor: pointer;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
       `}</style>
     </div>
   );
@@ -483,6 +631,9 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   /** Digital gain applied in the browser before MediaRecorder. NOT a substitute for OS mic level. */
   const [gainLinear, setGainLinear] = useState<number>(GAIN_DEFAULT);
+  /** Local-only: approaching-max time chime (sound + optional vibration on phones). */
+  const [chimeEnabled, setChimeEnabled] = useState(() => loadStoredChimeEnabled());
+  const [chimeVolume, setChimeVolume] = useState(() => loadStoredChimeVolume());
   /** Last-known mic permission state, used only to pick the right hint copy. */
   const [permissionState, setPermissionState] = useState<"granted" | "prompt" | "denied" | "unknown">("unknown");
 
@@ -498,12 +649,33 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   const meterColorRef = useRef<string>(meterColor(0));
   /** One audible "approaching max time" cue per recording (not on pause/resume timer restarts). */
   const approachingCapSoundPlayedRef = useRef(false);
+  const chimeEnabledRef = useRef(chimeEnabled);
+  const chimeVolumeRef = useRef(chimeVolume);
+
+  useEffect(() => {
+    chimeEnabledRef.current = chimeEnabled;
+  }, [chimeEnabled]);
+  useEffect(() => {
+    chimeVolumeRef.current = chimeVolume;
+  }, [chimeVolume]);
 
   // Load persisted prefs after mount (avoid SSR/hydration mismatch).
   useEffect(() => {
     setGainLinear(loadStoredGain());
     setSelectedDeviceId(loadStoredDeviceId());
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_CHIME_ENABLED_KEY, chimeEnabled ? "1" : "0");
+    }
+  }, [chimeEnabled]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_CHIME_VOLUME_KEY, String(chimeVolume));
+    }
+  }, [chimeVolume]);
 
   // Notify parent whenever the active state changes.
   useEffect(() => {
@@ -602,7 +774,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         !approachingCapSoundPlayedRef.current
       ) {
         approachingCapSoundPlayedRef.current = true;
-        playApproachingMaxTimeChime();
+        const vol = chimeEnabledRef.current ? chimeVolumeRef.current : 0;
+        playApproachingMaxTimeChime(vol);
       }
 
       if (elapsedRef.current >= HARD_CAP_SECONDS) {
@@ -989,6 +1162,10 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         isLive={isLive}
         lockDevice={lockDevice}
         hint={hint}
+        chimeEnabled={chimeEnabled}
+        onChimeEnabledChange={setChimeEnabled}
+        chimeVolume={chimeVolume}
+        onChimeVolumeChange={setChimeVolume}
       />
 
       {(recordState === "idle" || recordState === "acquiring" || recordState === "ready") && (

@@ -61,8 +61,13 @@ const WARN_SEGMENT_SECONDS = SEGMENT_MAX_SECONDS - 5 * 60;
 /** Hard stop for pathological runaway sessions (memory / tab stability). */
 const SESSION_SAFETY_MAX_SECONDS = 8 * 60 * 60;
 
-/** Base master gain; multiplied by `volume` (0.05–1). */
-const CHIME_BASE_GAIN = 0.11;
+/**
+ * Base master gain; multiplied by `volume` (0.05–1). Tuned so that the
+ * default volume (0.75) is audible across a tutor's voice mid-conversation
+ * without being startling — bumped after a real-world test where the chime
+ * went unheard while the tutor was talking.
+ */
+const CHIME_BASE_GAIN = 0.22;
 
 /**
  * Short, gentle two-tone chime when approaching HARD_CAP (visual warning already shown).
@@ -1379,11 +1384,21 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
             >
               Part {segmentNumber} · {formatDuration(elapsed)}
             </span>
-            {isWarning && (
-              <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                ~5 min left in this segment — will save &amp; continue automatically
-              </span>
-            )}
+            {isWarning && (() => {
+              // Compute the actual time left so the message stays accurate
+              // when SEGMENT_MAX_SECONDS / WARN_SEGMENT_SECONDS are tuned
+              // (and during smoke tests with shorter values).
+              const secondsLeft = Math.max(0, SEGMENT_MAX_SECONDS - elapsed);
+              const leftLabel =
+                secondsLeft >= 90
+                  ? `~${Math.ceil(secondsLeft / 60)} min left`
+                  : `~${secondsLeft}s left`;
+              return (
+                <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
+                  {leftLabel} in this segment — will save &amp; continue automatically
+                </span>
+              );
+            })()}
             <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
               {recordState === "paused" ? "Paused" : "Recording…"}
             </span>

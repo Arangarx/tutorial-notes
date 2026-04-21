@@ -1,16 +1,15 @@
 /**
  * Regression test for src/app/admin/students/[id]/AudioRecordInput.tsx
- * `chooseMimeType()` priority order.
+ * `recorder.start()` MUST stay un-chunked.
  *
- * Background: this list has flipped twice. Putting `audio/mp4` first
- * makes desktop Chrome record MP4, which Whisper can transcribe but
- * <audio> cannot reliably play back (malformed container metadata,
- * "Preview unavailable" fallback shown). WebM must come first; iOS
- * Safari falls through to MP4 naturally because it's the only browser
- * that doesn't support WebM in MediaRecorder.
+ * MIME priority is now covered by the unit test:
+ *   src/__tests__/recording/mime.test.ts
  *
- * If you have a legitimate reason to put MP4 before WebM, you also need
- * to fix Chrome's preview some other way and update / delete this test.
+ * What stays here is the call-site assertion: passing a timeslice
+ * (e.g. `recorder.start(1000)`) makes iOS Safari emit fragmented MP4
+ * pieces that don't concatenate into a playable / Whisper-decodable
+ * file. This is a property of the recorder hook's call site, not of
+ * the MIME selection module, so we grep the source to lock it.
  */
 
 import { readFileSync } from "fs";
@@ -21,26 +20,8 @@ const SRC = readFileSync(
   "utf8"
 );
 
-describe("AudioRecordInput chooseMimeType priority order", () => {
-  test("audio/webm appears in the candidates list", () => {
-    expect(SRC).toMatch(/"audio\/webm/);
-  });
-
-  test("audio/mp4 appears in the candidates list (so iOS Safari can record)", () => {
-    expect(SRC).toMatch(/"audio\/mp4"/);
-  });
-
-  test("audio/webm is preferred over audio/mp4 (Chrome preview regression guard)", () => {
-    const webmIndex = SRC.indexOf('"audio/webm');
-    const mp4Index = SRC.indexOf('"audio/mp4"');
-    expect(webmIndex).toBeGreaterThan(-1);
-    expect(mp4Index).toBeGreaterThan(-1);
-    expect(webmIndex).toBeLessThan(mp4Index);
-  });
-
+describe("AudioRecordInput recorder.start()", () => {
   test("recorder.start() is called WITHOUT a timeslice (iOS MP4 fragmentation guard)", () => {
-    // start(1000) etc. produces fragmented MP4 on iOS Safari that won't
-    // play back or transcribe. Must be a bare recorder.start().
     expect(SRC).toMatch(/recorder\.start\(\s*\)/);
     expect(SRC).not.toMatch(/recorder\.start\(\s*\d/);
   });

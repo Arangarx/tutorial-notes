@@ -4,43 +4,39 @@ import { useEffect, useRef, useState } from "react";
 import { formatUserFacingActionError } from "@/lib/action-correlation";
 import { uploadAudioAction } from "./actions";
 import { createMicAudioGraph, type MicAudioGraph } from "@/lib/mic-recorder-audio";
-
-/**
- * Pick the best supported MIME type for MediaRecorder in priority order.
- *
- * Priority is webm-first because Chrome / Firefox / Edge produce well-formed
- * WebM that plays back reliably in <audio>. Chrome on Windows DOES report
- * `audio/mp4` as supported in recent versions, but its MP4 output is known to
- * have malformed container metadata (no proper duration, won't seek, often
- * won't play back) — even though Whisper can still decode the raw audio.
- *
- * iOS Safari is the only browser that doesn't support audio/webm, so it falls
- * through to audio/mp4 naturally. The no-timeslice `recorder.start()` call
- * (see startRecording below) keeps iOS MP4 output non-fragmented and playable.
- *
- * If you change this list, manually verify preview playback in BOTH desktop
- * Chrome and iOS Safari — this has regressed twice.
- */
-function chooseMimeType(): string {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg;codecs=opus",
-    "audio/ogg",
-  ];
-  if (typeof MediaRecorder === "undefined") return "audio/webm";
-  for (const mime of candidates) {
-    if (MediaRecorder.isTypeSupported(mime)) return mime;
-  }
-  return "";
-}
-
-function fileExtension(mimeType: string): string {
-  if (mimeType.startsWith("audio/mp4")) return "mp4";
-  if (mimeType.startsWith("audio/ogg")) return "ogg";
-  return "webm";
-}
+import { chooseMimeType, fileExtension } from "@/lib/recording/mime";
+import {
+  SEGMENT_MAX_SECONDS,
+  WARN_SEGMENT_SECONDS,
+  SESSION_SAFETY_MAX_SECONDS,
+  formatSegmentTimeLeft,
+} from "@/lib/recording/segment-policy";
+import {
+  playApproachingMaxTimeChime,
+  playSegmentRolloverChime,
+} from "@/lib/recording/chimes";
+import {
+  GAIN_DEFAULT,
+  GAIN_MAX,
+  GAIN_MIN,
+  CHIME_VOL_DEFAULT,
+  CHIME_VOL_MAX,
+  CHIME_VOL_MIN,
+  loadStoredChimeEnabled,
+  loadStoredChimeVolume,
+  loadStoredDeviceId,
+  loadStoredGain,
+  saveStoredChimeEnabled,
+  saveStoredChimeVolume,
+  saveStoredDeviceId,
+  saveStoredGain,
+} from "@/lib/recording/storage";
+import { queryMicPermission } from "@/lib/recording/permissions";
+import { uploadAudioWithRetry } from "@/lib/recording/upload";
+import {
+  ACTIVE_STATES,
+  type RecordState,
+} from "@/lib/recording/recording-state";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -49,110 +45,6 @@ function formatDuration(seconds: number): string {
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
-
-/**
- * Per-segment cap: auto-save and continue without user action (no MediaRecorder
- * timeslice — safe for iOS Safari). Server-side ffmpeg already splits huge files
- * for Whisper; this keeps each browser blob smaller and avoids one huge tab memory spike.
- */
-const SEGMENT_MAX_SECONDS = 50 * 60; // 50 minutes per segment
-/** Warn 5 minutes before segment rollover. */
-const WARN_SEGMENT_SECONDS = SEGMENT_MAX_SECONDS - 5 * 60;
-/** Hard stop for pathological runaway sessions (memory / tab stability). */
-const SESSION_SAFETY_MAX_SECONDS = 8 * 60 * 60;
-
-/**
- * Base master gain; multiplied by `volume` (0.05–1). Tuned so that the
- * default volume (0.75) is audible across a tutor's voice mid-conversation
- * without being startling — bumped after a real-world test where the chime
- * went unheard while the tutor was talking.
- */
-const CHIME_BASE_GAIN = 0.22;
-
-/**
- * Short, gentle two-tone chime when approaching HARD_CAP (visual warning already shown).
- * Uses Web Audio API; no external assets. Fails silently if AudioContext is unavailable.
- * @param volume 0 = silent (also skips vibration). 0.05–1 scales loudness.
- */
-function playApproachingMaxTimeChime(volume: number) {
-  if (typeof window === "undefined") return;
-  if (volume <= 0) return;
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
-    const master = ctx.createGain();
-    master.gain.value = CHIME_BASE_GAIN * Math.min(1, Math.max(0.05, volume));
-    master.connect(ctx.destination);
-
-    const tone = (freq: number, t0: number, dur: number) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(1, t0 + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      osc.connect(g);
-      g.connect(master);
-      osc.start(t0);
-      osc.stop(t0 + dur + 0.02);
-    };
-
-    const t0 = ctx.currentTime;
-    tone(880, t0, 0.11);
-    tone(660, t0 + 0.13, 0.12);
-    void ctx.resume();
-
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate([70, 35, 70]);
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Soft cue right before an automatic segment rollover (distinct from the 5‑min warning). */
-function playSegmentRolloverChime(volume: number) {
-  if (typeof window === "undefined") return;
-  if (volume <= 0) return;
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
-    const master = ctx.createGain();
-    master.gain.value = CHIME_BASE_GAIN * 0.55 * Math.min(1, Math.max(0.05, volume));
-    master.connect(ctx.destination);
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 523.25; // C5
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
-    osc.connect(g);
-    g.connect(master);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
-    void ctx.resume();
-  } catch {
-    /* ignore */
-  }
-}
-
-const GAIN_MIN = 0.25;
-const GAIN_MAX = 3.0;
-const GAIN_DEFAULT = 1.0;
-const STORAGE_DEVICE_KEY = "tn-mic-device-id";
-const STORAGE_GAIN_KEY = "tn-mic-gain";
-/** When approaching max recording length — sound + optional vibration (if not muted). */
-const STORAGE_CHIME_ENABLED_KEY = "tn-recording-chime-enabled";
-/** 0.05–1.0 — scales alert loudness (stored as string float). */
-const STORAGE_CHIME_VOLUME_KEY = "tn-recording-chime-volume";
-
-const CHIME_VOL_MIN = 0.05;
-const CHIME_VOL_MAX = 1;
-const CHIME_VOL_DEFAULT = 0.75;
 
 export type RecordedAudio = {
   blobUrl: string;
@@ -171,98 +63,12 @@ type Props = {
   disabled?: boolean;
 };
 
-/**
- * State machine:
- *   idle       — controls visible but mic not acquired (no permission yet, or permission prompt)
- *   acquiring  — getUserMedia is in flight
- *   ready      — mic hot, meter live, picker populated; primary action = start recording
- *   recording  — MediaRecorder active
- *   paused     — MediaRecorder paused
- *   uploading  — POST in flight
- *   done       — success card
- *   error      — error card with retry
- */
-type RecordState =
-  | "idle"
-  | "acquiring"
-  | "ready"
-  | "recording"
-  | "paused"
-  | "uploading"
-  | "done"
-  | "error";
-
-/**
- * States the parent panel should treat as "recording in progress" — used to
- * disable the "Transcribe & generate notes" button so the user can't kick off
- * transcription mid-capture. With auto-acquire-on-mount, the mic stays hot
- * (graph + meter live) in `ready` even when no recording is happening, so
- * `ready` and `acquiring` deliberately do NOT count as active — otherwise the
- * Transcribe button would be permanently greyed out after each save.
- */
-const ACTIVE_STATES: RecordState[] = ["recording", "paused", "uploading"];
-
-function loadStoredGain(): number {
-  if (typeof window === "undefined") return GAIN_DEFAULT;
-  const raw = window.localStorage.getItem(STORAGE_GAIN_KEY);
-  if (!raw) return GAIN_DEFAULT;
-  const n = parseFloat(raw);
-  if (!Number.isFinite(n) || n < GAIN_MIN || n > GAIN_MAX) return GAIN_DEFAULT;
-  return n;
-}
-
-function loadStoredDeviceId(): string {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(STORAGE_DEVICE_KEY) ?? "";
-}
-
-function loadStoredChimeEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  const v = window.localStorage.getItem(STORAGE_CHIME_ENABLED_KEY);
-  if (v === null) return true;
-  return v === "1" || v === "true";
-}
-
-function loadStoredChimeVolume(): number {
-  if (typeof window === "undefined") return CHIME_VOL_DEFAULT;
-  const raw = window.localStorage.getItem(STORAGE_CHIME_VOLUME_KEY);
-  if (!raw) return CHIME_VOL_DEFAULT;
-  const n = parseFloat(raw);
-  if (!Number.isFinite(n) || n < CHIME_VOL_MIN || n > CHIME_VOL_MAX) return CHIME_VOL_DEFAULT;
-  return n;
-}
-
 /** Decide bar colour by level — green/yellow/red zones for visible feedback. */
 function meterColor(level: number): string {
   if (level >= 0.85) return "var(--color-error, #dc2626)";
   if (level >= 0.5) return "#eab308"; // amber-500
   if (level >= 0.05) return "var(--color-success, #16a34a)";
   return "var(--color-muted, #9ca3af)";
-}
-
-/**
- * Best-effort check of whether the page already has mic permission. Used to
- * decide whether to silently acquire on mount or wait for an explicit user
- * gesture. Returns "granted" | "prompt" | "denied" | "unknown".
- *
- * The Permissions API for "microphone" is not implemented in every browser
- * (notably older Safari), so we treat any failure as "unknown" and fall back
- * to the prompt-on-Start path.
- */
-async function queryMicPermission(): Promise<"granted" | "prompt" | "denied" | "unknown"> {
-  try {
-    if (typeof navigator === "undefined" || !navigator.permissions?.query) {
-      return "unknown";
-    }
-    // The "microphone" name isn't in the typed PermissionName union in some TS
-    // lib targets, but it's the de facto standard. Cast to keep types happy.
-    const status = await navigator.permissions.query({
-      name: "microphone" as PermissionName,
-    });
-    return status.state;
-  } catch {
-    return "unknown";
-  }
 }
 
 // =====================================================================
@@ -718,15 +524,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_CHIME_ENABLED_KEY, chimeEnabled ? "1" : "0");
-    }
+    saveStoredChimeEnabled(chimeEnabled);
   }, [chimeEnabled]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_CHIME_VOLUME_KEY, String(chimeVolume));
-    }
+    saveStoredChimeVolume(chimeVolume);
   }, [chimeVolume]);
 
   // Notify parent whenever the active state changes.
@@ -737,9 +539,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
   // Live gain updates while graph is active; persist value.
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_GAIN_KEY, String(gainLinear));
-    }
+    saveStoredGain(gainLinear);
     graphRef.current?.setGain(gainLinear);
   }, [gainLinear]);
 
@@ -907,9 +707,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
           "Microphone is in use by another app (e.g. Discord, Teams). Close that app or switch its audio device, then try again.";
       } else if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
         if (opts.deviceId) {
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem(STORAGE_DEVICE_KEY);
-          }
+          saveStoredDeviceId("");
           setSelectedDeviceId("");
           msg =
             "The previously selected microphone is no longer available. Try clicking Start recording again to use the default mic.";
@@ -929,8 +727,8 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
     // Persist the actual deviceId in use (browsers sometimes resolve "default" to a real id).
     const settings = audioTrack?.getSettings?.();
-    if (settings?.deviceId && typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_DEVICE_KEY, settings.deviceId);
+    if (settings?.deviceId) {
+      saveStoredDeviceId(settings.deviceId);
       setSelectedDeviceId(settings.deviceId);
     }
 
@@ -1022,10 +820,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
 
   async function handleDeviceChange(newDeviceId: string) {
     setSelectedDeviceId(newDeviceId);
-    if (typeof window !== "undefined") {
-      if (newDeviceId) window.localStorage.setItem(STORAGE_DEVICE_KEY, newDeviceId);
-      else window.localStorage.removeItem(STORAGE_DEVICE_KEY);
-    }
+    saveStoredDeviceId(newDeviceId);
     // Re-acquire only when ready (we lock the picker mid-recording).
     if (recordState === "ready") {
       await acquireMic({ deviceId: newDeviceId || undefined, forRecording: false });
@@ -1089,16 +884,13 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         const ext = fileExtension(mimeType);
         const filename = `session-${Date.now()}-part${partIndex}.${ext}`;
 
-        const runUpload = () => {
-          const fd = new FormData();
-          fd.append("file", new File([blob], filename, { type: mimeType }));
-          return uploadAudioAction(studentId, fd);
-        };
-
-        let result = await runUpload();
-        if (!result.ok) {
-          result = await runUpload();
-        }
+        const result = await uploadAudioWithRetry(
+          uploadAudioAction,
+          studentId,
+          blob,
+          filename,
+          mimeType
+        );
 
         if (!result.ok) {
           setError(formatUserFacingActionError(result.error, result.debugId));
@@ -1384,21 +1176,11 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
             >
               Part {segmentNumber} · {formatDuration(elapsed)}
             </span>
-            {isWarning && (() => {
-              // Compute the actual time left so the message stays accurate
-              // when SEGMENT_MAX_SECONDS / WARN_SEGMENT_SECONDS are tuned
-              // (and during smoke tests with shorter values).
-              const secondsLeft = Math.max(0, SEGMENT_MAX_SECONDS - elapsed);
-              const leftLabel =
-                secondsLeft >= 90
-                  ? `~${Math.ceil(secondsLeft / 60)} min left`
-                  : `~${secondsLeft}s left`;
-              return (
-                <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                  {leftLabel} in this segment — will save &amp; continue automatically
-                </span>
-              );
-            })()}
+            {isWarning && (
+              <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
+                {formatSegmentTimeLeft(SEGMENT_MAX_SECONDS - elapsed)} in this segment — will save &amp; continue automatically
+              </span>
+            )}
             <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
               {recordState === "paused" ? "Paused" : "Recording…"}
             </span>

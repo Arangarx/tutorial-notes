@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 function getStored(key: string): string | null {
-  const w = (globalThis as { window?: { localStorage: MemoryStorage } }).window;
+  const w = (globalThis as unknown as { window?: { localStorage: MemoryStorage } }).window;
   return w?.localStorage.getItem(key) ?? null;
 }
 
@@ -78,7 +78,7 @@ describe("loadStoredGain / saveStoredGain", () => {
   });
 
   test("clamps junk to default (NaN, out-of-range)", () => {
-    const w = (globalThis as { window?: { localStorage: MemoryStorage } }).window!;
+    const w = (globalThis as unknown as { window?: { localStorage: MemoryStorage } }).window!;
     w.localStorage.setItem(STORAGE_GAIN_KEY, "not-a-number");
     expect(loadStoredGain()).toBe(GAIN_DEFAULT);
     w.localStorage.setItem(STORAGE_GAIN_KEY, String(GAIN_MIN - 0.01));
@@ -118,7 +118,7 @@ describe("loadStoredChimeEnabled / saveStoredChimeEnabled", () => {
   });
 
   test("accepts legacy 'true' string for back-compat", () => {
-    const w = (globalThis as { window?: { localStorage: MemoryStorage } }).window!;
+    const w = (globalThis as unknown as { window?: { localStorage: MemoryStorage } }).window!;
     w.localStorage.setItem(STORAGE_CHIME_ENABLED_KEY, "true");
     expect(loadStoredChimeEnabled()).toBe(true);
   });
@@ -136,7 +136,7 @@ describe("loadStoredChimeVolume / saveStoredChimeVolume", () => {
   });
 
   test("clamps out-of-range / NaN to default", () => {
-    const w = (globalThis as { window?: { localStorage: MemoryStorage } }).window!;
+    const w = (globalThis as unknown as { window?: { localStorage: MemoryStorage } }).window!;
     w.localStorage.setItem(STORAGE_CHIME_VOLUME_KEY, "not-a-number");
     expect(loadStoredChimeVolume()).toBe(CHIME_VOL_DEFAULT);
     w.localStorage.setItem(STORAGE_CHIME_VOLUME_KEY, String(CHIME_VOL_MIN - 0.001));

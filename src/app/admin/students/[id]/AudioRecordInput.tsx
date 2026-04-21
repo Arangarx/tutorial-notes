@@ -1,58 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { formatUserFacingActionError } from "@/lib/action-correlation";
-import { uploadAudioAction } from "./actions";
-import { createMicAudioGraph, type MicAudioGraph } from "@/lib/mic-recorder-audio";
-import { chooseMimeType, fileExtension } from "@/lib/recording/mime";
+import {
+  GAIN_MAX,
+  GAIN_MIN,
+  CHIME_VOL_MAX,
+  CHIME_VOL_MIN,
+} from "@/lib/recording/storage";
 import {
   SEGMENT_MAX_SECONDS,
-  WARN_SEGMENT_SECONDS,
-  SESSION_SAFETY_MAX_SECONDS,
   formatSegmentTimeLeft,
 } from "@/lib/recording/segment-policy";
 import {
-  playApproachingMaxTimeChime,
-  playSegmentRolloverChime,
-} from "@/lib/recording/chimes";
-import {
-  GAIN_DEFAULT,
-  GAIN_MAX,
-  GAIN_MIN,
-  CHIME_VOL_DEFAULT,
-  CHIME_VOL_MAX,
-  CHIME_VOL_MIN,
-  loadStoredChimeEnabled,
-  loadStoredChimeVolume,
-  loadStoredDeviceId,
-  loadStoredGain,
-  saveStoredChimeEnabled,
-  saveStoredChimeVolume,
-  saveStoredDeviceId,
-  saveStoredGain,
-} from "@/lib/recording/storage";
-import { queryMicPermission } from "@/lib/recording/permissions";
-import { uploadAudioWithRetry } from "@/lib/recording/upload";
-import {
-  ACTIVE_STATES,
-  type RecordState,
-} from "@/lib/recording/recording-state";
+  useAudioRecorder,
+  type RecordedAudio,
+} from "@/hooks/useAudioRecorder";
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-export type RecordedAudio = {
-  blobUrl: string;
-  mimeType: string;
-  sizeBytes: number;
-  filename: string;
-  previewUrl?: string;
-};
+export type { RecordedAudio };
 
 type Props = {
   studentId: string;
@@ -62,6 +25,14 @@ type Props = {
   onRecordingActive?: (active: boolean) => void;
   disabled?: boolean;
 };
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 /** Decide bar colour by level — green/yellow/red zones for visible feedback. */
 function meterColor(level: number): string {
@@ -76,6 +47,9 @@ function meterColor(level: number): string {
 // parent re-renders. If this is defined inside the parent function, every
 // parent render creates a NEW component type, React unmounts/remounts the
 // subtree, and the slider drag is killed mid-gesture.
+//
+// Phase 4 of the recorder refactor will move this into its own file
+// alongside a CSS module for the inline <style> block at the bottom.
 // =====================================================================
 
 type MicControlsProps = {
@@ -465,534 +439,24 @@ function MicControls({
 }
 
 // =====================================================================
-// AudioRecordInput
+// AudioRecordInput — thin shell over useAudioRecorder.
+//
+// Owns ZERO recording logic. Picks a subview based on `state` + `uploadMode`
+// from the hook. Phase 4 of the refactor will pull each branch into its own
+// presentational component.
 // =====================================================================
 
-export default function AudioRecordInput({ studentId, onRecorded, onRecordingActive, disabled }: Props) {
-  const [recordState, setRecordState] = useState<RecordState>("idle");
-  const [elapsed, setElapsed] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+export default function AudioRecordInput({
+  studentId,
+  onRecorded,
+  onRecordingActive,
+  disabled,
+}: Props) {
+  const r = useAudioRecorder({ studentId, onRecorded, onRecordingActive });
 
-  /** Audio input devices populated after permission grant. */
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  /** Currently selected deviceId (empty string = browser default). */
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  /** Digital gain applied in the browser before MediaRecorder. NOT a substitute for OS mic level. */
-  const [gainLinear, setGainLinear] = useState<number>(GAIN_DEFAULT);
-  /** Local-only: approaching-max time chime (sound + optional vibration on phones). */
-  const [chimeEnabled, setChimeEnabled] = useState(() => loadStoredChimeEnabled());
-  const [chimeVolume, setChimeVolume] = useState(() => loadStoredChimeVolume());
-  /** Current segment index (1-based) — increments on auto-rollover. */
-  const [segmentNumber, setSegmentNumber] = useState(1);
-  /** `segment` = saving mid-session without tearing down the mic; `final` = full-screen upload. */
-  const [uploadMode, setUploadMode] = useState<null | "segment" | "final">(null);
-  /** Duration shown on the success card after Stop & save (last segment only). */
-  const [doneSegmentSeconds, setDoneSegmentSeconds] = useState(0);
-  /** Last-known mic permission state, used only to pick the right hint copy. */
-  const [permissionState, setPermissionState] = useState<"granted" | "prompt" | "denied" | "unknown">("unknown");
+  // ----- Done / uploading / error short-circuits -----
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const graphRef = useRef<MicAudioGraph | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsedRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
-  const meterBarRef = useRef<HTMLDivElement | null>(null);
-  /** Tracks the latest meter colour so we don't thrash style.background every frame. */
-  const meterColorRef = useRef<string>(meterColor(0));
-  /** One audible "approaching max time" cue per recording (not on pause/resume timer restarts). */
-  const approachingCapSoundPlayedRef = useRef(false);
-  /** Wall-clock session length across auto-rollovers (for safety cap). */
-  const totalSessionElapsedRef = useRef(0);
-  /** Prevents double-firing auto-rollover from the 1s timer. */
-  const rolloverInProgressRef = useRef(false);
-  const chimeEnabledRef = useRef(chimeEnabled);
-  const chimeVolumeRef = useRef(chimeVolume);
-
-  useEffect(() => {
-    chimeEnabledRef.current = chimeEnabled;
-  }, [chimeEnabled]);
-  useEffect(() => {
-    chimeVolumeRef.current = chimeVolume;
-  }, [chimeVolume]);
-
-  // Load persisted prefs after mount (avoid SSR/hydration mismatch).
-  useEffect(() => {
-    setGainLinear(loadStoredGain());
-    setSelectedDeviceId(loadStoredDeviceId());
-  }, []);
-
-  useEffect(() => {
-    saveStoredChimeEnabled(chimeEnabled);
-  }, [chimeEnabled]);
-
-  useEffect(() => {
-    saveStoredChimeVolume(chimeVolume);
-  }, [chimeVolume]);
-
-  // Notify parent whenever the active state changes.
-  useEffect(() => {
-    onRecordingActive?.(ACTIVE_STATES.includes(recordState));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordState]);
-
-  // Live gain updates while graph is active; persist value.
-  useEffect(() => {
-    saveStoredGain(gainLinear);
-    graphRef.current?.setGain(gainLinear);
-  }, [gainLinear]);
-
-  // Acquire mic on mount unless permission is already denied. The user opened
-  // the Record tab — that's a clear intent signal, the same as opening Google
-  // Meet's join page. We let the browser show its prompt if needed (state =
-  // "prompt" or "unknown"). On "denied" we stay idle so we don't fire a
-  // getUserMedia call that we know will reject and pollute the console.
-  //
-  // StrictMode-safe: in dev React mounts effects twice. We use a per-effect
-  // `cancelled` flag (the first run bails after its cleanup fires) plus a
-  // `streamRef.current` short-circuit (the second run won't double-acquire if
-  // the first already succeeded). No module/instance-level "already attempted"
-  // ref — that pattern blocks the legitimate post-remount auto-acquire after
-  // the parent re-keys this component on save.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const permission = await queryMicPermission();
-      if (cancelled) return;
-      setPermissionState(permission);
-      if (permission === "denied") return;
-      if (streamRef.current) return; // already acquired (e.g. StrictMode race)
-      await acquireMic({
-        deviceId: loadStoredDeviceId() || undefined,
-        forRecording: false,
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cleanup on unmount.
-  useEffect(() => {
-    return () => {
-      stopTimer();
-      teardownMicStream();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function stopTimer() {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }
-
-  function stopMeter() {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    // Reset the bar to empty/grey via the ref (no re-render).
-    if (meterBarRef.current) {
-      meterBarRef.current.style.width = "0%";
-      meterBarRef.current.style.background = meterColor(0);
-    }
-    meterColorRef.current = meterColor(0);
-  }
-
-  function teardownMicStream() {
-    stopMeter();
-    graphRef.current?.dispose();
-    graphRef.current = null;
-    try {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    } catch {
-      /* ignore */
-    }
-    streamRef.current = null;
-  }
-
-  function startTimer() {
-    stopTimer();
-    timerRef.current = setInterval(() => {
-      elapsedRef.current += 1;
-      totalSessionElapsedRef.current += 1;
-      setElapsed(elapsedRef.current);
-
-      if (
-        elapsedRef.current >= WARN_SEGMENT_SECONDS &&
-        !approachingCapSoundPlayedRef.current
-      ) {
-        approachingCapSoundPlayedRef.current = true;
-        const vol = chimeEnabledRef.current ? chimeVolumeRef.current : 0;
-        playApproachingMaxTimeChime(vol);
-      }
-
-      // Safety valve: very long continuous sessions (timer pauses when recording is paused).
-      if (
-        totalSessionElapsedRef.current >= SESSION_SAFETY_MAX_SECONDS &&
-        !rolloverInProgressRef.current
-      ) {
-        rolloverInProgressRef.current = true;
-        stopAndUpload("final");
-        return;
-      }
-
-      if (
-        elapsedRef.current >= SEGMENT_MAX_SECONDS &&
-        !rolloverInProgressRef.current
-      ) {
-        rolloverInProgressRef.current = true;
-        const vol = chimeEnabledRef.current ? chimeVolumeRef.current : 0;
-        playSegmentRolloverChime(vol);
-        stopAndUpload("rollover");
-      }
-    }, 1000);
-  }
-
-  /**
-   * Drive the meter bar via DOM ref — never via setState. A meter that ticks
-   * 60 times/sec via state would re-render the entire panel every frame; the
-   * slider's drag gesture would get cancelled by the unmount, and CPU usage
-   * would be embarrassing.
-   */
-  function startMeter(graph: MicAudioGraph) {
-    stopMeter();
-    const tick = () => {
-      const level = graph.getLevel();
-      const bar = meterBarRef.current;
-      if (bar) {
-        bar.style.width = `${Math.round(level * 100)}%`;
-        const next = meterColor(level);
-        if (next !== meterColorRef.current) {
-          bar.style.background = next;
-          meterColorRef.current = next;
-        }
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }
-
-  /**
-   * Acquire the mic with optional device constraint, populate the device list
-   * (labels become available once permission is granted), build the audio graph,
-   * and start the level meter. If `forRecording`, also starts MediaRecorder.
-   */
-  async function acquireMic(opts: { deviceId?: string; forRecording: boolean }) {
-    setError(null);
-    teardownMicStream();
-    setRecordState("acquiring");
-
-    let stream: MediaStream;
-    try {
-      const constraints: MediaStreamConstraints = {
-        audio: opts.deviceId ? { deviceId: { exact: opts.deviceId } } : true,
-      };
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (err) {
-      const name = err instanceof Error ? (err as DOMException).name : "";
-      console.error("[AudioRecordInput] getUserMedia failed:", err);
-      let msg: string;
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        msg =
-          "Microphone access denied. Click the icon at the left of the address bar (looks like a slider or tune icon), set Microphone to Allow, then reload the page and try again.";
-      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-        msg = "No microphone found. Please connect a microphone and try again.";
-      } else if (name === "NotReadableError" || name === "TrackStartError") {
-        msg =
-          "Microphone is in use by another app (e.g. Discord, Teams). Close that app or switch its audio device, then try again.";
-      } else if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
-        if (opts.deviceId) {
-          saveStoredDeviceId("");
-          setSelectedDeviceId("");
-          msg =
-            "The previously selected microphone is no longer available. Try clicking Start recording again to use the default mic.";
-        } else {
-          msg = "Microphone constraints not satisfied. Try choosing a different device.";
-        }
-      } else {
-        msg = `Microphone error (${name || "unknown"}). Try reloading the page. If the problem persists, use the Upload tab instead.`;
-      }
-      setError(msg);
-      setRecordState("error");
-      return;
-    }
-
-    streamRef.current = stream;
-    const audioTrack = stream.getAudioTracks?.()[0];
-
-    // Persist the actual deviceId in use (browsers sometimes resolve "default" to a real id).
-    const settings = audioTrack?.getSettings?.();
-    if (settings?.deviceId) {
-      saveStoredDeviceId(settings.deviceId);
-      setSelectedDeviceId(settings.deviceId);
-    }
-
-    // Enumerate AFTER permission so labels populate (browsers redact labels otherwise).
-    try {
-      const all = await navigator.mediaDevices.enumerateDevices();
-      const inputs = all.filter((d) => d.kind === "audioinput");
-      setDevices(inputs);
-    } catch (err) {
-      console.warn("[AudioRecordInput] enumerateDevices failed:", err);
-    }
-
-    // Build the audio graph (gain + meter). Returns null if Web Audio is unavailable
-    // or the stream isn't a real MediaStream (test stub) — fall back to raw stream below.
-    const graph = await createMicAudioGraph(stream, gainLinear);
-    graphRef.current = graph;
-
-    if (graph) {
-      startMeter(graph);
-    }
-
-    if (opts.forRecording) {
-      startMediaRecorder();
-    } else {
-      setRecordState("ready");
-    }
-  }
-
-  function startMediaRecorder(opts?: { continuation?: boolean }) {
-    const continuation = opts?.continuation ?? false;
-    const stream = streamRef.current;
-    if (!stream) {
-      setError("No microphone stream available.");
-      setRecordState("error");
-      return;
-    }
-
-    chunksRef.current = [];
-    elapsedRef.current = 0;
-    setElapsed(0);
-    approachingCapSoundPlayedRef.current = false;
-    rolloverInProgressRef.current = false;
-    if (!continuation) {
-      setSegmentNumber(1);
-      totalSessionElapsedRef.current = 0;
-    }
-
-    const mimeType = chooseMimeType();
-    // Prefer the processed (gain-adjusted) stream; fall back to raw for browsers / tests
-    // where Web Audio isn't available.
-    const recordingStream = graphRef.current?.recordingStream ?? stream;
-
-    let recorder: MediaRecorder;
-    try {
-      recorder = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined);
-    } catch {
-      setError("Your browser doesn't support audio recording. Please upload a file instead.");
-      teardownMicStream();
-      setRecordState("error");
-      return;
-    }
-
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-
-    // IMPORTANT: do NOT pass a timeslice argument to start(). Chunked output
-    // (start(1000)) makes iOS Safari emit fragmented MP4 pieces that don't
-    // concatenate into a playable / Whisper-decodable file.
-    recorder.start();
-    mediaRecorderRef.current = recorder;
-    setRecordState("recording");
-    startTimer();
-  }
-
-  /**
-   * Single primary action. Acquires mic + starts recording in one shot for
-   * first-time users (permission prompt → acquire → record). For users whose
-   * mic was auto-acquired on mount, just starts the recorder reusing the live
-   * graph (no re-prompt, no flicker).
-   */
-  async function handleStartRecording() {
-    if (recordState === "ready" && streamRef.current) {
-      startMediaRecorder();
-    } else {
-      await acquireMic({ deviceId: selectedDeviceId || undefined, forRecording: true });
-    }
-  }
-
-  async function handleDeviceChange(newDeviceId: string) {
-    setSelectedDeviceId(newDeviceId);
-    saveStoredDeviceId(newDeviceId);
-    // Re-acquire only when ready (we lock the picker mid-recording).
-    if (recordState === "ready") {
-      await acquireMic({ deviceId: newDeviceId || undefined, forRecording: false });
-    }
-  }
-
-  function pauseRecording() {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.pause();
-      stopTimer();
-      setRecordState("paused");
-    }
-  }
-
-  function resumeRecording() {
-    if (mediaRecorderRef.current?.state === "paused") {
-      mediaRecorderRef.current.resume();
-      startTimer();
-      setRecordState("recording");
-    }
-  }
-
-  function stopAndUpload(mode: "final" | "rollover" = "final") {
-    // No short-clip confirm: the live level meter now lets the tutor see that
-    // their voice was captured, and the server-side `looksLikeSilenceHallucination`
-    // guard rejects junk transcripts regardless of duration. Short legitimate
-    // utterances ("bring the worksheet next time") are valid notes and shouldn't
-    // be blocked behind a confirm popup.
-    stopTimer();
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) {
-      rolloverInProgressRef.current = false;
-      return;
-    }
-
-    const isRollover = mode === "rollover";
-    setUploadMode(isRollover ? "segment" : "final");
-    setRecordState("uploading");
-
-    recorder.onstop = async () => {
-      const mimeType = recorder.mimeType || chooseMimeType();
-      const blob = new Blob(chunksRef.current, { type: mimeType });
-      chunksRef.current = [];
-      const segmentSeconds = elapsedRef.current;
-      const partIndex = segmentNumber;
-
-      try {
-        if (!isRollover) {
-          teardownMicStream();
-        }
-
-        if (blob.size === 0) {
-          setError("Recording appears empty. Please try again.");
-          setUploadMode(null);
-          if (isRollover) teardownMicStream();
-          setRecordState("error");
-          rolloverInProgressRef.current = false;
-          return;
-        }
-
-        const ext = fileExtension(mimeType);
-        const filename = `session-${Date.now()}-part${partIndex}.${ext}`;
-
-        const result = await uploadAudioWithRetry(
-          uploadAudioAction,
-          studentId,
-          blob,
-          filename,
-          mimeType
-        );
-
-        if (!result.ok) {
-          setError(formatUserFacingActionError(result.error, result.debugId));
-          setUploadMode(null);
-          teardownMicStream();
-          setRecordState("error");
-          rolloverInProgressRef.current = false;
-          return;
-        }
-
-        const previewUrl = URL.createObjectURL(blob);
-
-        if (isRollover) {
-          onRecorded(
-            {
-              blobUrl: result.blobUrl,
-              mimeType,
-              sizeBytes: blob.size,
-              filename,
-              previewUrl,
-            },
-            { autoRollover: true }
-          );
-          setUploadMode(null);
-          mediaRecorderRef.current = null;
-          setSegmentNumber((n) => n + 1);
-          startMediaRecorder({ continuation: true });
-          rolloverInProgressRef.current = false;
-          return;
-        }
-
-        setDoneSegmentSeconds(segmentSeconds);
-        setUploadMode(null);
-        setRecordState("done");
-        onRecorded({
-          blobUrl: result.blobUrl,
-          mimeType,
-          sizeBytes: blob.size,
-          filename,
-          previewUrl,
-        });
-        rolloverInProgressRef.current = false;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Upload failed";
-        setError(msg);
-        setUploadMode(null);
-        teardownMicStream();
-        setRecordState("error");
-        rolloverInProgressRef.current = false;
-      }
-    };
-
-    if (recorder.state !== "inactive") {
-      recorder.stop();
-    }
-  }
-
-  function handleReset() {
-    stopTimer();
-    teardownMicStream();
-    mediaRecorderRef.current = null;
-    chunksRef.current = [];
-    elapsedRef.current = 0;
-    setElapsed(0);
-    totalSessionElapsedRef.current = 0;
-    approachingCapSoundPlayedRef.current = false;
-    rolloverInProgressRef.current = false;
-    setSegmentNumber(1);
-    setUploadMode(null);
-    setDoneSegmentSeconds(0);
-    setError(null);
-    setRecordState("idle");
-
-    // Re-acquire the mic immediately if we have permission, so the meter and
-    // picker come back to life without requiring an extra Start click. (The
-    // auto-acquire useEffect only runs on mount; this same-instance reset
-    // path needs an explicit kick.)
-    void (async () => {
-      const permission = await queryMicPermission();
-      setPermissionState(permission);
-      if (permission === "denied") return;
-      await acquireMic({
-        deviceId: loadStoredDeviceId() || undefined,
-        forRecording: false,
-      });
-    })();
-  }
-
-  const isWarning = elapsed >= WARN_SEGMENT_SECONDS;
-  const isLive =
-    recordState === "ready" ||
-    recordState === "recording" ||
-    recordState === "paused" ||
-    (recordState === "uploading" && uploadMode === "segment");
-  const lockDevice =
-    recordState === "recording" ||
-    recordState === "paused" ||
-    (recordState === "uploading" && uploadMode === "segment");
-
-  // ----- Done / uploading short-circuits (no controls panel) -----
-
-  if (recordState === "done") {
+  if (r.state === "done") {
     return (
       <div
         style={{
@@ -1007,13 +471,13 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
         data-testid="audio-record-done"
       >
         <span style={{ color: "var(--color-success, #16a34a)", fontWeight: 600, fontSize: 14 }}>
-          ✓ Recording saved ({formatDuration(doneSegmentSeconds)})
+          ✓ Recording saved ({formatDuration(r.doneSegmentSeconds)})
         </span>
         <button
           type="button"
           className="btn"
           style={{ marginLeft: "auto", fontSize: 12 }}
-          onClick={handleReset}
+          onClick={r.handleReset}
         >
           Re-record
         </button>
@@ -1021,28 +485,28 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     );
   }
 
-  if (recordState === "uploading" && uploadMode === "segment") {
+  if (r.state === "uploading" && r.uploadMode === "segment") {
     const hintSeg = "Saving this segment — recording will resume automatically.";
     return (
       <div data-testid="audio-record-panel">
         <MicControls
-          meterBarRef={meterBarRef}
-          devices={devices}
-          selectedDeviceId={selectedDeviceId}
-          onDeviceChange={handleDeviceChange}
-          gainLinear={gainLinear}
-          onGainChange={setGainLinear}
-          isLive={isLive}
-          lockDevice={lockDevice}
+          meterBarRef={r.meterBarRef}
+          devices={r.devices}
+          selectedDeviceId={r.selectedDeviceId}
+          onDeviceChange={r.handleDeviceChange}
+          gainLinear={r.gainLinear}
+          onGainChange={r.setGainLinear}
+          isLive={r.isLive}
+          lockDevice={r.lockDevice}
           hint={hintSeg}
-          chimeEnabled={chimeEnabled}
-          onChimeEnabledChange={setChimeEnabled}
-          chimeVolume={chimeVolume}
-          onChimeVolumeChange={setChimeVolume}
+          chimeEnabled={r.chimeEnabled}
+          onChimeEnabledChange={r.setChimeEnabled}
+          chimeVolume={r.chimeVolume}
+          onChimeVolumeChange={r.setChimeVolume}
         />
         <div data-testid="audio-record-uploading-segment" style={{ marginTop: 10 }}>
           <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--color-muted, #6b7280)" }}>
-            Saving segment {segmentNumber}… you&apos;ll keep recording in a moment.
+            Saving segment {r.segmentNumber}… you&apos;ll keep recording in a moment.
           </p>
           <div style={{ height: 6, background: "var(--color-border, #e5e7eb)", borderRadius: 3, overflow: "hidden" }}>
             <div
@@ -1061,7 +525,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     );
   }
 
-  if (recordState === "uploading" && uploadMode !== "segment") {
+  if (r.state === "uploading" && r.uploadMode !== "segment") {
     return (
       <div data-testid="audio-record-uploading">
         <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--color-muted, #6b7280)" }}>
@@ -1080,19 +544,19 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
     );
   }
 
-  if (recordState === "error") {
+  if (r.state === "error") {
     return (
       <div data-testid="audio-record-panel">
-        {error && (
+        {r.error && (
           <p
             role="alert"
             style={{ fontSize: 13, color: "var(--color-error, #dc2626)", margin: "0 0 10px" }}
             data-testid="audio-record-error"
           >
-            {error}
+            {r.error}
           </p>
         )}
-        <button type="button" className="btn" onClick={handleReset}>
+        <button type="button" className="btn" onClick={r.handleReset}>
           Try again
         </button>
       </div>
@@ -1102,53 +566,53 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
   // ----- Main panel: controls always visible, single primary action -----
 
   const hint =
-    recordState === "idle"
-      ? permissionState === "denied"
+    r.state === "idle"
+      ? r.permissionState === "denied"
         ? "Microphone access is blocked for this site. Click the icon left of the address bar (lock or sliders), set Microphone to Allow, then reload."
         : "Click Start recording to allow mic access — after that the picker, boost slider, and meter will be live before each session."
-      : recordState === "acquiring"
+      : r.state === "acquiring"
         ? "Requesting microphone access…"
         : undefined;
 
   return (
     <div data-testid="audio-record-panel">
       <MicControls
-        meterBarRef={meterBarRef}
-        devices={devices}
-        selectedDeviceId={selectedDeviceId}
-        onDeviceChange={handleDeviceChange}
-        gainLinear={gainLinear}
-        onGainChange={setGainLinear}
-        isLive={isLive}
-        lockDevice={lockDevice}
+        meterBarRef={r.meterBarRef}
+        devices={r.devices}
+        selectedDeviceId={r.selectedDeviceId}
+        onDeviceChange={r.handleDeviceChange}
+        gainLinear={r.gainLinear}
+        onGainChange={r.setGainLinear}
+        isLive={r.isLive}
+        lockDevice={r.lockDevice}
         hint={hint}
-        chimeEnabled={chimeEnabled}
-        onChimeEnabledChange={setChimeEnabled}
-        chimeVolume={chimeVolume}
-        onChimeVolumeChange={setChimeVolume}
+        chimeEnabled={r.chimeEnabled}
+        onChimeEnabledChange={r.setChimeEnabled}
+        chimeVolume={r.chimeVolume}
+        onChimeVolumeChange={r.setChimeVolume}
       />
 
-      {(recordState === "idle" || recordState === "acquiring" || recordState === "ready") && (
+      {(r.state === "idle" || r.state === "acquiring" || r.state === "ready") && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
             className="btn primary"
-            onClick={handleStartRecording}
-            disabled={disabled || recordState === "acquiring"}
+            onClick={r.handleStartRecording}
+            disabled={disabled || r.state === "acquiring"}
             aria-label="Start recording"
             data-testid="audio-record-start"
           >
-            {recordState === "acquiring" ? "● Connecting…" : "● Start recording"}
+            {r.state === "acquiring" ? "● Connecting…" : "● Start recording"}
           </button>
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-            {recordState === "ready"
+            {r.state === "ready"
               ? "Speak — watch the level bar — then click Start."
               : `Long sessions auto-save every ~${Math.round(SEGMENT_MAX_SECONDS / 60)} min so you can keep recording. Speak at least 15–20 seconds per segment when possible.`}
           </span>
         </div>
       )}
 
-      {(recordState === "recording" || recordState === "paused") && (
+      {(r.state === "recording" || r.state === "paused") && (
         <div data-testid="audio-record-controls">
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <span
@@ -1158,40 +622,40 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: recordState === "recording"
+                background: r.state === "recording"
                   ? "var(--color-error, #dc2626)"
                   : "var(--color-muted, #9ca3af)",
-                animation: recordState === "recording" ? "pulse 1s infinite" : undefined,
+                animation: r.state === "recording" ? "pulse 1s infinite" : undefined,
               }}
             />
             <span
               aria-live="polite"
-              aria-label={`Segment ${segmentNumber}, duration ${formatDuration(elapsed)}`}
+              aria-label={`Segment ${r.segmentNumber}, duration ${formatDuration(r.elapsed)}`}
               style={{
                 fontVariantNumeric: "tabular-nums",
                 fontWeight: 600,
                 fontSize: 18,
-                color: isWarning ? "var(--color-error, #dc2626)" : undefined,
+                color: r.isWarning ? "var(--color-error, #dc2626)" : undefined,
               }}
             >
-              Part {segmentNumber} · {formatDuration(elapsed)}
+              Part {r.segmentNumber} · {formatDuration(r.elapsed)}
             </span>
-            {isWarning && (
+            {r.isWarning && (
               <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                {formatSegmentTimeLeft(SEGMENT_MAX_SECONDS - elapsed)} in this segment — will save &amp; continue automatically
+                {formatSegmentTimeLeft(SEGMENT_MAX_SECONDS - r.elapsed)} in this segment — will save &amp; continue automatically
               </span>
             )}
             <span aria-live="polite" style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
-              {recordState === "paused" ? "Paused" : "Recording…"}
+              {r.state === "paused" ? "Paused" : "Recording…"}
             </span>
           </div>
 
           <div style={{ display: "flex", gap: 8 }}>
-            {recordState === "recording" ? (
+            {r.state === "recording" ? (
               <button
                 type="button"
                 className="btn"
-                onClick={pauseRecording}
+                onClick={r.pauseRecording}
                 aria-label="Pause recording"
                 data-testid="audio-record-pause"
               >
@@ -1201,17 +665,20 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
               <button
                 type="button"
                 className="btn"
-                onClick={resumeRecording}
+                onClick={r.resumeRecording}
                 aria-label="Resume recording"
                 data-testid="audio-record-resume"
               >
                 ▶ Resume
               </button>
             )}
+            {/* Wrap stopAndUpload in an arrow so the synthetic MouseEvent isn't
+                passed as the `mode` argument — that regression was caught and
+                fixed live; do not change to onClick={r.stopAndUpload}. */}
             <button
               type="button"
               className="btn primary"
-              onClick={() => stopAndUpload("final")}
+              onClick={() => r.stopAndUpload("final")}
               aria-label="Stop and save recording"
               data-testid="audio-record-stop"
             >
@@ -1221,7 +688,7 @@ export default function AudioRecordInput({ studentId, onRecorded, onRecordingAct
               type="button"
               className="btn"
               style={{ marginLeft: "auto" }}
-              onClick={handleReset}
+              onClick={r.handleReset}
               aria-label="Discard recording"
             >
               Discard

@@ -19,9 +19,14 @@ function makeBlob(text = "hello"): Blob {
 
 describe("uploadAudioWithRetry", () => {
   test("returns success on first try without retrying", async () => {
-    const fn: jest.MockedFunction<UploadAudioFn> = jest.fn(async () =>
-      ({ ok: true, blobUrl: "https://blob/x", mimeType: "audio/webm", sizeBytes: 5 } as UploadAudioResult)
-    );
+    const fn: jest.MockedFunction<UploadAudioFn> = jest
+      .fn<Promise<UploadAudioResult>, [string, FormData]>()
+      .mockResolvedValue({
+        ok: true,
+        blobUrl: "https://blob/x",
+        mimeType: "audio/webm",
+        sizeBytes: 5,
+      });
     const res = await uploadAudioWithRetry(fn, "stu-1", makeBlob(), "a.webm", "audio/webm");
     expect(res.ok).toBe(true);
     expect(fn).toHaveBeenCalledTimes(1);

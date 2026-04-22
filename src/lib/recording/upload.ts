@@ -1,20 +1,109 @@
 /**
  * Audio segment upload helper with retry-once semantics.
  *
- * Lifted out of `AudioRecordInput.stopAndUpload` so the retry policy can be
- * unit tested without spinning up the whole React tree. The action itself is
- * passed in (rather than imported here) so tests can supply a stub and so
- * `lib/recording/` stays free of `"use server"` imports / Next-only types.
+ * Two related responsibilities live here:
+ *
+ *  1. The retry policy (uploadAudioWithRetry). One retry, never more.
+ *     Real-world failure mode: a transient Vercel Blob 5xx or a flaky
+ *     mobile data hop. A second attempt almost always succeeds. We
+ *     deliberately do NOT retry more than once — if both attempts fail
+ *     we surface the error so the tutor can switch to the Upload tab
+ *     while the audio is still in browser memory.
+ *
+ *  2. The default uploader (uploadAudioDirect). Browser → Vercel Blob
+ *     directly via @vercel/blob/client.upload(), routed through our
+ *     handleUpload route handler at /api/upload/audio. This bypasses
+ *     Vercel server functions' 4.5MB request body cap (which is what
+ *     made Sarah's 17.9MB m4a fail with "unexpected response from the
+ *     server"). The route handler enforces auth + ownership before
+ *     signing the upload token; see app/api/upload/audio/route.ts.
+ *
+ * Tests: see __tests__/recording/upload.test.ts. The retry policy is
+ * exercised against an injected stub uploader so we don't need to spin
+ * up Vercel Blob during unit tests.
  */
 
 export type UploadAudioResult =
   | { ok: true; blobUrl: string; mimeType: string; sizeBytes: number }
   | { ok: false; error: string; debugId?: string };
 
+/**
+ * Direct uploader contract.
+ *
+ * The retry layer accepts any function with this signature so production
+ * code uses uploadAudioDirect (browser → Vercel Blob), while tests pass
+ * an in-memory stub. FormData isn't part of the shape any more — the
+ * old server-action path went away in B1 because it could not handle
+ * payloads above the Vercel function 4.5MB cap.
+ */
 export type UploadAudioFn = (
   studentId: string,
-  formData: FormData
+  blob: Blob,
+  filename: string,
+  mimeType: string
 ) => Promise<UploadAudioResult>;
+
+/**
+ * Sanitise a user-supplied filename for use in a Vercel Blob pathname.
+ * Vercel itself accepts the full character set, but we're conservative
+ * here so log lines and URLs stay copy-pasteable.
+ */
+function safeName(filename: string): string {
+  return filename.replace(/[^a-zA-Z0-9._-]/g, "_") || "recording.bin";
+}
+
+/**
+ * Upload an audio blob directly from the browser to Vercel Blob.
+ *
+ * The browser fetches a single-use token from /api/upload/audio (which
+ * checks the tutor owns this student) and then PUTs the bytes straight
+ * to Vercel's edge — our function never touches the audio stream, so
+ * the only practical size cap is BLOB_MAX_BYTES enforced server-side.
+ *
+ * The studentId is only used in the clientPayload for the route handler
+ * to validate against; the pathname itself uses a randomised suffix so
+ * URLs aren't enumerable from the studentId alone.
+ *
+ * Errors map to UploadAudioResult.error in plain language so the
+ * recorder/upload UIs can show them without inspecting the cause.
+ */
+export async function uploadAudioDirect(
+  studentId: string,
+  blob: Blob,
+  filename: string,
+  mimeType: string
+): Promise<UploadAudioResult> {
+  const pathname = `sessions/${studentId}/${Date.now()}-${safeName(filename)}`;
+  try {
+    // Dynamic import keeps @vercel/blob/client out of the server bundle
+    // and out of jest's default node environment when this module is
+    // imported by code paths that never actually upload (e.g. the
+    // segment-policy unit tests pull in ../upload via barrel files).
+    const { upload } = await import("@vercel/blob/client");
+    const result = await upload(pathname, blob, {
+      access: "public",
+      handleUploadUrl: "/api/upload/audio",
+      contentType: mimeType,
+      clientPayload: JSON.stringify({ studentId }),
+    });
+    return {
+      ok: true,
+      blobUrl: result.url,
+      mimeType,
+      sizeBytes: blob.size,
+    };
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    // Vercel Blob's client throws BlobAccessError / BlobUnknownError /
+    // BlobError subclasses. They all have human-readable .message values
+    // already, but we wrap them in tutor-friendly copy and keep the
+    // original in the debugId so support can correlate.
+    const friendly = raw.toLowerCase().includes("body limit")
+      ? `Recording exceeded the maximum upload size. ${raw}`
+      : `Could not save the recording to storage. Please try again. (${raw})`;
+    return { ok: false, error: friendly };
+  }
+}
 
 /**
  * Upload an audio blob with a single retry on failure.
@@ -32,15 +121,9 @@ export async function uploadAudioWithRetry(
   filename: string,
   mimeType: string
 ): Promise<UploadAudioResult> {
-  const runUpload = (): Promise<UploadAudioResult> => {
-    const fd = new FormData();
-    fd.append("file", new File([blob], filename, { type: mimeType }));
-    return uploadFn(studentId, fd);
-  };
-
-  let result = await runUpload();
+  let result = await uploadFn(studentId, blob, filename, mimeType);
   if (!result.ok) {
-    result = await runUpload();
+    result = await uploadFn(studentId, blob, filename, mimeType);
   }
   return result;
 }

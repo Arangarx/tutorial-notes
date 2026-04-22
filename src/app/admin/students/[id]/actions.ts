@@ -10,8 +10,7 @@ import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
 import { transcribeAudio } from "@/lib/transcribe";
-import { put } from "@vercel/blob";
-import { getAudioUrl, getBlobMetadata, deleteBlob, BLOB_MAX_BYTES } from "@/lib/blob";
+import { getAudioUrl, getBlobMetadata, deleteBlob } from "@/lib/blob";
 import {
   buildTranscribeAndGenerateResult,
   type TranscribeAndGenerateResult,
@@ -815,79 +814,10 @@ ${noteCount > 1 ? `This email shows only the most recent session. Open the link 
   return { ok: true, sent: false, outboxOnly: true, toEmail };
 }
 
-/**
- * Server-side audio upload → Vercel Blob.
- * Receives the file as FormData so the browser never touches blob.vercel-storage.com
- * directly (avoids firewall/SSL-inspection issues with cross-origin PUTs).
- * Body size limit is set to 25 MB in next.config (matching Whisper's limit).
- */
-type UploadAudioResult =
-  | { ok: true; blobUrl: string; mimeType: string; sizeBytes: number }
-  | { ok: false; error: string; debugId?: string };
-
-export async function uploadAudioAction(
-  studentId: string,
-  formData: FormData
-): Promise<UploadAudioResult> {
-  const rid = createActionCorrelationId();
-  console.log(`[uploadAudioAction] rid=${rid} studentId=${studentId} begin`);
-  try {
-    // assertOwnsStudent already retries on transient DB connection drops.
-    await assertOwnsStudent(studentId);
-
-    const file = formData.get("file");
-    if (!(file instanceof File)) {
-      console.warn(`[uploadAudioAction] rid=${rid} no file in FormData`);
-      return { ok: false, error: "No file provided.", debugId: rid };
-    }
-
-    if (file.size > BLOB_MAX_BYTES) {
-      return {
-        ok: false,
-        error: `Recording is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB. Try a shorter session, or split it into multiple recordings.`,
-        debugId: rid,
-      };
-    }
-
-    const mimeType = file.type || "audio/mpeg";
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
-
-    let blob;
-    try {
-      blob = await put(pathname, file, {
-        access: "private",
-        contentType: mimeType,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[uploadAudioAction] rid=${rid} Vercel Blob put failed:`, msg);
-      return {
-        ok: false,
-        error:
-          "Could not save the recording to storage (server-side upload error). Please try again. If this keeps happening, switch to the Upload tab and pick the file directly.",
-        debugId: rid,
-      };
-    }
-
-    console.log(`[uploadAudioAction] rid=${rid} ok sizeBytes=${file.size} mime=${mimeType}`);
-    return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[uploadAudioAction] rid=${rid} unhandled error:`, msg);
-    if (isTransientDbConnectionError(err)) {
-      return {
-        ok: false,
-        error:
-          "Brief database hiccup while saving the recording. Please try Stop & save again — your audio is still in the browser.",
-        debugId: rid,
-      };
-    }
-    return {
-      ok: false,
-      error: `Server error while saving recording: ${msg}. Please try again.`,
-      debugId: rid,
-    };
-  }
-}
+// uploadAudioAction (server-action upload via FormData) was removed in B1.
+// All audio now uploads browser→Vercel Blob directly through
+// src/app/api/upload/audio/route.ts + src/lib/recording/upload.ts so we
+// don't hit the 4.5MB Vercel function body cap that broke Sarah's
+// 17.9MB pilot recording. assertOwnsStudent + size cap still enforced;
+// they moved to the route handler's onBeforeGenerateToken callback.
 

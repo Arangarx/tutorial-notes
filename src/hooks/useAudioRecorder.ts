@@ -30,7 +30,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { uploadAudioAction } from "@/app/admin/students/[id]/actions";
+import { uploadAudioDirect } from "@/lib/recording/upload";
 import { formatUserFacingActionError } from "@/lib/action-correlation";
 import { createMicAudioGraph, type MicAudioGraph } from "@/lib/mic-recorder-audio";
 import { chooseMimeType, fileExtension } from "@/lib/recording/mime";
@@ -566,7 +566,7 @@ export function useAudioRecorder({
         const filename = `session-${Date.now()}-part${partIndex}.${ext}`;
 
         const result = await uploadAudioWithRetry(
-          uploadAudioAction,
+          uploadAudioDirect,
           studentId,
           blob,
           filename,

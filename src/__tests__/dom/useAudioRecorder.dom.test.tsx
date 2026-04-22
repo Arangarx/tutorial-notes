@@ -26,8 +26,10 @@
  *  - `@/lib/mic-recorder-audio`: forced to return `null` from
  *    `createMicAudioGraph` so the hook falls back to the raw stream path.
  *    The graph itself is covered by `mic-recorder-audio.test.ts`.
- *  - `@/app/admin/students/[id]/actions`: `uploadAudioAction` mocked per
- *    test (success / failure / retry-then-success).
+ *  - `@/lib/recording/upload`: `uploadAudioDirect` mocked per test
+ *    (success / failure / retry-then-success). Pre-B1 this mock was on
+ *    the legacy `uploadAudioAction` server action; that path was
+ *    removed when client-direct upload landed.
  *
  * NOT testing here (covered elsewhere or out of scope):
  *  - MIME priority — `src/__tests__/recording/mime.test.ts`.
@@ -54,12 +56,18 @@ jest.mock("@/lib/mic-recorder-audio", () => ({
   createMicAudioGraph: jest.fn(async () => null),
 }));
 
-// uploadAudioAction is the thing the hook hands to uploadAudioWithRetry.
-// Tests override its return value per case.
-jest.mock("@/app/admin/students/[id]/actions", () => ({
-  __esModule: true,
-  uploadAudioAction: jest.fn(),
-}));
+// uploadAudioDirect is the thing the hook hands to uploadAudioWithRetry.
+// Tests override its return value per case. We re-export the real
+// uploadAudioWithRetry and UploadAudioFn type so the retry policy is
+// exercised against the mock; only the leaf uploader is stubbed.
+jest.mock("@/lib/recording/upload", () => {
+  const actual = jest.requireActual("@/lib/recording/upload");
+  return {
+    __esModule: true,
+    ...actual,
+    uploadAudioDirect: jest.fn(),
+  };
+});
 
 // formatUserFacingActionError is pure; pass through with predictable text.
 jest.mock("@/lib/action-correlation", () => ({
@@ -68,7 +76,7 @@ jest.mock("@/lib/action-correlation", () => ({
     debugId ? `${msg} [debug=${debugId}]` : msg,
 }));
 
-import { uploadAudioAction } from "@/app/admin/students/[id]/actions";
+import { uploadAudioDirect } from "@/lib/recording/upload";
 
 // ---- Fake MediaRecorder --------------------------------------------------
 
@@ -176,7 +184,7 @@ afterAll(() => {
 
 // ---- Test plumbing --------------------------------------------------------
 
-const uploadMock = uploadAudioAction as unknown as jest.Mock;
+const uploadMock = uploadAudioDirect as unknown as jest.Mock;
 
 function mockUploadOk(blobUrl = "https://blob.example/x") {
   uploadMock.mockResolvedValue({ ok: true, blobUrl, mimeType: "audio/webm", sizeBytes: 1 });

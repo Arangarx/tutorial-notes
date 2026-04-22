@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { uploadAudioAction } from "./actions";
+import { uploadAudioDirect, uploadAudioWithRetry } from "@/lib/recording/upload";
 import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/audio-constants";
 
 const ACCEPTED_ATTR = ACCEPTED_AUDIO_TYPES.join(",");
@@ -46,9 +46,17 @@ export default function AudioUploadInput({ studentId, onUploaded, disabled }: Pr
     setState("uploading");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const result = await uploadAudioAction(studentId, formData);
+      // Direct browser→blob upload (B1). Bypasses the Vercel function
+      // 4.5MB request body cap that broke Sarah's 17.9MB m4a. See
+      // src/lib/recording/upload.ts for the retry policy and
+      // src/app/api/upload/audio/route.ts for auth/ownership.
+      const result = await uploadAudioWithRetry(
+        uploadAudioDirect,
+        studentId,
+        file,
+        file.name,
+        file.type || "audio/mpeg"
+      );
 
       if (!result.ok) {
         setError(result.error);

@@ -74,6 +74,13 @@ export async function uploadAudioDirect(
   mimeType: string
 ): Promise<UploadAudioResult> {
   const pathname = `sessions/${studentId}/${Date.now()}-${safeName(filename)}`;
+  // Strip any codec parameter from the content-type before handing it to
+  // Vercel Blob. Chrome's MediaRecorder reports "audio/webm;codecs=opus"
+  // for `recorder.mimeType`, but Vercel Blob's allowedContentTypes
+  // matcher does NOT accept codec parameters and will 400 the PUT with
+  // content_type_not_allowed. The actual byte stream is still WebM —
+  // the codec hint isn't load-bearing for either Whisper or playback.
+  const cleanContentType = mimeType.split(";")[0].trim() || "application/octet-stream";
   try {
     // Dynamic import keeps @vercel/blob/client out of the server bundle
     // and out of jest's default node environment when this module is
@@ -83,7 +90,7 @@ export async function uploadAudioDirect(
     const result = await upload(pathname, blob, {
       access: "public",
       handleUploadUrl: "/api/upload/audio",
-      contentType: mimeType,
+      contentType: cleanContentType,
       clientPayload: JSON.stringify({ studentId }),
     });
     return {
@@ -94,6 +101,19 @@ export async function uploadAudioDirect(
     };
   } catch (err) {
     const raw = err instanceof Error ? err.message : String(err);
+    // Log the raw BlobError to the browser console so failures are
+    // diagnosable without cracking open the bundle. This is in addition
+    // to the friendly message we surface to the recorder UI — when a
+    // tutor reports "uploading hung" we want the actual reason in the
+    // console they can paste back.
+    if (typeof console !== "undefined") {
+      console.error("[uploadAudioDirect] upload failed", {
+        pathname,
+        contentType: cleanContentType,
+        sizeBytes: blob.size,
+        rawError: raw,
+      });
+    }
     // Vercel Blob's client throws BlobAccessError / BlobUnknownError /
     // BlobError subclasses. They all have human-readable .message values
     // already, but we wrap them in tutor-friendly copy and keep the

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
-import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/audio-constants";
+import { BLOB_MAX_BYTES } from "@/lib/audio-constants";
 import { assertOwnsStudent } from "@/lib/student-scope";
 import { createActionCorrelationId } from "@/lib/action-correlation";
 
@@ -94,7 +94,15 @@ export async function POST(request: Request): Promise<Response> {
         await assertOwnsStudent(studentId);
 
         return {
-          allowedContentTypes: [...ACCEPTED_AUDIO_TYPES],
+          // Vercel Blob's matcher supports glob suffixes ("text/*") and
+          // does NOT understand codec parameters ("audio/webm;codecs=opus")
+          // — passing the literal codec form 400s the upload with
+          // content_type_not_allowed. Use the wildcard so any current
+          // or future MediaRecorder output (webm, mp4, ogg) is accepted.
+          // Server-side validation happens in createRecording /
+          // transcribeAndGenerate (which check the actual blob URL +
+          // mime), so this wildcard isn't a real auth gate.
+          allowedContentTypes: ["audio/*"],
           maximumSizeInBytes: BLOB_MAX_BYTES,
           // Random suffix on the pathname so two recordings with the
           // same filename can't collide and so the URL isn't enumerable

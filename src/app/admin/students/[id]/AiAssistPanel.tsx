@@ -1,121 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { formatUserFacingActionError } from "@/lib/action-correlation";
 import { generateNoteFromTextAction, transcribeAndGenerateAction } from "./actions";
 import type { NewNoteFormHandle } from "./NewNoteForm";
 import AudioInputTabs, { type AudioResult } from "./AudioInputTabs";
+import PendingSegmentList from "./PendingSegmentList";
 
 type Tab = "text" | "upload" | "record";
-
-/**
- * <audio> element that works around Chrome's MediaRecorder WebM bug.
- *
- * MediaRecorder writes a streaming WebM container with no duration in the
- * header, so the native <audio controls> shows "0:00 / 0:00" and refuses to
- * seek; in some Chromium versions clicking play does nothing at all.
- *
- * Standard fix: when metadata loads with duration=Infinity/NaN, jump
- * currentTime to a huge value. The browser scans to the actual end, fires
- * `durationchange` with the real duration, then we reset to 0.
- *
- * IMPORTANT: this hack is WebM-specific. iOS Safari uses MP4 and either
- * throws or enters an error state when assigning a wildly out-of-range
- * currentTime to a freshly loaded audio element. We gate the hack on the
- * mime type, wrap the assignment in try/catch, and surface a friendly
- * fallback message if the audio element fires `error` instead of loading.
- *
- * Reference: https://bugs.chromium.org/p/chromium/issues/detail?id=642012
- */
-function AudioPreview({ src, mimeType }: { src: string; mimeType?: string }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [hasError, setHasError] = useState(false);
-  /**
-   * Refs (not state) so the values are read synchronously inside event
-   * handlers without waiting for a React re-render. Critical for handleError:
-   * Chrome can fire `error` immediately after our seek hack, before React has
-   * committed the `loadedmetadata` state update — using a state-based flag
-   * gives a stale closure and we'd wrongly show the fallback on Chrome.
-   */
-  const loadedOkRef = useRef(false);
-  const needsFixRef = useRef(false);
-
-  const isWebm = mimeType?.toLowerCase().includes("webm") ?? false;
-
-  useEffect(() => {
-    loadedOkRef.current = false;
-    needsFixRef.current = false;
-    setHasError(false);
-  }, [src]);
-
-  function handleLoadedMetadata() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    loadedOkRef.current = true;
-    if (!isWebm) return; // MP4 / m4a / mp3 already report correct duration
-    if (!Number.isFinite(audio.duration) || audio.duration === 0) {
-      needsFixRef.current = true;
-      try {
-        audio.currentTime = 1e101;
-      } catch {
-        // Some browsers throw on out-of-range currentTime — harmless, the
-        // user can still press play and it will work.
-        needsFixRef.current = false;
-      }
-    }
-  }
-
-  function handleDurationChange() {
-    const audio = audioRef.current;
-    if (!audio || !needsFixRef.current) return;
-    if (Number.isFinite(audio.duration) && audio.duration > 0) {
-      try {
-        audio.currentTime = 0;
-      } catch {
-        // Ignore — we just wanted to reset playback position.
-      }
-      needsFixRef.current = false;
-    }
-  }
-
-  function handleError() {
-    // Newer Chrome versions fire an `error` event when our currentTime=1e101
-    // hack seeks out of range, even though the audio loaded fine and plays
-    // correctly. If metadata already loaded, the audio is usable — ignore.
-    if (loadedOkRef.current) {
-      needsFixRef.current = false;
-      return;
-    }
-    setHasError(true);
-  }
-
-  if (hasError) {
-    return (
-      <p
-        style={{ margin: 0, fontSize: 12, color: "var(--color-muted, #6b7280)" }}
-        data-testid="audio-preview-error"
-      >
-        Preview unavailable in this browser, but the recording was saved and can
-        still be transcribed below.
-      </p>
-    );
-  }
-
-  return (
-    <audio
-      ref={audioRef}
-      controls
-      preload="metadata"
-      src={src}
-      onLoadedMetadata={handleLoadedMetadata}
-      onDurationChange={handleDurationChange}
-      onError={handleError}
-      aria-label="Preview of uploaded or recorded audio"
-      style={{ width: "100%", height: 36 }}
-      data-testid="audio-preview"
-    />
-  );
-}
 
 type Props = {
   studentId: string;
@@ -167,7 +59,8 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         formRef.current?.populate({
           topics: result.topics,
           homework: result.homework,
-          nextSteps: result.nextSteps,
+          assessment: result.assessment,
+          plan: result.plan,
           links: result.links,
           promptVersion: result.promptVersion,
           recordingIds: [],
@@ -208,7 +101,8 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         formRef.current?.populate({
           topics: result.topics,
           homework: result.homework,
-          nextSteps: result.nextSteps,
+          assessment: result.assessment,
+          plan: result.plan,
           links: result.links,
           promptVersion: result.promptVersion,
           recordingIds: result.recordingIds,
@@ -343,61 +237,11 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
             </a>
           </p>
 
-          {/* Segment list — shows all audio segments added so far */}
-          {pendingAudios.length > 0 && (
-            <div style={{ marginBottom: 10 }}>
-              {pendingAudios.map((audio, i) => (
-                <div
-                  key={audio.blobUrl}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 6,
-                    padding: "6px 8px",
-                    borderRadius: 4,
-                    border: "1px solid var(--color-border, #d1d5db)",
-                    background: "var(--color-surface-subtle, rgba(0,0,0,0.02))",
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: "var(--color-muted, #6b7280)", flexShrink: 0 }}>
-                    Part {i + 1}
-                    {pendingAudios.length > 1 ? ` of ${pendingAudios.length}` : ""}
-                  </span>
-                  {audio.previewUrl ? (
-                    <AudioPreview
-                      src={audio.previewUrl}
-                      mimeType={audio.mimeType}
-                    />
-                  ) : (
-                    <span style={{ fontSize: 12, flex: 1, color: "var(--color-muted, #6b7280)" }}>
-                      Saved — no preview
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`Remove segment ${i + 1}`}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 14,
-                      color: "var(--color-muted, #6b7280)",
-                      padding: "0 2px",
-                      flexShrink: 0,
-                    }}
-                    onClick={() => handleRemoveSegment(i)}
-                    disabled={isPending}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <p style={{ margin: "0 0 8px", fontSize: 11, color: "var(--color-muted, #6b7280)" }}>
-                Add another segment below, or click Transcribe &amp; generate notes.
-              </p>
-            </div>
-          )}
+          <PendingSegmentList
+            audios={pendingAudios}
+            onRemove={handleRemoveSegment}
+            disabled={isPending}
+          />
 
           <AudioInputTabs
             key={audioTabsKey}

@@ -6,17 +6,11 @@ import { canAccessStudentRow, getStudentScope } from "@/lib/student-scope";
 import { NoteCardActions } from "../NoteCardActions";
 import { NotesSearchBar } from "@/components/notes/NotesSearchBar";
 import { PageSizeSelect } from "@/components/notes/PageSizeSelect";
+import { formatDateOnlyDisplay, formatDateOnlyInput } from "@/lib/date-only";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULT_PAGE_SIZE = 20;
-
-function formatDateInput(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 /** Extract HH:MM (24-hour, UTC) for use in <input type="time"> defaultValue. */
 function formatTimeInput(d: Date | null): string {
@@ -72,6 +66,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         OR: [
           { topics: { contains: q.trim(), mode: "insensitive" as const } },
           { homework: { contains: q.trim(), mode: "insensitive" as const } },
+          { assessment: { contains: q.trim(), mode: "insensitive" as const } },
           { nextSteps: { contains: q.trim(), mode: "insensitive" as const } },
         ],
       }
@@ -88,6 +83,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         date: true,
         topics: true,
         homework: true,
+        assessment: true,
         nextSteps: true,
         linksJson: true,
         template: true,
@@ -178,7 +174,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
       {/* Toolbar */}
       <Suspense>
         <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          <NotesSearchBar placeholder="Search topics, homework, next steps…" />
+          <NotesSearchBar placeholder="Search topics, homework, assessment, plan…" />
           <PageSizeSelect defaultSize={DEFAULT_PAGE_SIZE} />
           <Link className="btn" href={`/admin/students/${id}`} style={{ flexShrink: 0 }}>
             ← Back to student
@@ -211,7 +207,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                 <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>
-                      {new Date(n.date).toLocaleDateString()}
+                      {formatDateOnlyDisplay(n.date)}
                     </div>
                     <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                       {(n.startTime || n.endTime) && (
@@ -230,11 +226,12 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                     status={n.status}
                     sentAt={n.sentAt ? n.sentAt.toISOString() : null}
                     defaultValues={{
-                      date: formatDateInput(n.date),
+                      date: formatDateOnlyInput(n.date),
                       template: n.template ?? "",
                       topics: n.topics,
                       homework: n.homework,
-                      nextSteps: n.nextSteps,
+                      assessment: n.assessment,
+                      plan: n.nextSteps,
                       links: safeJsonArray(n.linksJson).join("\n"),
                       startTime: formatTimeInput(n.startTime),
                       endTime: formatTimeInput(n.endTime),
@@ -258,7 +255,13 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                     </div>
                   </div>
                   <div>
-                    <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
+                    <div className="muted" style={{ fontSize: 12 }}>Assessment</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>
+                      {n.assessment || <span className="muted">—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="muted" style={{ fontSize: 12 }}>Plan</div>
                     <div style={{ whiteSpace: "pre-wrap" }}>
                       {n.nextSteps || <span className="muted">—</span>}
                     </div>

@@ -9,9 +9,9 @@ import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
+import { parseDateOnlyInput } from "@/lib/date-only";
 import { transcribeAudio } from "@/lib/transcribe";
-import { put } from "@vercel/blob";
-import { getAudioUrl, getBlobMetadata, deleteBlob, BLOB_MAX_BYTES } from "@/lib/blob";
+import { getAudioUrl, getBlobMetadata, deleteBlob } from "@/lib/blob";
 import {
   buildTranscribeAndGenerateResult,
   type TranscribeAndGenerateResult,
@@ -83,13 +83,18 @@ export async function revokeShareLink(studentId: string) {
 export async function createNote(studentId: string, formData: FormData) {
   await assertOwnsStudent(studentId);
   const dateStr = String(formData.get("date") ?? "");
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const date = parseDateOnlyInput(dateStr);
+  if (!date) throw new Error("Invalid date");
 
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();
   const homework = String(formData.get("homework") ?? "").trim();
-  const nextSteps = String(formData.get("nextSteps") ?? "").trim();
+  const assessment = String(formData.get("assessment") ?? "").trim();
+  // Form field name is "plan" (UI label "Plan", new in B4). DB column is
+  // still `nextSteps` so we don't need a data migration — see schema.prisma.
+  // Accept the legacy `nextSteps` form key too in case anything still posts it.
+  const planFromForm = String(formData.get("plan") ?? "").trim();
+  const nextSteps = planFromForm || String(formData.get("nextSteps") ?? "").trim();
   const linksText = String(formData.get("links") ?? "");
   const aiGenerated = formData.get("aiGenerated") === "true";
   const aiPromptVersion = aiGenerated
@@ -134,6 +139,7 @@ export async function createNote(studentId: string, formData: FormData) {
       template,
       topics,
       homework,
+      assessment,
       nextSteps,
       linksJson: JSON.stringify(links),
       status: "DRAFT",
@@ -189,7 +195,16 @@ export async function createNote(studentId: string, formData: FormData) {
 // ---------------------------------------------------------------------------
 
 export type GenerateNoteResult =
-  | { ok: true; topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
+  | {
+      ok: true;
+      topics: string;
+      homework: string;
+      assessment: string;
+      /** UI-facing name; persisted to the legacy `nextSteps` DB column. */
+      plan: string;
+      links: string;
+      promptVersion: string;
+    }
   | { ok: false; error: string };
 
 export async function generateNoteFromTextAction(
@@ -225,7 +240,8 @@ export async function generateNoteFromTextAction(
     recentNotes: recentNotes.map((n) => ({
       date: n.date,
       topics: n.topics,
-      nextSteps: n.nextSteps,
+      // DB column is `nextSteps`; the AI input field is named `plan` (UI label).
+      plan: n.nextSteps,
     })),
     template,
   });
@@ -241,7 +257,8 @@ export async function generateNoteFromTextAction(
     ok: true,
     topics: result.topics,
     homework: result.homework,
-    nextSteps: result.nextSteps,
+    assessment: result.assessment,
+    plan: result.plan,
     links: result.links,
     promptVersion: result.promptVersion,
   };
@@ -422,7 +439,7 @@ async function _transcribeAndGenerateImpl(
       const res = await fetch(blobUrl, {
         headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}` },
       });
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
       audioBuffer = Buffer.from(await res.arrayBuffer());
     } catch (err) {
       // Clean up just this blob + DB row; already-transcribed segments are kept.
@@ -432,7 +449,8 @@ async function _transcribeAndGenerateImpl(
         { label: "deleteSessionRecording" }
       ).catch(() => undefined);
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[transcribeAndGenerate] rid=${rid} download failed:`, msg);
+      const cause = err instanceof Error && (err as Error & { cause?: unknown }).cause;
+      console.error(`[transcribeAndGenerate] rid=${rid} download failed:`, msg, cause ? `cause=${String(cause)}` : "");
       return transcribeFail(
         rid,
         `Could not download audio for transcription${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try again.`
@@ -566,12 +584,32 @@ async function _transcribeAndGenerateImpl(
     })
     .then((n) => n?.template ?? null);
 
-  const sessionText =
-    trimmed.length > MAX_INPUT_TOKENS * 4 ? trimmed.slice(0, MAX_INPUT_TOKENS * 4) : trimmed;
+  // Whisper transcript exceeded our LLM budget. Previously this silently
+  // truncated with `slice()` — meaning notes were generated from only the
+  // first ~16k chars of audio without any signal to the tutor. Now we fail
+  // loud: the recording rows + transcripts stay saved (so nothing is lost),
+  // and the tutor sees an explicit error explaining what to do.
+  // Threshold is conservative (4 chars/token); see ai.ts for the rationale on
+  // MAX_INPUT_TOKENS = 30000 (~2.5 hr of normal speech).
+  const TRANSCRIPT_AI_MAX_CHARS = MAX_INPUT_TOKENS * 4;
+  if (trimmed.length > TRANSCRIPT_AI_MAX_CHARS) {
+    console.warn(
+      `[transcribeAndGenerate] rid=${rid} transcript exceeds AI input ceiling`,
+      JSON.stringify({
+        chars: trimmed.length,
+        limitChars: TRANSCRIPT_AI_MAX_CHARS,
+        recordingIds: createdRecordingIds,
+      })
+    );
+    return transcribeFail(
+      rid,
+      `This session's transcript is exceptionally long (~${Math.round(trimmed.length / 1000)}k characters, beyond our current AI structuring limit of ~${Math.round(TRANSCRIPT_AI_MAX_CHARS / 1000)}k). Your recording${createdRecordingIds.length > 1 ? "s have" : " has"} been saved — please split the session into shorter recordings, or copy the transcript and paste a portion into the Paste tab to generate notes.`
+    );
+  }
 
   const genResult = await generateSessionNote({
     studentName: student.name,
-    sessionText,
+    sessionText: trimmed,
     template,
   });
 
@@ -588,7 +626,8 @@ async function _transcribeAndGenerateImpl(
     const allEmpty =
       !genResult.topics.trim() &&
       !genResult.homework.trim() &&
-      !genResult.nextSteps.trim() &&
+      !genResult.assessment.trim() &&
+      !genResult.plan.trim() &&
       !genResult.links.trim();
     if (allEmpty) {
       console.warn(
@@ -667,13 +706,15 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
   const existing = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });
   if (!existing) return;
   const dateStr = String(formData.get("date") ?? "");
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const date = parseDateOnlyInput(dateStr);
+  if (!date) throw new Error("Invalid date");
 
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();
   const homework = String(formData.get("homework") ?? "").trim();
-  const nextSteps = String(formData.get("nextSteps") ?? "").trim();
+  const assessment = String(formData.get("assessment") ?? "").trim();
+  const planFromForm = String(formData.get("plan") ?? "").trim();
+  const nextSteps = planFromForm || String(formData.get("nextSteps") ?? "").trim();
   const linksText = String(formData.get("links") ?? "");
   const links = parseLinksFromTextarea(linksText);
 
@@ -684,7 +725,7 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
 
   await db.sessionNote.update({
     where: { id: noteId },
-    data: { date, template, topics, homework, nextSteps, linksJson: JSON.stringify(links), startTime, endTime },
+    data: { date, template, topics, homework, assessment, nextSteps, linksJson: JSON.stringify(links), startTime, endTime },
   });
   revalidatePath(`/admin/students/${studentId}`);
 }
@@ -745,10 +786,10 @@ export async function sendUpdateEmail(
   const bodyText = `Hi,
 
 ${signer} has posted ${noteCountLabel} for ${student.name}.${recentPreview}
-The link below shows all notes, homework assignments, and next steps. It works on any device and does not require a login:
+The link below shows all notes, homework, assessment, and the plan for next time. It works on any device and does not require a login:
 ${linkUrl}
 
-${noteCount > 1 ? `This email shows only the most recent session. Open the link to see all ${noteCount} notes.` : "Open the link to see the full note with homework and next steps."}
+${noteCount > 1 ? `This email shows only the most recent session. Open the link to see all ${noteCount} notes.` : "Open the link to see the full note with homework, assessment, and the plan for next time."}
 
 — ${signer}`;
 
@@ -795,79 +836,10 @@ ${noteCount > 1 ? `This email shows only the most recent session. Open the link 
   return { ok: true, sent: false, outboxOnly: true, toEmail };
 }
 
-/**
- * Server-side audio upload → Vercel Blob.
- * Receives the file as FormData so the browser never touches blob.vercel-storage.com
- * directly (avoids firewall/SSL-inspection issues with cross-origin PUTs).
- * Body size limit is set to 25 MB in next.config (matching Whisper's limit).
- */
-type UploadAudioResult =
-  | { ok: true; blobUrl: string; mimeType: string; sizeBytes: number }
-  | { ok: false; error: string; debugId?: string };
-
-export async function uploadAudioAction(
-  studentId: string,
-  formData: FormData
-): Promise<UploadAudioResult> {
-  const rid = createActionCorrelationId();
-  console.log(`[uploadAudioAction] rid=${rid} studentId=${studentId} begin`);
-  try {
-    // assertOwnsStudent already retries on transient DB connection drops.
-    await assertOwnsStudent(studentId);
-
-    const file = formData.get("file");
-    if (!(file instanceof File)) {
-      console.warn(`[uploadAudioAction] rid=${rid} no file in FormData`);
-      return { ok: false, error: "No file provided.", debugId: rid };
-    }
-
-    if (file.size > BLOB_MAX_BYTES) {
-      return {
-        ok: false,
-        error: `Recording is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${Math.round(BLOB_MAX_BYTES / 1024 / 1024)} MB. Try a shorter session, or split it into multiple recordings.`,
-        debugId: rid,
-      };
-    }
-
-    const mimeType = file.type || "audio/mpeg";
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const pathname = `sessions/${studentId}/${Date.now()}-${safeName}`;
-
-    let blob;
-    try {
-      blob = await put(pathname, file, {
-        access: "private",
-        contentType: mimeType,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[uploadAudioAction] rid=${rid} Vercel Blob put failed:`, msg);
-      return {
-        ok: false,
-        error:
-          "Could not save the recording to storage (server-side upload error). Please try again. If this keeps happening, switch to the Upload tab and pick the file directly.",
-        debugId: rid,
-      };
-    }
-
-    console.log(`[uploadAudioAction] rid=${rid} ok sizeBytes=${file.size} mime=${mimeType}`);
-    return { ok: true, blobUrl: blob.url, mimeType, sizeBytes: file.size };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[uploadAudioAction] rid=${rid} unhandled error:`, msg);
-    if (isTransientDbConnectionError(err)) {
-      return {
-        ok: false,
-        error:
-          "Brief database hiccup while saving the recording. Please try Stop & save again — your audio is still in the browser.",
-        debugId: rid,
-      };
-    }
-    return {
-      ok: false,
-      error: `Server error while saving recording: ${msg}. Please try again.`,
-      debugId: rid,
-    };
-  }
-}
+// uploadAudioAction (server-action upload via FormData) was removed in B1.
+// All audio now uploads browser→Vercel Blob directly through
+// src/app/api/upload/audio/route.ts + src/lib/recording/upload.ts so we
+// don't hit the 4.5MB Vercel function body cap that broke Sarah's
+// 17.9MB pilot recording. assertOwnsStudent + size cap still enforced;
+// they moved to the route handler's onBeforeGenerateToken callback.
 

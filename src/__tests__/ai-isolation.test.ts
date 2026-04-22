@@ -33,6 +33,12 @@ jest.mock("@/lib/db", () => ({
       findMany: (...args: unknown[]) => mockFindMany(...args),
     },
   },
+  // student-scope.ts wraps DB lookups in withDbRetry; in unit tests we just
+  // want it to invoke the function once and return its result (no retry, no
+  // backoff). Without this, every action that calls assertOwnsStudent fails
+  // with "withDbRetry is not a function" because the mock only stubbed `db`.
+  withDbRetry: <T,>(fn: () => Promise<T>) => fn(),
+  isTransientDbConnectionError: () => false,
 }));
 
 const mockGenerateSessionNote = jest.fn();
@@ -94,8 +100,10 @@ test("tutor A can generate a note for their own student (positive case)", async 
   mockGenerateSessionNote.mockResolvedValue({
     topics: "Fractions",
     homework: "Worksheet 2",
-    nextSteps: "Word problems",
-    promptVersion: "2026-04-16",
+    assessment: "",
+    plan: "Word problems",
+    links: "",
+    promptVersion: "2026-04-20-v6",
   });
 
   const result = await generateNoteFromTextAction(

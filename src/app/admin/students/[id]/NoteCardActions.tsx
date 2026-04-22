@@ -12,7 +12,10 @@ interface NoteCardActionsProps {
     template: string;
     topics: string;
     homework: string;
-    nextSteps: string;
+    /** New in B4. */
+    assessment: string;
+    /** UI label "Plan"; mapped to legacy `nextSteps` DB column server-side. */
+    plan: string;
     links: string;
     /** HH:MM (24-hour) extracted from stored UTC timestamp, or empty string. */
     startTime: string;
@@ -105,8 +108,12 @@ export function NoteCardActions({
           <textarea id={`edit-homework-${noteId}`} name="homework" rows={2} defaultValue={defaultValues.homework} />
         </div>
         <div>
-          <label htmlFor={`edit-next-steps-${noteId}`}>Next steps</label>
-          <textarea id={`edit-next-steps-${noteId}`} name="nextSteps" rows={2} defaultValue={defaultValues.nextSteps} />
+          <label htmlFor={`edit-assessment-${noteId}`}>Assessment</label>
+          <textarea id={`edit-assessment-${noteId}`} name="assessment" rows={2} defaultValue={defaultValues.assessment} />
+        </div>
+        <div>
+          <label htmlFor={`edit-plan-${noteId}`}>Plan</label>
+          <textarea id={`edit-plan-${noteId}`} name="plan" rows={2} defaultValue={defaultValues.plan} />
         </div>
         <div>
           <label htmlFor={`edit-links-${noteId}`}>Links (one per line)</label>

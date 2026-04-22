@@ -94,7 +94,7 @@ export default function HomePage() {
             <h3 style={{ marginTop: 0 }}>For families</h3>
             <ul className="muted" style={{ lineHeight: 1.6 }}>
               <li>Clean read-only link</li>
-              <li>Homework and next steps always visible</li>
+              <li>Homework, assessment, and the plan always visible</li>
               <li>Mobile-friendly layout</li>
             </ul>
           </div>

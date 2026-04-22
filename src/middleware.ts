@@ -23,9 +23,25 @@ const securityHeaders: Record<string, string> = {
     // sending it for transcription. Without this, Chrome's CSP blocks the
     // <audio> element with "MEDIA_ELEMENT_ERROR: Media Load rejected by
     // URL safety check" and the user sees "Preview unavailable".
-    "media-src 'self' blob:",
+    //
+    // The *.public.blob.vercel-storage.com host is also needed because once
+    // a recording is saved, subsequent visits play it directly from the
+    // Vercel Blob CDN (not from a local blob: URL).
+    "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
     "font-src 'self'",
-    "connect-src 'self'",
+    // connect-src must allow:
+    //   - 'self' for our own /api routes (auth, upload-token, AI actions)
+    //   - https://vercel.com for client-direct blob uploads. The
+    //     @vercel/blob/client `upload()` helper (B1 refactor, used by the
+    //     recorder and the upload tab) PUTs the audio bytes from the
+    //     browser to https://vercel.com/api/blob/?pathname=... — without
+    //     this, the upload silently hangs on the first PUT with
+    //     "Refused to connect because it violates the document's CSP"
+    //     in the console.
+    //   - https://*.public.blob.vercel-storage.com for fetch()-based
+    //     reads of saved recordings (e.g. retrying transcription on an
+    //     existing blob URL).
+    "connect-src 'self' https://vercel.com https://*.public.blob.vercel-storage.com",
     "frame-ancestors 'none'",
   ].join("; "),
 };

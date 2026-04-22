@@ -58,5 +58,17 @@ export default defineConfig({
       // Add **/visual/**/*.spec.ts here once mobile baselines are captured.
       testMatch: ["**/smoke/**/*.spec.ts"],
     },
+    {
+      // Opt-in browser end-to-end smokes (recorder rollover, etc.). These
+      // self-skip unless their gating env var is set, so it's safe to leave
+      // in the default project list — but they're isolated here to keep
+      // baseline screenshot config and viewport choices independent.
+      name: "e2e",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 800 },
+      },
+      testMatch: ["**/e2e/**/*.spec.ts"],
+    },
   ],
 });

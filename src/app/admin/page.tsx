@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { authOptions } from "@/auth-options";
 import { getStudentScope, studentsWhereForScope } from "@/lib/student-scope";
 import { isOperatorEmail } from "@/lib/operator";
+import { formatDateOnlyDisplay } from "@/lib/date-only";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,7 @@ export default async function AdminDashboardPage() {
                 <div>
                   <div style={{ fontWeight: 600 }}>{n.student.name}</div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                    {new Date(n.date).toLocaleDateString()} · {n.status}
+                    {formatDateOnlyDisplay(n.date)} · {n.status}
                   </div>
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>Open →</div>

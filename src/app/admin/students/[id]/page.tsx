@@ -12,6 +12,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
 import NoteEntrySection from "./NoteEntrySection";
 import { env } from "@/lib/env";
+import { formatDateOnlyDisplay } from "@/lib/date-only";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export default async function StudentDetailPage({
               <>
                 {student._count.notes} note{student._count.notes !== 1 ? "s" : ""}
                 {student.notes[0] && (
-                  <> · last {new Date(student.notes[0].date).toLocaleDateString()}</>
+                  <> · last {formatDateOnlyDisplay(student.notes[0].date)}</>
                 )}
               </>
             )}

@@ -38,4 +38,27 @@ describe("middleware.ts Content-Security-Policy", () => {
   test("frame-ancestors 'none' is preserved (clickjacking protection)", () => {
     expect(SRC).toMatch(/"frame-ancestors\s+'none'"/);
   });
+
+  // Regression for B1 client-direct upload: when uploadAudioDirect was
+  // introduced (browser PUTs straight to Vercel Blob), the CSP was not
+  // updated and the upload silently hung in production-like dev runs with
+  // "Refused to connect because it violates the document's Content
+  // Security Policy". If you tighten connect-src, FIRST verify that
+  // @vercel/blob/client.upload() still works end-to-end against Vercel
+  // Blob storage from a real browser.
+  test("connect-src allows the Vercel Blob upload endpoint (B1 regression)", () => {
+    expect(SRC).toMatch(/"connect-src[^"]*\bhttps:\/\/vercel\.com\b/);
+  });
+
+  test("connect-src allows the Vercel Blob CDN host (saved recording fetch)", () => {
+    expect(SRC).toMatch(
+      /"connect-src[^"]*https:\/\/\*\.public\.blob\.vercel-storage\.com/
+    );
+  });
+
+  test("media-src allows the Vercel Blob CDN host (saved recording playback)", () => {
+    expect(SRC).toMatch(
+      /"media-src[^"]*https:\/\/\*\.public\.blob\.vercel-storage\.com/
+    );
+  });
 });

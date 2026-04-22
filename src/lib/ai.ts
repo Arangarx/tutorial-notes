@@ -50,8 +50,22 @@ const SYSTEM_PROMPT =
   "(3) If a field has no information in the notes, return an empty string for that field. " +
   "(4) Use plain language a parent would understand. Do not invent or infer anything.";
 
-/** Max tokens for input (~3000 words). Safeguard on top of the OpenAI spend cap. */
-const MAX_INPUT_TOKENS = 4000;
+/**
+ * Max tokens of session text we send to the LLM. ~30000 tokens ≈ ~22.5k words ≈
+ * ~2.5 hours of normal speech, well within gpt-4o-mini's 128k context window.
+ * Cost per call at this ceiling is ~$0.0045 (input $0.15/M), still trivial.
+ *
+ * Was 4000 (~3000 words) historically — too tight for any serious session and
+ * caused two bugs Sarah hit during her pilot:
+ *   - Pasting a 30-min transcript was rejected outright in
+ *     `generateNoteFromTextAction`.
+ *   - Long Whisper transcripts were silently truncated by `slice()` in
+ *     `transcribeAndGenerateAction`, so notes were generated from only the
+ *     first ~16k characters of the audio.
+ * If we ever do hit this ceiling for real, the right next step is map-reduce
+ * summarization, not bumping further — see docs/BACKLOG.md.
+ */
+const MAX_INPUT_TOKENS = 30000;
 /** Max tokens for the JSON response. */
 const MAX_OUTPUT_TOKENS = 800;
 

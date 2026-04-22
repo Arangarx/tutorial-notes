@@ -566,12 +566,32 @@ async function _transcribeAndGenerateImpl(
     })
     .then((n) => n?.template ?? null);
 
-  const sessionText =
-    trimmed.length > MAX_INPUT_TOKENS * 4 ? trimmed.slice(0, MAX_INPUT_TOKENS * 4) : trimmed;
+  // Whisper transcript exceeded our LLM budget. Previously this silently
+  // truncated with `slice()` — meaning notes were generated from only the
+  // first ~16k chars of audio without any signal to the tutor. Now we fail
+  // loud: the recording rows + transcripts stay saved (so nothing is lost),
+  // and the tutor sees an explicit error explaining what to do.
+  // Threshold is conservative (4 chars/token); see ai.ts for the rationale on
+  // MAX_INPUT_TOKENS = 30000 (~2.5 hr of normal speech).
+  const TRANSCRIPT_AI_MAX_CHARS = MAX_INPUT_TOKENS * 4;
+  if (trimmed.length > TRANSCRIPT_AI_MAX_CHARS) {
+    console.warn(
+      `[transcribeAndGenerate] rid=${rid} transcript exceeds AI input ceiling`,
+      JSON.stringify({
+        chars: trimmed.length,
+        limitChars: TRANSCRIPT_AI_MAX_CHARS,
+        recordingIds: createdRecordingIds,
+      })
+    );
+    return transcribeFail(
+      rid,
+      `This session's transcript is exceptionally long (~${Math.round(trimmed.length / 1000)}k characters, beyond our current AI structuring limit of ~${Math.round(TRANSCRIPT_AI_MAX_CHARS / 1000)}k). Your recording${createdRecordingIds.length > 1 ? "s have" : " has"} been saved — please split the session into shorter recordings, or copy the transcript and paste a portion into the Paste tab to generate notes.`
+    );
+  }
 
   const genResult = await generateSessionNote({
     studentName: student.name,
-    sessionText,
+    sessionText: trimmed,
     template,
   });
 

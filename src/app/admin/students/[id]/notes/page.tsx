@@ -6,17 +6,11 @@ import { canAccessStudentRow, getStudentScope } from "@/lib/student-scope";
 import { NoteCardActions } from "../NoteCardActions";
 import { NotesSearchBar } from "@/components/notes/NotesSearchBar";
 import { PageSizeSelect } from "@/components/notes/PageSizeSelect";
+import { formatDateOnlyDisplay, formatDateOnlyInput } from "@/lib/date-only";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULT_PAGE_SIZE = 20;
-
-function formatDateInput(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 /** Extract HH:MM (24-hour, UTC) for use in <input type="time"> defaultValue. */
 function formatTimeInput(d: Date | null): string {
@@ -213,7 +207,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                 <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>
-                      {new Date(n.date).toLocaleDateString()}
+                      {formatDateOnlyDisplay(n.date)}
                     </div>
                     <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                       {(n.startTime || n.endTime) && (
@@ -232,7 +226,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                     status={n.status}
                     sentAt={n.sentAt ? n.sentAt.toISOString() : null}
                     defaultValues={{
-                      date: formatDateInput(n.date),
+                      date: formatDateOnlyInput(n.date),
                       template: n.template ?? "",
                       topics: n.topics,
                       homework: n.homework,

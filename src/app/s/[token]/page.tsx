@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { formatDateOnlyDisplay } from "@/lib/date-only";
 import { SeenTracker } from "./SeenTracker";
 
 export const dynamic = "force-dynamic";
@@ -142,7 +143,7 @@ export default async function SharePage({
         <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
           <div>
             <div style={{ fontWeight: 800 }}>
-              {new Date(note.date).toLocaleDateString()}
+              {formatDateOnlyDisplay(note.date)}
             </div>
             {(note.startTime || note.endTime) && (
               <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>

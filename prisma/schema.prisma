@@ -41,7 +41,14 @@ model SessionNote {
   studentId String
   student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  date      DateTime
+  /**
+   * Calendar day of the session (no time, no timezone). Stored as Postgres
+   * `DATE` so what the tutor types in `<input type="date">` round-trips
+   * losslessly regardless of viewer timezone. Display sites MUST format with
+   * UTC accessors (`formatDateOnlyDisplay`) — Prisma still hands back a JS
+   * `Date` at UTC midnight, which `toLocaleDateString()` would shift west.
+   */
+  date      DateTime  @db.Date
   topics    String
   homework  String
   /**

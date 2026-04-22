@@ -9,6 +9,7 @@ import { sendMail } from "@/lib/email";
 import { generateShareToken, parseLinksFromTextarea } from "@/lib/security";
 import { assertOwnsStudent, requireStudentScope } from "@/lib/student-scope";
 import { generateSessionNote, estimateTokens, MAX_INPUT_TOKENS } from "@/lib/ai";
+import { parseDateOnlyInput } from "@/lib/date-only";
 import { transcribeAudio } from "@/lib/transcribe";
 import { getAudioUrl, getBlobMetadata, deleteBlob } from "@/lib/blob";
 import {
@@ -82,8 +83,8 @@ export async function revokeShareLink(studentId: string) {
 export async function createNote(studentId: string, formData: FormData) {
   await assertOwnsStudent(studentId);
   const dateStr = String(formData.get("date") ?? "");
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const date = parseDateOnlyInput(dateStr);
+  if (!date) throw new Error("Invalid date");
 
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();
@@ -438,7 +439,7 @@ async function _transcribeAndGenerateImpl(
       const res = await fetch(blobUrl, {
         headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}` },
       });
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
       audioBuffer = Buffer.from(await res.arrayBuffer());
     } catch (err) {
       // Clean up just this blob + DB row; already-transcribed segments are kept.
@@ -448,7 +449,8 @@ async function _transcribeAndGenerateImpl(
         { label: "deleteSessionRecording" }
       ).catch(() => undefined);
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[transcribeAndGenerate] rid=${rid} download failed:`, msg);
+      const cause = err instanceof Error && (err as Error & { cause?: unknown }).cause;
+      console.error(`[transcribeAndGenerate] rid=${rid} download failed:`, msg, cause ? `cause=${String(cause)}` : "");
       return transcribeFail(
         rid,
         `Could not download audio for transcription${recordings.length > 1 ? ` (segment ${i + 1})` : ""}. Please try again.`
@@ -704,8 +706,8 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
   const existing = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });
   if (!existing) return;
   const dateStr = String(formData.get("date") ?? "");
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const date = parseDateOnlyInput(dateStr);
+  if (!date) throw new Error("Invalid date");
 
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();

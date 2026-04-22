@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
+import { formatDateOnlyDisplay } from "@/lib/date-only";
 import { NotesSearchBar } from "@/components/notes/NotesSearchBar";
 import { PageSizeSelect } from "@/components/notes/PageSizeSelect";
 
@@ -190,7 +191,7 @@ export default async function ShareAllPage({ params, searchParams }: PageProps) 
                   <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <div style={{ fontWeight: 800 }}>
-                        {new Date(n.date).toLocaleDateString()}
+                        {formatDateOnlyDisplay(n.date)}
                       </div>
                       {(n.startTime || n.endTime) && (
                         <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>

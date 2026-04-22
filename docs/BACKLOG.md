@@ -80,6 +80,7 @@ Reported via Discord after testing **Record → Transcribe** on phone. Treat as 
 
 - **`startTime`/`endTime` are "UTC pretending to be wall-clock."** We construct `T${HH}:${MM}:00.000Z` to store and `getUTCHours()` to read. Works only if we never display in another timezone, never compare across zones, never sort across days. Day we want true cross-timezone display (e.g. tutor in TX, parent in CA wanting "their local time"), we'll need `TIMESTAMPTZ` + an explicit `event_timezone`. Not urgent for solo-tutor pilot.
 - **Auto-fill timezone offset captured at form mount.** If the tutor crosses a DST boundary while the form is open, times shift by an hour. Theoretical; flag if anyone reports it.
+- **Session-window vs recording-window times.** When the tutor leaves the time fields blank we currently auto-fill `startTime` = first recording's `createdAt − duration`, `endTime` = last recording's `createdAt`. So the saved span is the **recording** window, not the **session** window. Fine for "the recording IS the session" usage (Sarah's mental model), and the tutor can always type explicit times to override. Becomes important when sessions are billable blocks (30-min increments etc): we'll want a real wall-clock session start captured at the moment the tutor opens the recorder (or starts a "Session" timer), with the recording window as a sub-fact of the session. Likely paired with the billable-blocks pricing work in the "Pricing" section.
 
 ### UX gaps — tutor side
 

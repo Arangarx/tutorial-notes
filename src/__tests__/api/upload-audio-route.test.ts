@@ -37,7 +37,7 @@ jest.mock("@/lib/student-scope", () => ({
 }));
 
 import { POST } from "@/app/api/upload/audio/route";
-import { ACCEPTED_AUDIO_TYPES, BLOB_MAX_BYTES } from "@/lib/audio-constants";
+import { BLOB_MAX_BYTES } from "@/lib/audio-constants";
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost/api/upload/audio", {
@@ -98,7 +98,12 @@ describe("POST /api/upload/audio", () => {
     );
 
     expect(assertOwnsStudentMock).toHaveBeenCalledWith("stu-1");
-    expect(opts.allowedContentTypes).toEqual([...ACCEPTED_AUDIO_TYPES]);
+    // We use the wildcard `audio/*` (not the explicit ACCEPTED_AUDIO_TYPES
+    // list) because Vercel Blob's allow-list matcher rejects parameterized
+    // mime values like `audio/webm;codecs=opus`. Real codec/extension policy
+    // is enforced upstream when the file is selected. Pinning the wildcard
+    // prevents an accidental tightening that would resurrect Sarah's 400.
+    expect(opts.allowedContentTypes).toEqual(["audio/*"]);
     expect(opts.maximumSizeInBytes).toBe(BLOB_MAX_BYTES);
     expect(opts.addRandomSuffix).toBe(true);
     // tokenPayload round-trips studentId so the completion log can name it.

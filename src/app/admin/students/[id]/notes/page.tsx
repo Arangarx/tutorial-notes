@@ -72,6 +72,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         OR: [
           { topics: { contains: q.trim(), mode: "insensitive" as const } },
           { homework: { contains: q.trim(), mode: "insensitive" as const } },
+          { assessment: { contains: q.trim(), mode: "insensitive" as const } },
           { nextSteps: { contains: q.trim(), mode: "insensitive" as const } },
         ],
       }
@@ -88,6 +89,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
         date: true,
         topics: true,
         homework: true,
+        assessment: true,
         nextSteps: true,
         linksJson: true,
         template: true,
@@ -178,7 +180,7 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
       {/* Toolbar */}
       <Suspense>
         <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          <NotesSearchBar placeholder="Search topics, homework, next steps…" />
+          <NotesSearchBar placeholder="Search topics, homework, assessment, plan…" />
           <PageSizeSelect defaultSize={DEFAULT_PAGE_SIZE} />
           <Link className="btn" href={`/admin/students/${id}`} style={{ flexShrink: 0 }}>
             ← Back to student
@@ -234,7 +236,8 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                       template: n.template ?? "",
                       topics: n.topics,
                       homework: n.homework,
-                      nextSteps: n.nextSteps,
+                      assessment: n.assessment,
+                      plan: n.nextSteps,
                       links: safeJsonArray(n.linksJson).join("\n"),
                       startTime: formatTimeInput(n.startTime),
                       endTime: formatTimeInput(n.endTime),
@@ -258,7 +261,13 @@ export default async function StudentNotesPage({ params, searchParams }: PagePro
                     </div>
                   </div>
                   <div>
-                    <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
+                    <div className="muted" style={{ fontSize: 12 }}>Assessment</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>
+                      {n.assessment || <span className="muted">—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="muted" style={{ fontSize: 12 }}>Plan</div>
                     <div style={{ whiteSpace: "pre-wrap" }}>
                       {n.nextSteps || <span className="muted">—</span>}
                     </div>

@@ -26,7 +26,10 @@ export type TranscribeAndGenerateResult =
       transcript: string;
       topics: string;
       homework: string;
-      nextSteps: string;
+      /** New in B4 — see `src/lib/ai.ts` PROMPT_VERSION v6. */
+      assessment: string;
+      /** UI-facing name; persisted to the legacy `nextSteps` DB column. */
+      plan: string;
       links: string;
       promptVersion: string;
       /**
@@ -40,7 +43,7 @@ export type TranscribeAndGenerateResult =
        * partially filled — please review." header when the form is in fact
        * fully filled and the notice is just "we ignored an empty recording."
        *  - `"skipped-only"` — AI succeeded; a silent segment was dropped. Form is complete.
-       *  - `"ai-fallback"` — Topics has raw transcript; Homework / Next steps are empty.
+       *  - `"ai-fallback"` — Topics has raw transcript; Homework / Assessment / Plan are empty.
        *    Tutor must hand-split the content. May also include a skipped notice.
        */
       warningKind?: "skipped-only" | "ai-fallback";
@@ -62,7 +65,7 @@ export function buildTranscribeAndGenerateResult(args: {
   trimmedTranscript: string;
   rawTranscript: string;
   genResult:
-    | { topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
+    | { topics: string; homework: string; assessment: string; plan: string; links: string; promptVersion: string }
     | { error: string }
     | null;
   /** When `ok:false`, included so tutors can match Vercel logs. */
@@ -121,11 +124,12 @@ export function buildTranscribeAndGenerateResult(args: {
       transcript: rawTranscript,
       topics: trimmedTranscript,
       homework: "",
-      nextSteps: "",
+      assessment: "",
+      plan: "",
       links: "",
       promptVersion: "",
       warning: combineWarning(
-        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Next steps before saving."
+        "We transcribed the recording but couldn't auto-organize it (AI service hiccup). The raw transcript is in Topics — please move parts into Homework / Assessment / Plan before saving."
       ),
       warningKind: "ai-fallback",
       ...sessionTimes,
@@ -135,7 +139,8 @@ export function buildTranscribeAndGenerateResult(args: {
   const allEmpty =
     !genResult.topics.trim() &&
     !genResult.homework.trim() &&
-    !genResult.nextSteps.trim() &&
+    !genResult.assessment.trim() &&
+    !genResult.plan.trim() &&
     !genResult.links.trim();
 
   if (allEmpty) {
@@ -145,7 +150,8 @@ export function buildTranscribeAndGenerateResult(args: {
       transcript: rawTranscript,
       topics: trimmedTranscript,
       homework: "",
-      nextSteps: "",
+      assessment: "",
+      plan: "",
       links: "",
       promptVersion: genResult.promptVersion,
       warning: combineWarning(
@@ -162,7 +168,8 @@ export function buildTranscribeAndGenerateResult(args: {
     transcript: rawTranscript,
     topics: genResult.topics,
     homework: genResult.homework,
-    nextSteps: genResult.nextSteps,
+    assessment: genResult.assessment,
+    plan: genResult.plan,
     links: genResult.links,
     promptVersion: genResult.promptVersion,
     ...(skippedNotice ? { warning: skippedNotice, warningKind: "skipped-only" as const } : {}),

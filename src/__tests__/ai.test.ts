@@ -38,15 +38,17 @@ beforeEach(() => {
 // Happy path
 // ---------------------------------------------------------------------------
 
-test("returns topics/homework/nextSteps on a valid OpenAI response", async () => {
+test("returns topics/homework/assessment/plan/links on a valid OpenAI response", async () => {
   mockCreate.mockResolvedValueOnce({
     choices: [
       {
         message: {
           content: JSON.stringify({
-            topics: "We covered quadratic equations.",
-            homework: "Complete worksheet 4-6.",
-            nextSteps: "Move on to factoring next session.",
+            topics: "Quadratic equations, factoring",
+            homework: "Worksheet pg 4-6",
+            assessment: "Comfortable with factoring; struggles with negative coefficients",
+            plan: "Move on to factoring next session",
+            links: "",
           }),
         },
       },
@@ -59,11 +61,40 @@ test("returns topics/homework/nextSteps on a valid OpenAI response", async () =>
   });
 
   expect(result).toMatchObject({
-    topics: "We covered quadratic equations.",
-    homework: "Complete worksheet 4-6.",
-    nextSteps: "Move on to factoring next session.",
+    topics: "Quadratic equations, factoring",
+    homework: "Worksheet pg 4-6",
+    assessment: "Comfortable with factoring; struggles with negative coefficients",
+    plan: "Move on to factoring next session",
+    links: "",
     promptVersion: PROMPT_VERSION,
   });
+});
+
+test("accepts legacy `nextSteps` JSON field as `plan` for backwards compat", async () => {
+  // If the model echoes the old key (rare with json_object mode but free
+  // to handle), we should still surface it as `plan`.
+  mockCreate.mockResolvedValueOnce({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            topics: "t",
+            homework: "h",
+            assessment: "a",
+            nextSteps: "legacy plan",
+            links: "",
+          }),
+        },
+      },
+    ],
+  });
+
+  const result = await generateSessionNote({
+    studentName: "Alex",
+    sessionText: "x",
+  });
+
+  expect(result).toMatchObject({ plan: "legacy plan" });
 });
 
 // ---------------------------------------------------------------------------
@@ -75,7 +106,7 @@ test("sends the correct model, json_object response_format, and token limits", a
     choices: [
       {
         message: {
-          content: JSON.stringify({ topics: "t", homework: "h", nextSteps: "n" }),
+          content: JSON.stringify({ topics: "t", homework: "h", assessment: "a", plan: "p" }),
         },
       },
     ],
@@ -93,46 +124,52 @@ test("sends the correct model, json_object response_format, and token limits", a
   expect(call.response_format).toEqual({ type: "json_object" });
   expect(call.max_tokens).toBe(800);
 
-  // System message must exist
+  // System message must exist and enforce strict / terse rules
   const systemMsg = call.messages.find((m: { role: string }) => m.role === "system");
   expect(systemMsg).toBeDefined();
   expect(systemMsg.content).toContain("tutoring assistant");
+  expect(systemMsg.content).toContain("terse");
 
-  // User message must include student name and template
+  // User message must include the template and the BARE ESSENTIALS contract.
+  // Student name is intentionally NOT in the v6 prompt — Sarah's feedback was
+  // that parents only need today's facts, not "Alex did X today" padding.
   const userMsg = call.messages.find((m: { role: string }) => m.role === "user");
   expect(userMsg).toBeDefined();
-  expect(userMsg.content).toContain("Jordan");
   expect(userMsg.content).toContain("Math session");
+  expect(userMsg.content).toContain("BARE ESSENTIALS");
+  expect(userMsg.content).toContain('"assessment"');
+  expect(userMsg.content).toContain('"plan"');
 });
 
-test("injects recent note context into user prompt", async () => {
+test("accepts recent note context (RecentNoteContext.plan) without throwing", async () => {
+  // The current v6 prompt does not actually inject recentNotes into the
+  // text — Sarah wanted bare-essentials output, not "previously we did X"
+  // padding. This test locks in that the input shape is still accepted so
+  // callers don't have to special-case it. If we reintroduce recent-note
+  // context later, expand this test to assert the strings appear.
   mockCreate.mockResolvedValueOnce({
     choices: [
       {
         message: {
-          content: JSON.stringify({ topics: "t", homework: "h", nextSteps: "n" }),
+          content: JSON.stringify({ topics: "t", homework: "h", assessment: "a", plan: "p" }),
         },
       },
     ],
   });
 
-  await generateSessionNote({
-    studentName: "Sam",
-    sessionText: "Review session.",
-    recentNotes: [
-      {
-        date: new Date("2026-04-10T00:00:00Z"),
-        topics: "Fractions",
-        nextSteps: "Practice word problems",
-      },
-    ],
-  });
-
-  const userMsg = mockCreate.mock.calls[0][0].messages.find(
-    (m: { role: string }) => m.role === "user"
-  );
-  expect(userMsg.content).toContain("Fractions");
-  expect(userMsg.content).toContain("Practice word problems");
+  await expect(
+    generateSessionNote({
+      studentName: "Sam",
+      sessionText: "Review session.",
+      recentNotes: [
+        {
+          date: new Date("2026-04-10T00:00:00Z"),
+          topics: "Fractions",
+          plan: "Practice word problems",
+        },
+      ],
+    })
+  ).resolves.not.toHaveProperty("error");
 });
 
 // ---------------------------------------------------------------------------
@@ -214,7 +251,9 @@ test("falls back to empty string for missing JSON fields", async () => {
   expect(result).toMatchObject({
     topics: "Only topics returned",
     homework: "",
-    nextSteps: "",
+    assessment: "",
+    plan: "",
+    links: "",
   });
 });
 

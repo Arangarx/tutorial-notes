@@ -6,7 +6,10 @@ import { createNote } from "./actions";
 export type PopulatePayload = {
   topics: string;
   homework: string;
-  nextSteps: string;
+  /** New in B4 — where the student stands on what was covered. */
+  assessment: string;
+  /** UI-facing name; mapped to legacy `nextSteps` DB column server-side. */
+  plan: string;
   links: string;
   promptVersion: string;
   /** Set when the note was generated from one or more audio recordings. */
@@ -66,7 +69,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
   const [template, setTemplate] = useState("");
   const [topics, setTopics] = useState("");
   const [homework, setHomework] = useState("");
-  const [nextSteps, setNextSteps] = useState("");
+  const [assessment, setAssessment] = useState("");
+  const [plan, setPlan] = useState("");
   const [links, setLinks] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -85,7 +89,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
     populate(payload: PopulatePayload) {
       setTopics(payload.topics);
       setHomework(payload.homework);
-      setNextSteps(payload.nextSteps);
+      setAssessment(payload.assessment);
+      setPlan(payload.plan);
       if (payload.links) setLinks(payload.links);
       setAiGenerated(true);
       setAiPromptVersion(payload.promptVersion);
@@ -108,7 +113,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
     clear() {
       setTopics("");
       setHomework("");
-      setNextSteps("");
+      setAssessment("");
+      setPlan("");
       setLinks("");
       setStartTime("");
       setEndTime("");
@@ -118,16 +124,17 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
       setShareRecordingInEmail(false);
     },
     hasUserContent() {
-      return !!(topics.trim() || homework.trim() || nextSteps.trim());
+      return !!(topics.trim() || homework.trim() || assessment.trim() || plan.trim());
     },
   }));
 
-  const hasContent = !!(topics.trim() || homework.trim() || nextSteps.trim() || links.trim());
+  const hasContent = !!(topics.trim() || homework.trim() || assessment.trim() || plan.trim() || links.trim());
 
   function handleClear() {
     setTopics("");
     setHomework("");
-    setNextSteps("");
+    setAssessment("");
+    setPlan("");
     setLinks("");
     setStartTime("");
     setEndTime("");
@@ -149,7 +156,8 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         setTemplate("");
         setTopics("");
         setHomework("");
-        setNextSteps("");
+        setAssessment("");
+        setPlan("");
         setLinks("");
         setStartTime("");
         setEndTime("");
@@ -243,14 +251,25 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
         />
       </div>
       <div style={{ marginTop: 12 }}>
-        <label htmlFor="note-next-steps">Next steps</label>
+        <label htmlFor="note-assessment">Assessment</label>
         <textarea
-          id="note-next-steps"
-          name="nextSteps"
+          id="note-assessment"
+          name="assessment"
+          rows={3}
+          placeholder="Where does the student stand on what was covered? Strengths, struggles."
+          value={assessment}
+          onChange={(e) => setAssessment(e.target.value)}
+        />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <label htmlFor="note-plan">Plan</label>
+        <textarea
+          id="note-plan"
+          name="plan"
           rows={3}
           placeholder="What's the plan for next session?"
-          value={nextSteps}
-          onChange={(e) => setNextSteps(e.target.value)}
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
         />
       </div>
       <div style={{ marginTop: 12 }}>

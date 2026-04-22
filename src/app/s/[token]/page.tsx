@@ -186,7 +186,11 @@ export default async function SharePage({
             <div style={{ whiteSpace: "pre-wrap" }}>{note.homework || "—"}</div>
           </section>
           <section>
-            <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
+            <div className="muted" style={{ fontSize: 12 }}>Assessment</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{note.assessment || "—"}</div>
+          </section>
+          <section>
+            <div className="muted" style={{ fontSize: 12 }}>Plan</div>
             <div style={{ whiteSpace: "pre-wrap" }}>{note.nextSteps || "—"}</div>
           </section>
 

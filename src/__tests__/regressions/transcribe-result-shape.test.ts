@@ -4,8 +4,9 @@
  * Sarah's bug: her recorded session showed "Form filled — review and save."
  * with every form field blank. Root cause: when Whisper returned an empty
  * transcript OR generateSessionNote errored, the action returned ok:true with
- * empty topics/homework/nextSteps/links. The AI panel populated the form with
- * nothing and transitioned to the success state.
+ * empty topics/homework/plan/links. The AI panel populated the form with
+ * nothing and transitioned to the success state. (B4 added `assessment` as
+ * a 5th field; the shape contract is otherwise unchanged.)
  *
  * Contract being locked in:
  *  - empty transcript           -> ok:false with actionable error
@@ -47,7 +48,8 @@ describe("buildTranscribeAndGenerateResult", () => {
       expect(r.recordingIds).toEqual(["rec1"]);
       expect(r.topics).toBe("We worked on long division and she got 4/5 right.");
       expect(r.homework).toBe("");
-      expect(r.nextSteps).toBe("");
+      expect(r.assessment).toBe("");
+      expect(r.plan).toBe("");
       expect(r.links).toBe("");
       expect(r.warning).toBeTruthy();
       expect(r.warning!.toLowerCase()).toMatch(/transcribed|raw transcript/);
@@ -62,7 +64,8 @@ describe("buildTranscribeAndGenerateResult", () => {
       genResult: {
         topics: "",
         homework: "  ",
-        nextSteps: "",
+        assessment: "",
+        plan: "",
         links: "",
         promptVersion: "v1",
       },
@@ -83,7 +86,8 @@ describe("buildTranscribeAndGenerateResult", () => {
       genResult: {
         topics: "Quadratics",
         homework: "Worksheet pg 4",
-        nextSteps: "Practice negatives",
+        assessment: "Comfortable with factoring, struggles with negatives",
+        plan: "Practice negatives",
         links: "https://example.com",
         promptVersion: "v2",
       },
@@ -92,7 +96,8 @@ describe("buildTranscribeAndGenerateResult", () => {
     if (r.ok) {
       expect(r.topics).toBe("Quadratics");
       expect(r.homework).toBe("Worksheet pg 4");
-      expect(r.nextSteps).toBe("Practice negatives");
+      expect(r.assessment).toBe("Comfortable with factoring, struggles with negatives");
+      expect(r.plan).toBe("Practice negatives");
       expect(r.links).toBe("https://example.com");
       expect(r.warning).toBeUndefined();
     }
@@ -106,7 +111,8 @@ describe("buildTranscribeAndGenerateResult", () => {
       genResult: {
         topics: "",
         homework: "Read chapter 3",
-        nextSteps: "",
+        assessment: "",
+        plan: "",
         links: "",
         promptVersion: "v3",
       },
@@ -126,7 +132,8 @@ describe("buildTranscribeAndGenerateResult", () => {
       genResult: {
         topics: "Algebra review",
         homework: "Practice set 3",
-        nextSteps: "Start geometry",
+        assessment: "",
+        plan: "Start geometry",
         links: "",
         promptVersion: "v2",
       },

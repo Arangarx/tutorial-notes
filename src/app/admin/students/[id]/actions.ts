@@ -88,7 +88,12 @@ export async function createNote(studentId: string, formData: FormData) {
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();
   const homework = String(formData.get("homework") ?? "").trim();
-  const nextSteps = String(formData.get("nextSteps") ?? "").trim();
+  const assessment = String(formData.get("assessment") ?? "").trim();
+  // Form field name is "plan" (UI label "Plan", new in B4). DB column is
+  // still `nextSteps` so we don't need a data migration — see schema.prisma.
+  // Accept the legacy `nextSteps` form key too in case anything still posts it.
+  const planFromForm = String(formData.get("plan") ?? "").trim();
+  const nextSteps = planFromForm || String(formData.get("nextSteps") ?? "").trim();
   const linksText = String(formData.get("links") ?? "");
   const aiGenerated = formData.get("aiGenerated") === "true";
   const aiPromptVersion = aiGenerated
@@ -133,6 +138,7 @@ export async function createNote(studentId: string, formData: FormData) {
       template,
       topics,
       homework,
+      assessment,
       nextSteps,
       linksJson: JSON.stringify(links),
       status: "DRAFT",
@@ -188,7 +194,16 @@ export async function createNote(studentId: string, formData: FormData) {
 // ---------------------------------------------------------------------------
 
 export type GenerateNoteResult =
-  | { ok: true; topics: string; homework: string; nextSteps: string; links: string; promptVersion: string }
+  | {
+      ok: true;
+      topics: string;
+      homework: string;
+      assessment: string;
+      /** UI-facing name; persisted to the legacy `nextSteps` DB column. */
+      plan: string;
+      links: string;
+      promptVersion: string;
+    }
   | { ok: false; error: string };
 
 export async function generateNoteFromTextAction(
@@ -224,7 +239,8 @@ export async function generateNoteFromTextAction(
     recentNotes: recentNotes.map((n) => ({
       date: n.date,
       topics: n.topics,
-      nextSteps: n.nextSteps,
+      // DB column is `nextSteps`; the AI input field is named `plan` (UI label).
+      plan: n.nextSteps,
     })),
     template,
   });
@@ -240,7 +256,8 @@ export async function generateNoteFromTextAction(
     ok: true,
     topics: result.topics,
     homework: result.homework,
-    nextSteps: result.nextSteps,
+    assessment: result.assessment,
+    plan: result.plan,
     links: result.links,
     promptVersion: result.promptVersion,
   };
@@ -607,7 +624,8 @@ async function _transcribeAndGenerateImpl(
     const allEmpty =
       !genResult.topics.trim() &&
       !genResult.homework.trim() &&
-      !genResult.nextSteps.trim() &&
+      !genResult.assessment.trim() &&
+      !genResult.plan.trim() &&
       !genResult.links.trim();
     if (allEmpty) {
       console.warn(
@@ -692,7 +710,9 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
   const template = String(formData.get("template") ?? "").trim() || null;
   const topics = String(formData.get("topics") ?? "").trim();
   const homework = String(formData.get("homework") ?? "").trim();
-  const nextSteps = String(formData.get("nextSteps") ?? "").trim();
+  const assessment = String(formData.get("assessment") ?? "").trim();
+  const planFromForm = String(formData.get("plan") ?? "").trim();
+  const nextSteps = planFromForm || String(formData.get("nextSteps") ?? "").trim();
   const linksText = String(formData.get("links") ?? "");
   const links = parseLinksFromTextarea(linksText);
 
@@ -703,7 +723,7 @@ export async function updateNote(noteId: string, studentId: string, formData: Fo
 
   await db.sessionNote.update({
     where: { id: noteId },
-    data: { date, template, topics, homework, nextSteps, linksJson: JSON.stringify(links), startTime, endTime },
+    data: { date, template, topics, homework, assessment, nextSteps, linksJson: JSON.stringify(links), startTime, endTime },
   });
   revalidatePath(`/admin/students/${studentId}`);
 }
@@ -764,10 +784,10 @@ export async function sendUpdateEmail(
   const bodyText = `Hi,
 
 ${signer} has posted ${noteCountLabel} for ${student.name}.${recentPreview}
-The link below shows all notes, homework assignments, and next steps. It works on any device and does not require a login:
+The link below shows all notes, homework, assessment, and the plan for next time. It works on any device and does not require a login:
 ${linkUrl}
 
-${noteCount > 1 ? `This email shows only the most recent session. Open the link to see all ${noteCount} notes.` : "Open the link to see the full note with homework and next steps."}
+${noteCount > 1 ? `This email shows only the most recent session. Open the link to see all ${noteCount} notes.` : "Open the link to see the full note with homework, assessment, and the plan for next time."}
 
 — ${signer}`;
 

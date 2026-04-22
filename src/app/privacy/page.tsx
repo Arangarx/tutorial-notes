@@ -28,7 +28,7 @@ export default function PrivacyPage() {
             <h2 style={{ fontSize: 18, margin: 0 }}>What data we collect</h2>
             <ul style={{ margin: "8px 0 0", paddingLeft: 20, lineHeight: 1.7 }}>
               <li><strong>Account information:</strong> email address, hashed password, and optional display name when you create an account.</li>
-              <li><strong>Session notes:</strong> student names, session dates, topics, homework, next steps, and any links you add.</li>
+              <li><strong>Session notes:</strong> student names, session dates, topics, homework, assessment, plan, and any links you add.</li>
               <li><strong>Parent/guardian email addresses</strong> you enter when sending updates.</li>
               <li><strong>Email logs:</strong> copies of outbound messages (subject, recipient, body text, share link).</li>
               <li><strong>Feedback submissions:</strong> messages and optional contact email submitted through the feedback form.</li>

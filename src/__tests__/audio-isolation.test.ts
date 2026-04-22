@@ -125,8 +125,10 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
     mockGenerateSessionNote.mockResolvedValue({
       topics: "Quadratics",
       homework: "Practice problems p.42",
-      nextSteps: "Graphing quadratics",
-      promptVersion: "2026-04-16",
+      assessment: "",
+      plan: "Graphing quadratics",
+      links: "",
+      promptVersion: "2026-04-20-v6",
     });
 
     const result = await transcribeAndGenerateAction(
@@ -224,7 +226,8 @@ describe("transcribeAndGenerateAction — multi-tenant isolation", () => {
     mockGenerateSessionNote.mockResolvedValue({
       topics: "Quadratics",
       homework: "Practice problems p.42",
-      nextSteps: "Graphing quadratics",
+      assessment: "",
+      plan: "Graphing quadratics",
       links: "",
       promptVersion: "v-test",
     });

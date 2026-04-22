@@ -44,6 +44,18 @@ model SessionNote {
   date      DateTime
   topics    String
   homework  String
+  /**
+   * Where the student stands on what was covered (B4, Sarah pilot
+   * feedback). Renamed for parents to "Assessment" in the UI; field
+   * stays untouched in the DB so existing rows backfill to "" by default.
+   */
+  assessment String   @default("")
+  /**
+   * The DB column stays `nextSteps` for backwards compatibility, but the
+   * UI labels it "Plan" everywhere (B4). See `src/lib/ai.ts` — the AI
+   * prompt now returns this as `plan` and the server action maps it back
+   * to `nextSteps` at the DB boundary.
+   */
   nextSteps String
   linksJson String    @default("[]")
   template  String?

@@ -59,7 +59,8 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         formRef.current?.populate({
           topics: result.topics,
           homework: result.homework,
-          nextSteps: result.nextSteps,
+          assessment: result.assessment,
+          plan: result.plan,
           links: result.links,
           promptVersion: result.promptVersion,
           recordingIds: [],
@@ -100,7 +101,8 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
         formRef.current?.populate({
           topics: result.topics,
           homework: result.homework,
-          nextSteps: result.nextSteps,
+          assessment: result.assessment,
+          plan: result.plan,
           links: result.links,
           promptVersion: result.promptVersion,
           recordingIds: result.recordingIds,

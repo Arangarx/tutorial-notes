@@ -61,6 +61,7 @@ export default async function ShareAllPage({ params, searchParams }: PageProps) 
         OR: [
           { topics: { contains: q.trim(), mode: "insensitive" as const } },
           { homework: { contains: q.trim(), mode: "insensitive" as const } },
+          { assessment: { contains: q.trim(), mode: "insensitive" as const } },
           { nextSteps: { contains: q.trim(), mode: "insensitive" as const } },
         ],
       }
@@ -77,6 +78,7 @@ export default async function ShareAllPage({ params, searchParams }: PageProps) 
         date: true,
         topics: true,
         homework: true,
+        assessment: true,
         nextSteps: true,
         linksJson: true,
         template: true,
@@ -157,7 +159,7 @@ export default async function ShareAllPage({ params, searchParams }: PageProps) 
         {/* Toolbar */}
         <Suspense>
           <div className="row" style={{ flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
-            <NotesSearchBar placeholder="Search topics, homework, next steps…" />
+            <NotesSearchBar placeholder="Search topics, homework, assessment, plan…" />
             <PageSizeSelect defaultSize={DEFAULT_PAGE_SIZE} />
           </div>
         </Suspense>
@@ -215,7 +217,11 @@ export default async function ShareAllPage({ params, searchParams }: PageProps) 
                       <div style={{ whiteSpace: "pre-wrap" }}>{n.homework || "—"}</div>
                     </section>
                     <section>
-                      <div className="muted" style={{ fontSize: 12 }}>Next steps</div>
+                      <div className="muted" style={{ fontSize: 12 }}>Assessment</div>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{n.assessment || "—"}</div>
+                    </section>
+                    <section>
+                      <div className="muted" style={{ fontSize: 12 }}>Plan</div>
                       <div style={{ whiteSpace: "pre-wrap" }}>{n.nextSteps || "—"}</div>
                     </section>
                     {links.length > 0 && (

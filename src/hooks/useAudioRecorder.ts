@@ -38,6 +38,7 @@ import {
   SEGMENT_MAX_SECONDS,
   SESSION_SAFETY_MAX_SECONDS,
   WARN_SEGMENT_SECONDS,
+  effectiveWarnSegmentSeconds,
   shouldFireApproachingChime,
   shouldHardStopSession,
   shouldRolloverSegment,
@@ -662,7 +663,7 @@ export function useAudioRecorder({
     })();
   }
 
-  const isWarning = elapsed >= WARN_SEGMENT_SECONDS;
+  const isWarning = elapsed >= effectiveWarnSegmentSeconds();
   const isLive =
     recordState === "ready" ||
     recordState === "recording" ||

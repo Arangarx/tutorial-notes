@@ -21,12 +21,53 @@ export const WARN_SEGMENT_SECONDS = SEGMENT_MAX_SECONDS - 5 * 60; // warn 5 min 
 export const SESSION_SAFETY_MAX_SECONDS = 8 * 60 * 60; // hard stop for runaway sessions
 
 /**
+ * Test-only override hook.
+ *
+ * Playwright (and other browser-driven smokes) need the rollover to fire on
+ * the order of seconds, not 50 minutes. Setting these on `window` before the
+ * recorder mounts shrinks the segment cap to e.g. 6 seconds with a 3-second
+ * warn window:
+ *
+ *   await page.addInitScript(() => {
+ *     (window as any).__SEGMENT_MAX_SECONDS_OVERRIDE = 6;
+ *     (window as any).__WARN_SEGMENT_SECONDS_OVERRIDE = 3;
+ *   });
+ *
+ * Production code paths are unchanged: the override is gated to non-production
+ * builds, so a stray window-property pollution in prod can't shorten a tutor's
+ * recording session. See tests/e2e/audio-rollover.spec.ts for the smoke that
+ * exercises this hook.
+ */
+type SegmentOverrideWindow = {
+  __SEGMENT_MAX_SECONDS_OVERRIDE?: number;
+  __WARN_SEGMENT_SECONDS_OVERRIDE?: number;
+};
+
+function readOverride(key: keyof SegmentOverrideWindow): number | null {
+  if (typeof window === "undefined") return null;
+  if (process.env.NODE_ENV === "production") return null;
+  const v = (window as unknown as SegmentOverrideWindow)[key];
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+  return null;
+}
+
+/** Effective segment cap, accounting for the dev/test window override. */
+export function effectiveSegmentMaxSeconds(): number {
+  return readOverride("__SEGMENT_MAX_SECONDS_OVERRIDE") ?? SEGMENT_MAX_SECONDS;
+}
+
+/** Effective warn threshold, accounting for the dev/test window override. */
+export function effectiveWarnSegmentSeconds(): number {
+  return readOverride("__WARN_SEGMENT_SECONDS_OVERRIDE") ?? WARN_SEGMENT_SECONDS;
+}
+
+/**
  * True when the current segment's elapsed time has reached the rollover
  * threshold. Caller is responsible for the "already in progress" guard so
  * we don't double-fire from rapid timer ticks.
  */
 export function shouldRolloverSegment(elapsedSeconds: number): boolean {
-  return elapsedSeconds >= SEGMENT_MAX_SECONDS;
+  return elapsedSeconds >= effectiveSegmentMaxSeconds();
 }
 
 /**
@@ -40,7 +81,7 @@ export function shouldFireApproachingChime(
   elapsedSeconds: number,
   alreadyFired: boolean
 ): boolean {
-  return elapsedSeconds >= WARN_SEGMENT_SECONDS && !alreadyFired;
+  return elapsedSeconds >= effectiveWarnSegmentSeconds() && !alreadyFired;
 }
 
 /**

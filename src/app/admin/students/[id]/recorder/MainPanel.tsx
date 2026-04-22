@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  SEGMENT_MAX_SECONDS,
+  effectiveSegmentMaxSeconds,
   formatSegmentTimeLeft,
 } from "@/lib/recording/segment-policy";
 import MicControls, { type MicControlsProps } from "./MicControls";
@@ -67,7 +67,7 @@ export default function MainPanel({
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted, #6b7280)" }}>
             {state === "ready"
               ? "Speak — watch the level bar — then click Start."
-              : `Long sessions auto-save every ~${Math.round(SEGMENT_MAX_SECONDS / 60)} min so you can keep recording. Speak at least 15–20 seconds per segment when possible.`}
+              : `Long sessions auto-save every ~${Math.round(effectiveSegmentMaxSeconds() / 60)} min so you can keep recording. Speak at least 15–20 seconds per segment when possible.`}
           </span>
         </div>
       )}
@@ -103,7 +103,7 @@ export default function MainPanel({
             </span>
             {isWarning && (
               <span role="alert" style={{ fontSize: 12, color: "var(--color-error, #dc2626)" }}>
-                {formatSegmentTimeLeft(SEGMENT_MAX_SECONDS - elapsed)} in this segment — will save &amp; continue automatically
+                {formatSegmentTimeLeft(effectiveSegmentMaxSeconds() - elapsed)} in this segment — will save &amp; continue automatically
               </span>
             )}
             <span

@@ -27,6 +27,15 @@
  *  - The 1s timer's auto-rollover branch is single-shot per segment via
  *    `rolloverInProgressRef`. Without it, two timer ticks at the boundary
  *    can both call `stopAndUpload("rollover")`.
+ *  - Gapless rollover (B5): on auto-rollover we PRE-WARM a second
+ *    MediaRecorder on the same mic stream BEFORE calling .stop() on the
+ *    current one. The old recorder's chunks are snapshotted to a LOCAL
+ *    array and its ondataavailable handler is rebound to push into that
+ *    local — otherwise the late "final flush" dataavailable that fires on
+ *    .stop() would land in the NEW recorder's chunksRef and corrupt the
+ *    next segment. Without the pre-warm there is a ~3-5s silent gap
+ *    while the browser finalizes the WebM/MP4 container (this was
+ *    Sarah's "4-second cutoff between recordings" report).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -325,9 +334,165 @@ export function useAudioRecorder({
         rolloverInProgressRef.current = true;
         const vol = chimeEnabledRef.current ? chimeVolumeRef.current : 0;
         playSegmentRolloverChime(vol);
-        stopAndUpload("rollover");
+        rolloverSegmentGapless();
       }
     }, 1000);
+  }
+
+  /**
+   * Gapless segment rollover — see header invariant block.
+   *
+   * Sequence (every step matters; reorder at your peril):
+   *
+   *   1. Snapshot the OLD recorder + its in-flight chunks into LOCAL
+   *      variables. After this point we don't touch chunksRef for the
+   *      old segment again.
+   *   2. Rebind the OLD recorder's ondataavailable to push into the
+   *      local oldChunks. The browser will fire ondataavailable one
+   *      more time when .stop() flushes the encoder, and it MUST not
+   *      land in the new segment's buffer.
+   *   3. Reset chunksRef.current = [] and build the NEW MediaRecorder
+   *      on the same recordingStream. Start it immediately so the mic
+   *      is captured continuously.
+   *   4. Bump segmentNumber (state + ref) so the in-flight upload's
+   *      part-N filename uses the OLD index and the live UI shows the
+   *      NEW index.
+   *   5. Wire the OLD recorder's .onstop to upload the snapshotted
+   *      chunks in the background. The session keeps recording while
+   *      that upload is in progress; on success we fire onRecorded
+   *      with `{ autoRollover: true }` so the parent appends the file.
+   *   6. Call oldRecorder.stop(). State stays "recording" the whole
+   *      time — the user never sees an "uploading…" interstitial for
+   *      auto-rollovers.
+   *
+   * Failure modes:
+   *   - MediaRecorder constructor throws → we fall back to the legacy
+   *     stop-then-restart path (`stopAndUpload("rollover")`). Worse
+   *     UX (the gap returns) but session still completes.
+   *   - Upload of the OLD segment fails after both retry attempts →
+   *     we surface the error via setError but do NOT teardown the
+   *     mic, since the new recorder is still capturing.
+   */
+  function rolloverSegmentGapless() {
+    const oldRecorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    if (!oldRecorder || !stream) {
+      rolloverInProgressRef.current = false;
+      return;
+    }
+
+    const oldChunks: Blob[] = chunksRef.current;
+    const oldSegmentSeconds = elapsedRef.current;
+    const oldPartIndex = segmentNumberRef.current;
+    const oldMimeType = oldRecorder.mimeType || chooseMimeType();
+
+    // Step 2: rebind so the final-flush ondataavailable lands in oldChunks,
+    // not the new recorder's chunksRef.
+    oldRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) oldChunks.push(e.data);
+    };
+
+    // Step 3: build + start the NEW recorder BEFORE stopping the old one.
+    const recordingStream = graphRef.current?.recordingStream ?? stream;
+    let newRecorder: MediaRecorder;
+    try {
+      const newMimeType = chooseMimeType();
+      newRecorder = new MediaRecorder(
+        recordingStream,
+        newMimeType ? { mimeType: newMimeType } : undefined
+      );
+    } catch (err) {
+      // Pre-warm failed — fall back to the legacy path so we don't lose the
+      // existing segment. We pay the gap but the session continues.
+      console.warn(
+        "[useAudioRecorder] gapless rollover pre-warm failed; falling back:",
+        err
+      );
+      // Restore ondataavailable so chunksRef path still works (legacy path).
+      oldRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rolloverInProgressRef.current = false;
+      stopAndUpload("rollover");
+      return;
+    }
+
+    chunksRef.current = [];
+    elapsedRef.current = 0;
+    setElapsed(0);
+    approachingCapSoundPlayedRef.current = false;
+    segmentNumberRef.current = oldPartIndex + 1;
+    setSegmentNumber(oldPartIndex + 1);
+
+    newRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    // Same iOS-Safari guard as startMediaRecorder: NO timeslice.
+    newRecorder.start();
+    mediaRecorderRef.current = newRecorder;
+
+    // Step 5: background upload of the OLD segment.
+    oldRecorder.onstop = async () => {
+      const blob = new Blob(oldChunks, { type: oldMimeType });
+      if (blob.size === 0) {
+        // Empty segment is non-fatal during a rollover — the new segment is
+        // already running. Log and clear the in-progress flag.
+        console.warn(
+          "[useAudioRecorder] rollover: old segment was empty, skipping upload"
+        );
+        rolloverInProgressRef.current = false;
+        return;
+      }
+
+      const ext = fileExtension(oldMimeType);
+      const filename = `session-${Date.now()}-part${oldPartIndex}.${ext}`;
+
+      try {
+        const result = await uploadAudioWithRetry(
+          uploadAudioDirect,
+          studentId,
+          blob,
+          filename,
+          oldMimeType
+        );
+
+        if (!result.ok) {
+          // Surface but keep the live recorder running. Tutor can read the
+          // error and decide whether to stop; in the meantime we don't lose
+          // the current capture.
+          setError(formatUserFacingActionError(result.error, result.debugId));
+          rolloverInProgressRef.current = false;
+          return;
+        }
+
+        const previewUrl = URL.createObjectURL(blob);
+        onRecorded(
+          {
+            blobUrl: result.blobUrl,
+            mimeType: oldMimeType,
+            sizeBytes: blob.size,
+            filename,
+            previewUrl,
+          },
+          { autoRollover: true }
+        );
+        rolloverInProgressRef.current = false;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        console.error("[useAudioRecorder] rollover upload failed:", err);
+        setError(msg);
+        rolloverInProgressRef.current = false;
+      }
+      // oldSegmentSeconds is captured for parity with the legacy path's
+      // doneSegmentSeconds; auto-rollover doesn't surface it in the UI
+      // (state never goes to "done"), but keeping the snapshot makes
+      // future telemetry trivial.
+      void oldSegmentSeconds;
+    };
+
+    if (oldRecorder.state !== "inactive") {
+      oldRecorder.stop();
+    }
   }
 
   /**

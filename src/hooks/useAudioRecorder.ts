@@ -57,6 +57,7 @@ import {
   playSegmentRolloverChime,
 } from "@/lib/recording/chimes";
 import {
+  CHIME_VOL_DEFAULT,
   GAIN_DEFAULT,
   loadStoredChimeEnabled,
   loadStoredChimeVolume,
@@ -159,8 +160,13 @@ export function useAudioRecorder({
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [gainLinear, setGainLinear] = useState<number>(GAIN_DEFAULT);
-  const [chimeEnabled, setChimeEnabled] = useState(() => loadStoredChimeEnabled());
-  const [chimeVolume, setChimeVolume] = useState(() => loadStoredChimeVolume());
+  // SSR-safe defaults; the real localStorage values are read in the mount
+  // effect below. Reading localStorage from the useState initializer would
+  // produce a different value on the server (no localStorage = default) than
+  // on the client (saved user preference), which React 19 surfaces as a
+  // hydration mismatch on the chime volume slider's `--chime-pct` style.
+  const [chimeEnabled, setChimeEnabled] = useState<boolean>(true);
+  const [chimeVolume, setChimeVolume] = useState<number>(CHIME_VOL_DEFAULT);
   /** Current segment index (1-based) — increments on auto-rollover. */
   const [segmentNumber, setSegmentNumber] = useState(1);
   /** `segment` = saving mid-session without tearing down the mic; `final` = full-screen upload. */
@@ -202,9 +208,14 @@ export function useAudioRecorder({
   }, [segmentNumber]);
 
   // Load persisted prefs after mount (avoid SSR/hydration mismatch).
+  // chime values are loaded here too — see the chime useState declarations
+  // above for why initialising them from localStorage causes a hydration
+  // mismatch on the volume slider's `--chime-pct` CSS variable.
   useEffect(() => {
     setGainLinear(loadStoredGain());
     setSelectedDeviceId(loadStoredDeviceId());
+    setChimeEnabled(loadStoredChimeEnabled());
+    setChimeVolume(loadStoredChimeVolume());
   }, []);
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 # Recorder refactor — branch handoff
 
-**Branch:** `refactor/recorder-test-modular` (not pushed; main is master)
-**Plan:** `~/.cursor/plans/recorder-test-refactor_00e7871e.plan.md`
+**Branch:** `refactor/recorder-test-modular` (not yet pushed; main is master)
+**Original plan:** `~/.cursor/plans/recorder-test-refactor_00e7871e.plan.md`
+**Wrap-up + Sarah unblock plan:** `~/.cursor/plans/recorder_refactor_wrap_and_sarah_unblock_8301e036.plan.md`
 **Last touched:** Apr 20, 2026
 
 This doc lives on the refactor branch so that switching back to master and
@@ -10,68 +11,99 @@ context. Update it whenever you finish a phase or pause mid-flight.
 
 ---
 
-## Status by phase
+## Status
+
+**All planned phases complete; awaiting manual smoke before merge.**
 
 | Phase | Status | What it produced |
 |------|--------|---|
 | 1 — extract pure modules + node tests | ✅ done | `src/lib/recording/{segment-policy,mime,storage,permissions,chimes,upload,recording-state}.ts` + matching unit tests under `src/__tests__/recording/` |
-| 2 — extract `useAudioRecorder` hook | ✅ done | `src/hooks/useAudioRecorder.ts` (~700 lines, owns all state/refs/effects). `AudioRecordInput.tsx` now a ~680-line shell that consumes the hook and renders subviews per `state`. Latent `segmentNumber` staleness bug fixed via `segmentNumberRef`. |
-| 3 — jsdom + RTL hook tests | ✅ done | `src/__tests__/dom/useAudioRecorder.dom.test.tsx` (8 cases: happy path, MouseEvent regression, pause/resume, rollover, double-rollover guard, session safety cap, retry-once success, retry failure). `jest.setup-dom.ts`, RTL deps, single-config + per-file `@jest-environment jsdom` pragma. |
-| **Stop 3** | **← here** | **Review coverage with PO before extracting components.** |
-| 4 — extract presentational subcomponents | pending | `MicControls`, `Done`, `Uploading`, `Error`, `AudioPreview`, `PendingSegmentList` (last two from `AiAssistPanel.tsx`). Add their dom tests, including a **keepRecorderMounted** regression test for the tab-switch bug (see Backlog below). |
-| 5 — Playwright e2e rollover | pending | Opt-in spec: stub `MediaRecorder`, override `SEGMENT_MAX_SECONDS` via `window` so a real-browser run drives a rollover in seconds. |
-| 6 — final review + handoff | pending | Invariant audit, BACKLOG / learning doc updates, full `npm test` + `npm run build`, write final result report. |
+| 2 — extract `useAudioRecorder` hook | ✅ done | `src/hooks/useAudioRecorder.ts` (~870 lines after B5; owns all state/refs/effects). `AudioRecordInput.tsx` now a thin shell that consumes the hook and renders subviews per `state`. Latent `segmentNumber` staleness bug fixed via `segmentNumberRef`. |
+| 3 — jsdom + RTL hook tests | ✅ done | `src/__tests__/dom/useAudioRecorder.dom.test.tsx` (12 cases after B5). `jest.setup-dom.ts`, RTL deps, single-config + per-file `@jest-environment jsdom` pragma. |
+| 4 — extract presentational subcomponents | ✅ done | `MicControls`, `MainPanel`, `DoneCard`, `UploadingPanel`, `ErrorCard` under `src/app/admin/students/[id]/recorder/`; `AudioPreview` + `PendingSegmentList` extracted from `AiAssistPanel.tsx`. New dom tests per component + `keep-recorder-mounted.dom.test.tsx` regression. |
+| 5 — Playwright e2e rollover | ✅ done | `tests/e2e/audio-rollover.spec.ts` (env-gated by `AUDIO_ROLLOVER_E2E=1`); injects `window.__SEGMENT_MAX_SECONDS_OVERRIDE` and a stub `MediaRecorder` via `addInitScript`; new `e2e` Playwright project in `playwright.config.ts`. |
+| B1 — client-direct Vercel Blob upload | ✅ done | `src/lib/recording/upload.ts` `uploadAudioDirect` + `/api/upload/audio` route handler using `@vercel/blob/client`. `AudioUploadInput.tsx` and `useAudioRecorder` rollover both use the new path. Old `uploadAudioAction` deleted. **Resolves Sarah's 17.9MB upload failure** (Vercel serverless 4.5MB body cap). |
+| B2 — drop silent transcript truncation | ✅ done | `MAX_INPUT_TOKENS` raised to 30 000 in `src/lib/ai.ts`; `generateNoteFromTextAction` errors explicitly when input exceeds the cap instead of silently chopping the back of the transcript. |
+| B3 — always-mount tabs + confirm-on-switch | ✅ done | `AudioInputTabs.tsx` always mounts `AudioRecordInput`/`AudioUploadInput` (when `blobEnabled`) and hides inactive panes via `display: none`; new `recordingActive` state + confirm prompt when leaving the Record tab during a live capture. Closes the "tab-switch silently kills the recording" bug. |
+| B4 — Sarah notes-content rework | ✅ done | New 5-field JSON contract (`topics`, `homework`, `assessment`, `plan`, `links`) with terse "BARE ESSENTIALS" prompt; `PROMPT_VERSION = 2026-04-20-v6`. New `SessionNote.assessment` column (default `""`); existing DB column `nextSteps` kept as-is and labeled "Plan" in the UI everywhere. Migration `prisma/migrations/20260420000000_session_note_assessment`. All UI surfaces updated (admin notes form/list, share-link pages, marketing/privacy text). Tests updated for the v6 prompt shape and new fields. |
+| B5 — gapless segment rollover | ✅ done | `useAudioRecorder.rolloverSegmentGapless()` pre-warms the next `MediaRecorder` on the same `MediaStream` BEFORE stopping the current one. Old recorder's chunks snapshotted to a local array; its `ondataavailable` rebound so the final-flush blob doesn't pollute the new segment. Closes the ~3-5s "between recordings" gap reported in dev smoke. |
+| 6 — final review + handoff | ✅ done | This doc + BACKLOG entries closed + learning bullet added. Awaiting manual smoke. |
 
 ---
 
-## Verification at last commit on this branch
+## Test counts (last run on this branch)
 
-- `npx jest src/__tests__/recording src/__tests__/regressions src/__tests__/dom` →
-  **14 suites, 119 tests passing.**
-- `npx tsc --noEmit` clean.
-- ESLint clean on changed files.
-- Manual smoke (Apr 20, 2026, real mic): start, pause/resume, segment timer,
-  warning chime, auto-rollover with two production-value-rate segments,
-  upload success, done card. **Steps 1–6 of the smoke checklist passed.**
-- Smoke step 7 (switching tabs while recording) **failed** — flagged as
-  pre-existing UX bug, NOT a regression from this refactor. See Backlog.
-- DB-dependent test suites still fail with `127.0.0.1:5432` errors —
-  pre-existing local-Postgres environment issue, unrelated.
+- `npx jest` → **246 tests pass, 8 pre-existing DB failures** (auth/email/password-reset/note-and-share/transcribe-late-hallucination need a local test postgres; unrelated to anything on this branch).
+- `npx tsc --noEmit` → clean.
+- 12 hook tests in `useAudioRecorder.dom.test.tsx` (started at 8 in Phase 3; +4 in B5 for ordering/pollution invariants).
+- Playwright `e2e` project ready but opt-in (`AUDIO_ROLLOVER_E2E=1 npx playwright test --project=e2e`).
 
 ---
 
-## Open issues / discoveries from this branch (already in `docs/BACKLOG.md`)
+## Open issues / discoveries from this branch
 
-1. **~4-second audio gap at auto-rollover boundary.** Cause: non-atomic
-   `MediaRecorder.stop()` then `start()` on the same stream. Likely fix:
-   pre-warm a second `MediaRecorder` before stopping the first so the
-   handoff is gapless. *Noted under "Time-based auto-rollover" follow-ups.*
-2. **Switching tabs while recording silently kills the recording.** Cause:
-   `AudioInputTabs` conditionally renders `AudioRecordInput`, so a tab
-   switch unmounts it and the cleanup effect tears down the mic + recorder.
-   Two-part fix planned: (a) always-mount the recorder (CSS-hide when
-   inactive), (b) confirm-on-switch when actively recording. **High
-   severity** for tutors mid-session. *Noted under "Real bugs (do before
-   pilot grows past Sarah)".*
-   - Phase 4 should add the `keepRecorderMounted` regression test for this
-     once the always-mount fix lands. The dom test file is the right home.
+All recorder-related discoveries on this branch have shipped. The ones that
+remain are about-the-recorder-but-not-this-branch and live in
+`docs/BACKLOG.md`:
+
+- Recorder behavior on long iOS sessions (timer suspension when phone idles,
+  `MediaRecorder` state after sign-out → sign-in) is still backlog material
+  under "Recording — long sessions, Whisper limits, alerts (2026)".
+- Playwright `e2e` project hasn't been wired into the build gate yet — kept
+  opt-in until we trust the stub MediaRecorder isn't flaky on CI workers.
 
 ---
 
-## How to pick this back up
+## Smoke checklist — run before merging to master
 
-1. **Read this doc and the plan** (`~/.cursor/plans/recorder-test-refactor_00e7871e.plan.md`).
+The Phase 1-5 + B1-B5 work has been committed across 8+ commits on this
+branch. Before pushing / opening a PR, run the manual smoke:
+
+1. **Cold start.** `npm run dev`, sign in, open a student page. No console
+   errors; mic permission prompt appears in the Record tab if not granted.
+2. **Pure record + save.** Record ~30 seconds, Stop & save → Transcribe →
+   AI fills Topics/Homework/Assessment/Plan/Links (NOT "Next steps").
+3. **Tab switch during live recording.** Start recording, click "Paste
+   text" — confirm prompt appears ("You're recording — switch tabs
+   anyway?"), Cancel keeps you on Record. Confirm switches you to Paste,
+   recording continues; click back to Record, audio is still ticking; stop
+   normally.
+4. **Auto-rollover (gapless).** Temporarily set `SEGMENT_MAX_SECONDS = 60`
+   and `WARN_SEGMENT_SECONDS = 30` in `src/lib/recording/segment-policy.ts`,
+   restart dev. Record continuously through one rollover. Listen back to
+   the two segments back-to-back — there should be no audible gap. State
+   never flickers through "uploading…" for the auto-rollover. **Revert
+   the constants before commit.**
+5. **Manual upload — large file.** Upload an m4a > 5MB. Should succeed
+   (B1 client-direct path bypasses the 4.5MB serverless body cap).
+6. **Edit a note + save.** Edit form shows Assessment + Plan fields (NOT
+   Next steps); save persists; share-link page shows both new fields.
+7. **Search.** Type something in the notes search that only matches
+   `assessment` content — confirm the row surfaces.
+
+If steps 1–7 all pass: revert any temporary segment-policy constants,
+final commit + push, open PR to master.
+
+---
+
+## How to pick this back up if smoke fails
+
+1. **Read this doc, the wrap-up plan, and the original plan.**
 2. **Check out the branch** (`git checkout refactor/recorder-test-modular`).
 3. **Re-run the test suite** to confirm green:
    ```powershell
-   npx jest src/__tests__/recording src/__tests__/regressions src/__tests__/dom
+   npx jest
    ```
-4. **Decide whether to fix the tab-switch bug now or in Phase 4.** If now:
-   it earns a place on this same branch since the keep-mounted fix
-   naturally pairs with the component extraction in Phase 4. Otherwise,
-   keep it on master / a separate branch and come back.
-5. **Resume at Stop 3.** Phase 4 is `[Sonnet]` per the model-tiering rule —
-   switch the model selector if you want to save Opus tokens.
+   Expect `246 pass, 8 pre-existing DB fails`.
+4. **For recorder behavior bugs**, the entry points are:
+   - `src/hooks/useAudioRecorder.ts` — start with the invariant block at
+     the top, then jump to the function the bug is in. The B5 gapless
+     path is `rolloverSegmentGapless()`.
+   - `src/__tests__/dom/useAudioRecorder.dom.test.tsx` — has the
+     FakeMediaRecorder + setup notes.
+5. **For UI bugs**, the recorder components are split under
+   `src/app/admin/students/[id]/recorder/` with one file per component
+   and a co-located dom test.
 
 ---
 
@@ -79,9 +111,18 @@ context. Update it whenever you finish a phase or pause mid-flight.
 
 - `src/hooks/useAudioRecorder.ts` — the heart. Read its top docblock; the
   invariants list (iOS MP4, StrictMode safety, rollover-keeps-mic-hot,
-  meter-via-ref, single-shot rollover guard) is load-bearing.
-- `src/app/admin/students/[id]/AudioRecordInput.tsx` — thin shell. Phase 4
-  will further chip away at this.
+  meter-via-ref, single-shot rollover guard, **gapless-rollover chunks
+  rebind**) is load-bearing.
+- `src/app/admin/students/[id]/AudioRecordInput.tsx` — thin shell that
+  picks a subview based on `state`; subviews under `./recorder/`.
+- `src/app/admin/students/[id]/AudioInputTabs.tsx` — always-mount + confirm-
+  on-switch (B3).
+- `src/lib/recording/upload.ts` — client-direct Vercel Blob upload (B1).
+- `src/app/api/upload/audio/route.ts` — token route handler.
+- `src/lib/recording/segment-policy.ts` — `effectiveSegmentMaxSeconds()` and
+  `effectiveWarnSegmentSeconds()` honor `window.__SEGMENT_MAX_SECONDS_OVERRIDE`
+  / `window.__WARN_SEGMENT_SECONDS_OVERRIDE` outside production builds, so
+  the Playwright spec (and dev smoke) can drive a rollover in seconds.
 - `src/__tests__/dom/useAudioRecorder.dom.test.tsx` — has two non-obvious
   setup tricks documented inline:
   - `jest.useFakeTimers({ doNotFake: ["queueMicrotask"] })` — Jest 30's
@@ -89,7 +130,42 @@ context. Update it whenever you finish a phase or pause mid-flight.
     FakeMediaRecorder stop callback.
   - `flushAsync` loops 20 microtasks — the rollover chain has many `await`
     hops.
+- `tests/e2e/audio-rollover.spec.ts` — opt-in via `AUDIO_ROLLOVER_E2E=1`;
+  uses `page.addInitScript` to inject the MediaRecorder stub + segment-cap
+  override.
 - `jest.config.ts` — single project + per-file `@jest-environment jsdom`
   pragma. Don't try to convert to `projects: [...]` again — `next/jest`'s
   SWC transform doesn't propagate into project sub-configs and TS types
   blow up under babel.
+
+---
+
+## Learning: "guards that should error"
+
+Discovered while wiring B2: the AI server action used to **silently truncate**
+oversized transcripts (`text.slice(0, MAX_INPUT_TOKENS * 4)`) on the theory
+that "some answer is better than no answer." In practice this produced a
+notes generation that mysteriously dropped the back half of long sessions
+with no warning to the tutor. The right shape for a soft cap is:
+
+> If we hit the cap, **error explicitly** with an actionable message — never
+> truncate silently.
+
+Applied:
+
+- B2 in `generateNoteFromTextAction`: cap raised to 30 000 tokens AND the
+  silent slice is gone; we return `{ ok: false, error: "..." }` if the
+  transcript overflows, so the tutor sees a real message rather than
+  "where did the second half of the session go?".
+- The same shape now lives in `transcribeAndGenerateAction` (silent-segment
+  hallucination guard returns a structured warning with `warningKind`,
+  rather than dropping fields).
+- The Sarah B1 issue was diagnosed *late* because of the symmetrical
+  failure on the other side — Vercel returned 413 silently before our code
+  ran, so there was no `rid=` log to find. Mitigation: client-direct upload
+  removes the silent failure path entirely.
+
+**Pattern to repeat:** when you find a "be conservative, just clamp it"
+defensive code path that causes user-visible weirdness without a log line,
+prefer to either (a) fix the underlying capacity, (b) raise the limit until
+real-world inputs fit, or (c) error explicitly. Don't silently degrade.

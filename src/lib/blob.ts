@@ -25,8 +25,19 @@ export async function deleteBlob(url: string): Promise<void> {
 
 /**
  * Returns a URL suitable for use in an <audio> element or for fetching bytes.
- * Audio blobs are stored with access:'public' at a UUID path — not guessable.
- * Adds ?download=1 for browser compatibility when used as a download link.
+ *
+ * IMPORTANT: audio blobs are stored with access:"private" — the URL itself
+ * returns 403 from Vercel's edge without a Bearer token, so this is NOT
+ * directly playable in the browser. Server-side code uses it (with
+ * BLOB_READ_WRITE_TOKEN) for fetches and downloads; browsers must go
+ * through the /api/audio/[recordingId] proxy (or the admin equivalent),
+ * which handles auth and streams the bytes back.
+ *
+ * The original "public" claim in this file's history was a lie — the store
+ * has been private since the proxy route was added, but `lib/blob.ts` and
+ * the upload helper drifted out of sync. If you're tempted to switch to
+ * access:"public" as a "fix", first reconfigure the Vercel Blob store
+ * itself (you can't mix private and public blobs in one private store).
  */
 export function getAudioUrl(blobUrl: string): string {
   return getDownloadUrl(blobUrl);

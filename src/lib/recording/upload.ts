@@ -87,8 +87,16 @@ export async function uploadAudioDirect(
     // imported by code paths that never actually upload (e.g. the
     // segment-policy unit tests pull in ../upload via barrel files).
     const { upload } = await import("@vercel/blob/client");
+    // access: "private" is REQUIRED — our Vercel Blob store is configured
+    // for private access (see store ID in BLOB_READ_WRITE_TOKEN). Passing
+    // "public" returns a 400 with no CORS headers from Vercel's edge,
+    // which surfaces in the browser as "ERR_FAILED 400 (Bad Request)" and
+    // a misleading "blocked by CORS policy" error. Private blobs require
+    // a Bearer token to fetch, but our app proxies all audio playback
+    // through /api/audio/[recordingId] (and the admin equivalent), so
+    // the recorded URL is never served directly to the browser.
     const result = await upload(pathname, blob, {
-      access: "public",
+      access: "private",
       handleUploadUrl: "/api/upload/audio",
       contentType: cleanContentType,
       clientPayload: JSON.stringify({ studentId }),

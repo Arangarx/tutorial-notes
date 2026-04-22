@@ -17,21 +17,32 @@ import { createActionCorrelationId } from "@/lib/action-correlation";
  * effectively the BLOB_MAX_BYTES constant we set ourselves (100MB
  * today; can grow to 5TB).
  *
- * Two phases use this single endpoint:
- *  1. blob.generate-client-token — issued before the upload starts. We
- *     verify the tutor is signed in and owns the studentId in the
- *     clientPayload, then sign a token constrained to audio mime types
- *     and the max-size cap.
- *  2. blob.upload-completed — issued by Vercel Blob's edge after the
- *     client PUT lands. We just log it; the recording row is written by
- *     the caller (recorder/upload tab) once the client side learns the
- *     final blob URL.
+ * Token-mint only — no completion callback. We deliberately do NOT
+ * pass onUploadCompleted to handleUpload, for two reasons:
  *
- * Auth model: ownership check happens inside onBeforeGenerateToken, NOT
- * onUploadCompleted. The completion callback is called by Vercel Blob,
- * not by our user, so we can't recheck the session there. This is fine
- * because token issuance is the actual gate — without a valid token
- * signed for this pathname, the PUT can't happen.
+ *  1. We don't need it. The recording row is written by the caller
+ *     (recorder hook / Upload tab) once the client side learns the
+ *     final blob URL from upload()'s return value, then a separate
+ *     server action (createRecording / transcribeAndGenerate) writes
+ *     the DB row. There is nothing to do in onUploadCompleted.
+ *
+ *  2. It breaks local dev. When onUploadCompleted is present, Vercel's
+ *     handleUpload tries to embed a callbackUrl in the signed client
+ *     token. On localhost (no VERCEL=1 and no VERCEL_BLOB_CALLBACK_URL),
+ *     getCallbackUrl() returns undefined and the token is signed with
+ *     onUploadCompleted: undefined. Vercel's edge then 400s the PUT
+ *     because the token / request handshake doesn't reconcile cleanly.
+ *     Removing the callback altogether sidesteps this — local dev,
+ *     preview, and prod all behave the same way.
+ *
+ * If we ever need post-upload server-side work (virus scan, transcode,
+ * size accounting), reintroduce onUploadCompleted AND set
+ * VERCEL_BLOB_CALLBACK_URL to a tunnel URL (ngrok / cloudflared) when
+ * developing locally.
+ *
+ * Auth model: ownership check happens inside onBeforeGenerateToken.
+ * Token issuance is the actual gate — without a valid token signed for
+ * this pathname, the PUT can't happen.
  */
 
 type ClientUploadPayload = {
@@ -89,26 +100,15 @@ export async function POST(request: Request): Promise<Response> {
           // same filename can't collide and so the URL isn't enumerable
           // from the studentId alone.
           addRandomSuffix: true,
-          // Round-trip the studentId so onUploadCompleted has it for
-          // logging without re-parsing the original payload.
+          // tokenPayload is round-tripped back to onUploadCompleted,
+          // which we don't use (see file header). It's still useful as
+          // an audit trail in the signed token blob itself, so we keep
+          // studentId + rid here for any future debugging.
           tokenPayload: JSON.stringify({ studentId, rid }),
         };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        // Vercel Blob's edge calls this after the client PUT lands. The
-        // recording row is written by the caller once it learns the URL,
-        // so all we do here is log for debugging. Failures here would
-        // surface as a 5xx to Vercel Blob (it doesn't retry), but since
-        // we don't write any DB rows there's nothing to fail.
-        try {
-          const meta = tokenPayload ? (JSON.parse(tokenPayload) as { studentId?: string; rid?: string }) : null;
-          console.log(
-            `[uploadAudio.route] upload-completed rid=${meta?.rid ?? "?"} studentId=${meta?.studentId ?? "?"} url=${blob.url} size=${blob.contentDisposition}`
-          );
-        } catch {
-          console.log(`[uploadAudio.route] upload-completed url=${blob.url}`);
-        }
-      },
+      // No onUploadCompleted — see file header for why. Removing this
+      // makes local dev work and removes a moving part in prod.
     });
 
     return NextResponse.json(jsonResponse);

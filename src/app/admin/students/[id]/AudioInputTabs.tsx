@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import AudioUploadInput, { type UploadedAudio } from "./AudioUploadInput";
 import AudioRecordInput, { type RecordedAudio } from "./AudioRecordInput";
 
@@ -27,6 +27,25 @@ type Props = {
   blobEnabled: boolean;
 };
 
+/**
+ * Tabbed audio input — Paste text / Upload audio / Record.
+ *
+ * B3 invariant: AudioRecordInput (and AudioUploadInput) MUST stay mounted
+ * once `blobEnabled` is true, regardless of which tab is active. Hiding
+ * happens via `display: none` on the wrapper, never via conditional
+ * rendering. Pre-B3 the recorder lived behind `{activeTab === "record" && ...}`
+ * which silently unmounted the hook → MediaRecorder.stop() in the cleanup
+ * effect → tutor lost the in-progress recording with no warning. The
+ * regression test for this is __tests__/dom/keep-recorder-mounted.dom.test.tsx.
+ *
+ * Tab-switch confirms (in this order — first match wins):
+ *   1. If a recording is in progress and the user is leaving Record, ask
+ *      first. The recorder will keep running in the background, but
+ *      tutors deserve a heads-up so they don't think they lost it.
+ *   2. If audio has already been finalised (uploaded or recorded), warn
+ *      that switching tabs will clear it. This was the pre-B3 behaviour;
+ *      kept intact so we don't surprise existing flows.
+ */
 export default function AudioInputTabs({
   studentId,
   activeTab,
@@ -38,6 +57,7 @@ export default function AudioInputTabs({
   blobEnabled,
 }: Props) {
   const [hasAudio, setHasAudio] = useState(false);
+  const [recordingActive, setRecordingActive] = useState(false);
 
   function handleUploaded(audio: UploadedAudio) {
     setHasAudio(true);
@@ -52,7 +72,30 @@ export default function AudioInputTabs({
     onAudioReady(audio, { keepRecorderMounted: !!meta?.autoRollover });
   }
 
+  // Wrap the parent's onRecordingActive so we can also track it locally
+  // for the tab-switch confirm. useCallback keeps the identity stable so
+  // the recorder hook doesn't re-fire its effect on every render.
+  const handleRecordingActive = useCallback(
+    (active: boolean) => {
+      setRecordingActive(active);
+      onRecordingActive?.(active);
+    },
+    [onRecordingActive]
+  );
+
   function switchTab(tab: Tab) {
+    if (tab === activeTab) return;
+
+    // Recording-in-progress confirm only fires when leaving the Record
+    // tab while a session is live. Going TO record while recording is
+    // already on (impossible today, but defensive) just no-ops above.
+    if (activeTab === "record" && recordingActive) {
+      const confirmed = window.confirm(
+        "A recording is in progress. Switching tabs will keep the recorder running in the background — come back to this tab to Stop & save. Switch tabs anyway?"
+      );
+      if (!confirmed) return;
+    }
+
     if (hasAudio) {
       const confirmed = window.confirm(
         "Switching tabs will discard the current audio. Continue?"
@@ -61,6 +104,7 @@ export default function AudioInputTabs({
       setHasAudio(false);
       onAudioCleared();
     }
+
     onTabChange(tab);
   }
 
@@ -107,21 +151,34 @@ export default function AudioInputTabs({
         )}
       </div>
 
-      {activeTab === "upload" && blobEnabled && (
-        <AudioUploadInput
-          studentId={studentId}
-          onUploaded={handleUploaded}
-          disabled={disabled}
-        />
-      )}
-
-      {activeTab === "record" && blobEnabled && (
-        <AudioRecordInput
-          studentId={studentId}
-          onRecorded={handleRecorded}
-          onRecordingActive={onRecordingActive}
-          disabled={disabled}
-        />
+      {/* B3 always-mount: both children stay rendered once blobEnabled
+          is true. Switching tabs hides them with display:none rather
+          than unmounting. Rendering nothing for the Paste tab is fine
+          (that input lives in the parent component). */}
+      {blobEnabled && (
+        <>
+          <div
+            data-testid="audio-tab-upload-pane"
+            style={{ display: activeTab === "upload" ? undefined : "none" }}
+          >
+            <AudioUploadInput
+              studentId={studentId}
+              onUploaded={handleUploaded}
+              disabled={disabled}
+            />
+          </div>
+          <div
+            data-testid="audio-tab-record-pane"
+            style={{ display: activeTab === "record" ? undefined : "none" }}
+          >
+            <AudioRecordInput
+              studentId={studentId}
+              onRecorded={handleRecorded}
+              onRecordingActive={handleRecordingActive}
+              disabled={disabled}
+            />
+          </div>
+        </>
       )}
     </div>
   );

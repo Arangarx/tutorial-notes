@@ -10,15 +10,11 @@
  *
  * Background: see docs/BACKLOG.md "Switching tabs while recording silently
  * kills the recording" + the Phase 4 / B3 entries in the recorder refactor
- * plan. Pre-B3 (current `master`), AudioInputTabs uses
+ * plan. Pre-B3 (`master` at branch time), AudioInputTabs used
  *   `{activeTab === "record" && <AudioRecordInput .../>}`
- * which unmounts on every tab change. Post-B3, the recorder lives inside a
- * wrapper that toggles `display` instead of conditional rendering, so the
- * hook + MediaRecorder + mic stream all stay alive.
- *
- * The describe block is `describe.skip` until B3 lands. B3 will flip it to a
- * regular describe and the tests will pass against the new always-mount
- * implementation.
+ * which unmounted on every tab change. Post-B3, the recorder lives inside a
+ * `display`-toggled wrapper, so the hook + MediaRecorder + mic stream all
+ * stay alive across tab switches.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -74,10 +70,7 @@ beforeEach(() => {
   unmountCount = 0;
 });
 
-// TODO(B3): un-skip when AudioInputTabs is changed to always-mount the
-// recorder behind a display-toggle wrapper. Tests below assert the contract
-// the new implementation must satisfy.
-describe.skip("AudioInputTabs keep-recorder-mounted regression (B3)", () => {
+describe("AudioInputTabs keep-recorder-mounted regression (B3)", () => {
   test("recorder mounts once on initial render and stays mounted across tab changes", async () => {
     render(<Harness />);
     expect(mountCount).toBe(1);

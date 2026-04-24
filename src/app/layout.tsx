@@ -15,7 +15,16 @@ export default function RootLayout({
     <html lang="en">
       <body style={{ minHeight: "100%", display: "flex", flexDirection: "column", margin: 0 }}>
         <Providers>
-          <div style={{ flex: 1 }}>{children}</div>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {children}
+          </div>
           <SiteFooter />
         </Providers>
       </body>

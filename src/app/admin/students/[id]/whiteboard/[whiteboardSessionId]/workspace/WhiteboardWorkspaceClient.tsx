@@ -40,6 +40,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
+import { useWhiteboardPageScrollLock } from "@/hooks/useWhiteboardPageScrollLock";
 import { useRouter } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -190,6 +191,7 @@ export function WhiteboardWorkspaceClient({
   const router = useRouter();
 
   useWindowScrollToTopOnMount();
+  useWhiteboardPageScrollLock();
 
   // ---------------------------------------------------------------
   // Encryption key + sync client lifecycle
@@ -666,12 +668,23 @@ export function WhiteboardWorkspaceClient({
   // ---------------------------------------------------------------
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        overflow: "hidden",
+        gap: 12,
+      }}
+    >
       {/* Toolbar */}
       <div
         className="card"
         style={{
           display: "flex",
+          flexShrink: 0,
           flexWrap: "wrap",
           gap: 12,
           alignItems: "center",
@@ -778,110 +791,133 @@ export function WhiteboardWorkspaceClient({
         </button>
       </div>
 
-      {/* Banners */}
-      {presence.bannerMessage && (
-        <Banner tone="warning" testId="wb-recording-autopause-banner">
-          {presence.bannerMessage}
-        </Banner>
-      )}
-      {copyState === "error" && copyError && (
-        <Banner tone="error" onDismiss={() => setCopyState("idle")}>
-          Could not copy student link: {copyError}
-        </Banner>
-      )}
-      {peerImageMaterialNotice !== "none" && (
-        <Banner
-          tone="warning"
-          testId="wb-peer-material-notice"
-          onDismiss={() => setPeerImageMaterialNotice("none")}
-        >
-          {peerImageMaterialNotice === "load" ? (
-            <>
-              Couldn&apos;t load a shared image (network or link). If the
-              board looks wrong, check your connection or re-insert the
-              worksheet with PDF/image. For pasted images, the student may need
-              to re-draw or you can re-add the file from your machine.
-            </>
-          ) : (
-            <>
-              The live scene includes an image with no file link (often a
-              device paste). Re-inserting from PDF/image is the most reliable
-              way to put the same material on both sides.
-            </>
-          )}
-        </Banner>
-      )}
-      {endingState === "error" && endingError && (
-        <Banner tone="error" onDismiss={() => setEndingState("idle")}>
-          Could not end session: {endingError}. Your work is still in progress;
-          retry &quot;End session&quot;.
-        </Banner>
-      )}
-      {recorder.checkpointStatus === "error" && recorder.checkpointError && (
-        <Banner tone="warning">
-          Checkpoint save failed: {recorder.checkpointError}. The session is
-          still recording in memory; we&apos;ll keep retrying.
-        </Banner>
-      )}
-      {recorder.resumePrompt && (
-        <Banner tone="info">
-          <strong>This browser</strong> has a recoverable in-progress
-          whiteboard from{" "}
-          {new Date(recorder.resumePrompt.startedAt).toLocaleString()} (
-          {formatDuration(recorder.resumePrompt.durationMs)} in the local
-          draft). This is separate from the server &quot;open sessions&quot;
-          list.{" "}
-          <button
-            type="button"
-            className="btn"
-            style={{ marginLeft: 8 }}
-            onClick={() => recorder.acceptResume()}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        {presence.bannerMessage && (
+          <Banner tone="warning" testId="wb-recording-autopause-banner">
+            {presence.bannerMessage}
+          </Banner>
+        )}
+        {copyState === "error" && copyError && (
+          <Banner tone="error" onDismiss={() => setCopyState("idle")}>
+            Could not copy student link: {copyError}
+          </Banner>
+        )}
+        {peerImageMaterialNotice !== "none" && (
+          <Banner
+            tone="warning"
+            testId="wb-peer-material-notice"
+            onDismiss={() => setPeerImageMaterialNotice("none")}
           >
-            Resume
-          </button>
-          <button
-            type="button"
-            className="btn"
-            style={{ marginLeft: 4 }}
-            onClick={() => recorder.declineResume()}
-          >
-            Discard
-          </button>
-        </Banner>
-      )}
-
-      {/* Canvas */}
-      <div style={{ height: "calc(100vh - 280px)", minHeight: 480 }}>
-        <ExcalidrawDynamic
-          onChange={handleExcalidrawChange}
-          excalidrawAPI={(api: unknown) => {
-            // Cast through unknown so the structural ExcalidrawApiLike
-            // shape (defined in insert-asset.ts) doesn't depend on the
-            // upstream branded readonly types — see that file for why.
-            const like = api as ExcalidrawApiLike;
-            excalidrawAPIRef.current = like;
-            setExcalidrawAPI(like);
-          }}
-          // Hint Excalidraw to use a clean theme; the workspace shell
-          // already provides chrome.
-          UIOptions={{ canvasActions: { saveToActiveFile: false } }}
-          // Allow Desmos hosts in the embed-allowlist. The CSP
-          // `frame-src` directive in `next.config.ts` is the real
-          // safety boundary — this just stops Excalidraw from showing
-          // its "untrusted source" warning panel for Desmos.
-          validateEmbeddable={validateExcalidrawEmbeddable}
-        />
+            {peerImageMaterialNotice === "load" ? (
+              <>
+                Couldn&apos;t load a shared image (network or link). If the
+                board looks wrong, check your connection or re-insert the
+                worksheet with PDF/image. For pasted images, the student may
+                need to re-draw or you can re-add the file from your machine.
+              </>
+            ) : (
+              <>
+                The live scene includes an image with no file link (often a
+                device paste). Re-inserting from PDF/image is the most reliable
+                way to put the same material on both sides.
+              </>
+            )}
+          </Banner>
+        )}
+        {endingState === "error" && endingError && (
+          <Banner tone="error" onDismiss={() => setEndingState("idle")}>
+            Could not end session: {endingError}. Your work is still in
+            progress; retry &quot;End session&quot;.
+          </Banner>
+        )}
+        {recorder.checkpointStatus === "error" && recorder.checkpointError && (
+          <Banner tone="warning">
+            Checkpoint save failed: {recorder.checkpointError}. The session is
+            still recording in memory; we&apos;ll keep retrying.
+          </Banner>
+        )}
+        {recorder.resumePrompt && (
+          <Banner tone="info">
+            <strong>This browser</strong> has a recoverable in-progress
+            whiteboard from{" "}
+            {new Date(recorder.resumePrompt.startedAt).toLocaleString()} (
+            {formatDuration(recorder.resumePrompt.durationMs)} in the local
+            draft). This is separate from the server &quot;open sessions&quot;
+            list.{" "}
+            <button
+              type="button"
+              className="btn"
+              style={{ marginLeft: 8 }}
+              onClick={() => recorder.acceptResume()}
+            >
+              Resume
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ marginLeft: 4 }}
+              onClick={() => recorder.declineResume()}
+            >
+              Discard
+            </button>
+          </Banner>
+        )}
       </div>
 
-      {/* Footer status — small text muted, helps debugging mid-session */}
-      <div className="muted" style={{ fontSize: 11, textAlign: "right" }}>
-        wbsid={whiteboardSessionId.slice(0, 8)} · events={recorder.eventCount} ·
-        recorded={formatDuration(recorder.durationMs)} ·
-        checkpoint={recorder.checkpointStatus}
-        {recorder.lastCheckpointAt
-          ? ` (last ${new Date(recorder.lastCheckpointAt).toLocaleTimeString()})`
-          : ""}
-        {" · "}student: {studentName}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          overscrollBehavior: "none",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+            position: "relative",
+          }}
+        >
+          <div style={{ position: "absolute", inset: 0 }}>
+            <ExcalidrawDynamic
+              onChange={handleExcalidrawChange}
+              excalidrawAPI={(api: unknown) => {
+                // Cast through unknown so the structural ExcalidrawApiLike
+                // shape (defined in insert-asset.ts) doesn't depend on the
+                // upstream branded readonly types — see that file for why.
+                const like = api as ExcalidrawApiLike;
+                excalidrawAPIRef.current = like;
+                setExcalidrawAPI(like);
+              }}
+              UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+              validateEmbeddable={validateExcalidrawEmbeddable}
+            />
+          </div>
+        </div>
+        <div
+          className="muted"
+          style={{ fontSize: 11, textAlign: "right", flexShrink: 0, paddingTop: 4 }}
+        >
+          wbsid={whiteboardSessionId.slice(0, 8)} · events={recorder.eventCount}{" "}
+          · recorded={formatDuration(recorder.durationMs)} · checkpoint=
+          {recorder.checkpointStatus}
+          {recorder.lastCheckpointAt
+            ? ` (last ${new Date(recorder.lastCheckpointAt).toLocaleTimeString()})`
+            : ""}
+          {" · "}student: {studentName}
+        </div>
       </div>
     </div>
   );

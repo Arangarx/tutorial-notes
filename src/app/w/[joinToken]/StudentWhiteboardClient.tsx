@@ -6,11 +6,16 @@
  * so the student can draw with the tutor in real time.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   createWhiteboardSyncClient,
   type WhiteboardSyncClient,
 } from "@/lib/whiteboard/sync-client";
+import {
+  ACTIVE_PING_STALE_MS,
+  computeDisplayActiveMs,
+} from "@/lib/whiteboard/active-time";
 import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 import { useStudentWhiteboardCanvas } from "@/hooks/useStudentWhiteboardCanvas";
@@ -22,6 +27,16 @@ type Props = {
   syncUrl: string;
   tutorName: string;
 };
+
+function formatSessionDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+    : `${m}:${String(s).padStart(2, "0")}`;
+}
 
 function readKeyFromHash(): string | null {
   if (typeof window === "undefined") return null;
@@ -39,6 +54,10 @@ export function StudentWhiteboardClient({
   syncUrl,
   tutorName,
 }: Props) {
+  const params = useParams<{ joinToken: string }>();
+  const joinToken =
+    typeof params?.joinToken === "string" ? params.joinToken : "";
+
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
   const [keyMissing, setKeyMissing] = useState(false);
   const [syncClient, setSyncClient] = useState<WhiteboardSyncClient | null>(
@@ -49,6 +68,11 @@ export function StudentWhiteboardClient({
     null
   );
   const [otherPeerCount, setOtherPeerCount] = useState(0);
+  const [serverActiveMs, setServerActiveMs] = useState(0);
+  const [serverLastActiveAtMs, setServerLastActiveAtMs] = useState<
+    number | null
+  >(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const k = readKeyFromHash();
@@ -81,6 +105,57 @@ export function StudentWhiteboardClient({
       setConnected(false);
     };
   }, [encryptionKey, syncUrl, whiteboardSessionId]);
+
+  const bothPresent = connected && otherPeerCount >= 1;
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!joinToken) return;
+    const refresh = async () => {
+      try {
+        const res = await fetch(
+          `/api/whiteboard/${encodeURIComponent(whiteboardSessionId)}/join-timer?token=${encodeURIComponent(joinToken)}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          activeMs?: number;
+          lastActiveAt?: string | null;
+        };
+        if (typeof data.activeMs === "number") setServerActiveMs(data.activeMs);
+        if (data.lastActiveAt !== undefined) {
+          setServerLastActiveAtMs(
+            data.lastActiveAt ? new Date(data.lastActiveAt).getTime() : null
+          );
+        }
+      } catch {
+        // ignore; next tick retries
+      }
+    };
+    void refresh();
+    const POLL_MS = 10_000;
+    const t = setInterval(() => void refresh(), POLL_MS);
+    return () => clearInterval(t);
+  }, [joinToken, whiteboardSessionId]);
+
+  const liveTimerMs = useMemo(
+    () =>
+      computeDisplayActiveMs({
+        nowMs: now,
+        serverActiveMs,
+        serverLastActiveAtMs,
+        clientActiveNow: bothPresent,
+        staleThresholdMs: ACTIVE_PING_STALE_MS,
+      }),
+    [now, serverActiveMs, serverLastActiveAtMs, bothPresent]
+  );
+
+  const showWaitingForOther =
+    serverActiveMs === 0 && !bothPresent && connected;
 
   const { onCanvasChange } = useStudentWhiteboardCanvas(
     syncClient,
@@ -129,33 +204,53 @@ export function StudentWhiteboardClient({
               : `Others in this room (not counting you): ${otherPeerCount}.`}
           </p>
         </div>
-        <div
-          aria-live="polite"
-          aria-label={connected ? "Connected" : "Connecting"}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-            background: connected
-              ? "rgba(34,197,94,0.18)"
-              : "rgba(234,179,8,0.18)",
-            color: connected ? "#16a34a" : "#a16207",
-          }}
-        >
-          <span
-            aria-hidden="true"
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <div
+            aria-live="polite"
+            aria-label={connected ? "Connected" : "Connecting"}
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: connected ? "#16a34a" : "#ca8a04",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 600,
+              background: connected
+                ? "rgba(34,197,94,0.18)"
+                : "rgba(234,179,8,0.18)",
+              color: connected ? "#16a34a" : "#a16207",
             }}
-          />
-          {connected ? "Connected" : "Joining…"}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: connected ? "#16a34a" : "#ca8a04",
+              }}
+            />
+            {connected ? "Connected" : "Joining…"}
+          </div>
+          <div
+            aria-label="Session time"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 600,
+              background: "rgba(59,130,246,0.15)",
+              color: "#2563eb",
+            }}
+          >
+            {showWaitingForOther
+              ? `Session: ${formatSessionDuration(liveTimerMs)} (waiting)`
+              : `Session: ${formatSessionDuration(liveTimerMs)}`}
+          </div>
         </div>
       </div>
 

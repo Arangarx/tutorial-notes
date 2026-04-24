@@ -196,6 +196,14 @@ export type UseWhiteboardRecorderOptions = {
   /** Optional live-sync client. Hook still works without sync (single-tutor). */
   sync?: WhiteboardSyncClientLike | null;
   /**
+   * Push a remote peer's scene into the live Excalidraw instance on
+   * the tutor canvas. Without this, `ingestRemote` updates the event
+   * log but the tutor never sees student strokes / shared images.
+   */
+  applyRemoteToCanvas?: (
+    elements: ReadonlyArray<ExcalidrawLikeElement>
+  ) => void | Promise<void>;
+  /**
    * Local client id — broadcast on every `add` event so replay can
    * colour-tag strokes by author. Defaults to a random uuid.
    */
@@ -293,6 +301,10 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     syncRef.current = sync ?? null;
   }, [sync]);
+  const applyRemoteToCanvasRef = useRef(opts.applyRemoteToCanvas);
+  useEffect(() => {
+    applyRemoteToCanvasRef.current = opts.applyRemoteToCanvas;
+  }, [opts.applyRemoteToCanvas]);
   const recordingActiveRef = useRef(recordingActive);
 
   const localClientId = useMemo(
@@ -412,6 +424,15 @@ export function useWhiteboardRecorder(
           },
         };
       });
+      const paint = applyRemoteToCanvasRef.current;
+      if (paint) {
+        void Promise.resolve(paint(stamped)).catch((err) => {
+          console.warn(
+            `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} applyRemoteToCanvas failed:`,
+            (err as Error)?.message ?? String(err)
+          );
+        });
+      }
       // Funnel through the same throttled diff so a flurry of remote
       // strokes doesn't outpace local strokes in the log. Treat as a
       // pending frame (same trailing-edge debounce).
@@ -420,7 +441,7 @@ export function useWhiteboardRecorder(
         diffTimerRef.current = setTimeout(flushPendingDiff, DIFF_INTERVAL_MS);
       }
     },
-    [flushPendingDiff]
+    [flushPendingDiff, whiteboardSessionId]
   );
 
   // ---------------------------------------------------------------

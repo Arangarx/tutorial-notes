@@ -64,6 +64,7 @@ import { DesmosInsertButton } from "@/components/whiteboard/DesmosInsertButton";
 import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
 import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
 import { type ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
+import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 
 type Props = {
@@ -202,6 +203,28 @@ export function WhiteboardWorkspaceClient({
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawApiLike | null>(
     null
   );
+  const excalidrawAPIRef = useRef<ExcalidrawApiLike | null>(null);
+  const applyingRemoteToCanvasRef = useRef(false);
+  const loadedRemoteFileIdsForTutorRef = useRef(new Set<string>());
+
+  const applyRemoteToCanvas = useCallback(
+    async (elements: ReadonlyArray<ExcalidrawLikeElement>) => {
+      const api = excalidrawAPIRef.current;
+      if (!api) return;
+      await hydrateRemoteImageFilesForScene(
+        api,
+        elements,
+        loadedRemoteFileIdsForTutorRef.current
+      );
+      applyingRemoteToCanvasRef.current = true;
+      try {
+        api.updateScene({ elements: elements as ReadonlyArray<unknown> });
+      } finally {
+        applyingRemoteToCanvasRef.current = false;
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!syncUrl || !encryptionKey) return;
@@ -331,6 +354,7 @@ export function WhiteboardWorkspaceClient({
     getAudioMs,
     recordingActive,
     sync,
+    applyRemoteToCanvas,
   });
 
   // ---------------------------------------------------------------
@@ -606,6 +630,7 @@ export function WhiteboardWorkspaceClient({
 
   const handleExcalidrawChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {
+      if (applyingRemoteToCanvasRef.current) return;
       // Cast through ExcalidrawLikeElement — the adapter only reads the
       // structural fields we declared. We keep the parameter typed as
       // unknown[] so a future Excalidraw upgrade with a stricter type
@@ -790,7 +815,9 @@ export function WhiteboardWorkspaceClient({
             // Cast through unknown so the structural ExcalidrawApiLike
             // shape (defined in insert-asset.ts) doesn't depend on the
             // upstream branded readonly types — see that file for why.
-            setExcalidrawAPI(api as ExcalidrawApiLike);
+            const like = api as ExcalidrawApiLike;
+            excalidrawAPIRef.current = like;
+            setExcalidrawAPI(like);
           }}
           // Hint Excalidraw to use a clean theme; the workspace shell
           // already provides chrome.

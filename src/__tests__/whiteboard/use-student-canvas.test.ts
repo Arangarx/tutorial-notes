@@ -36,14 +36,18 @@ function makeMockSync() {
 }
 
 describe("useStudentWhiteboardCanvas", () => {
-  it("applies remote scenes via updateScene and does not broadcast in that path", () => {
+  it("applies remote scenes via updateScene and does not broadcast in that path", async () => {
     const { sync, broadcastScene, emitRemote } = makeMockSync();
     const updateScene = jest.fn();
-    const api = { updateScene } as unknown as ExcalidrawApiLike;
+    const api = {
+      updateScene,
+      addFiles: jest.fn(),
+    } as unknown as ExcalidrawApiLike;
     const { result } = renderHook(() => useStudentWhiteboardCanvas(sync, api));
 
-    act(() => {
+    await act(async () => {
       emitRemote("tutor-1", []);
+      await Promise.resolve();
     });
     expect(updateScene).toHaveBeenCalledWith({ elements: [] });
     expect(broadcastScene).not.toHaveBeenCalled();

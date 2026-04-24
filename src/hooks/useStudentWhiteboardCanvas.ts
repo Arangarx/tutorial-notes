@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter";
+import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
 
 /**
@@ -21,20 +22,31 @@ export function useStudentWhiteboardCanvas(
   excalidrawAPI: ExcalidrawApiLike | null
 ) {
   const applyingRemoteRef = useRef(false);
+  const loadedRemoteFileIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!sync || !excalidrawAPI) return;
     const off = sync.onRemoteScene((_peerId, elements) => {
-      applyingRemoteRef.current = true;
-      try {
-        excalidrawAPI.updateScene({
-          elements: elements as ReadonlyArray<unknown>,
-        });
-      } finally {
-        // Excalidraw invokes onChange synchronously during updateScene
-        // in 0.18 — onChange must see `true` so we don't re-broadcast.
-        applyingRemoteRef.current = false;
-      }
+      void (async () => {
+        applyingRemoteRef.current = true;
+        try {
+          await hydrateRemoteImageFilesForScene(
+            excalidrawAPI,
+            elements,
+            loadedRemoteFileIdsRef.current
+          );
+          excalidrawAPI.updateScene({
+            elements: elements as ReadonlyArray<unknown>,
+          });
+        } catch (err) {
+          console.warn(
+            "[useStudentWhiteboardCanvas] remote scene apply failed:",
+            (err as Error)?.message ?? String(err)
+          );
+        } finally {
+          applyingRemoteRef.current = false;
+        }
+      })();
     });
     return off;
   }, [sync, excalidrawAPI]);

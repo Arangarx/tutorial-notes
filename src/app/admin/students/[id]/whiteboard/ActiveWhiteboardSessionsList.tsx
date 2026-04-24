@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LocalDateTimeText } from "@/components/LocalDateTimeText";
 import { SubmitButton } from "@/components/SubmitButton";
 import { endOpenWhiteboardFromStudentPage } from "./actions";
 
@@ -49,10 +50,7 @@ export function ActiveWhiteboardSessionsList({
       </p>
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {sessions.map((s) => {
-          const started = s.startedAt.toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          });
+          const startedAtIso = s.startedAt.toISOString();
           return (
             <li
               key={s.id}
@@ -66,7 +64,11 @@ export function ActiveWhiteboardSessionsList({
               }}
             >
               <span className="muted" style={{ fontSize: 13, flex: "1 1 160px" }}>
-                Started {started}
+                Started{" "}
+                <LocalDateTimeText
+                  dateTime={startedAtIso}
+                  className="muted"
+                />
                 <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.7 }}>
                   ({s.id.slice(0, 8)}…)
                 </span>
@@ -78,13 +80,13 @@ export function ActiveWhiteboardSessionsList({
                 >
                   Continue
                 </Link>
-                <form action={endOpenWhiteboardFromStudentPage}>
+                <form action={endOpenWhiteboardFromStudentPage} title={`Session ${s.id}`}>
                   <input type="hidden" name="whiteboardSessionId" value={s.id} />
                   <SubmitButton
                     label="End"
                     pendingLabel="Ending…"
                     className="btn"
-                    aria-label={`End whiteboard session started ${started}`}
+                    aria-label="End this open whiteboard room"
                   />
                 </form>
               </div>

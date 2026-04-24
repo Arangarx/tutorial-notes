@@ -12,6 +12,8 @@ interface SubmitButtonProps {
    * (e.g. a consent checkbox) before submission is allowed.
    */
   disabled?: boolean;
+  /** Passed to the native `<button>` (a11y). */
+  "aria-label"?: string;
 }
 
 export function SubmitButton({
@@ -19,6 +21,7 @@ export function SubmitButton({
   pendingLabel,
   className = "btn primary",
   disabled,
+  "aria-label": ariaLabel,
 }: SubmitButtonProps) {
   const { pending } = useFormStatus();
   return (
@@ -26,6 +29,7 @@ export function SubmitButton({
       className={className}
       type="submit"
       disabled={pending || !!disabled}
+      aria-label={ariaLabel}
     >
       {pending ? (pendingLabel ?? `${label}…`) : label}
     </button>

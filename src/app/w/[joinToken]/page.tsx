@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { StudentWhiteboardClient } from "./StudentWhiteboardClient";
 /**
- * Student-facing live whiteboard page.
+ * Student-facing live whiteboard (Excalidraw + E2E sync, same room + key
+ * as the tutor workspace).
  *
  * URL shape: `/w/<joinToken>#k=<encryptionKey>`
  *

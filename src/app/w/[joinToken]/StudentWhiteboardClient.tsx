@@ -1,40 +1,21 @@
 "use client";
 
 /**
- * Student-side live whiteboard bootstrap.
- *
- * Responsibilities:
- *   1. Read the AES-GCM encryption key from `window.location.hash`
- *      (`#k=<base64url>`). NEVER log or echo this value.
- *   2. Spin up a sync client (`createWhiteboardSyncClient`) with the
- *      session id as the room id. The sync client never sees the URL
- *      fragment server-side because the page boundary is pure client
- *      from this component down.
- *   3. Render a connection-status pill so the student can tell at a
- *      glance whether the link is live.
- *   4. Provide a placeholder mount point for the live Excalidraw
- *      canvas. The actual canvas component is built as part of the
- *      workspace todo (`phase1-workspace`); when that lands, both
- *      this page and the tutor workspace will import the same
- *      `<WhiteboardLiveCanvas />` from `src/components/whiteboard/`.
- *      Until then this surface is intentionally minimal — better an
- *      honest "joining…" screen than a half-wired canvas the student
- *      could draw on without the tutor seeing it.
- *
- * Why a separate file from the page:
- *   The Next.js page is a server component (we want notFound() +
- *   server-side token validation). The sync-client + window.hash +
- *   useEffect work has to be client-rendered. Splitting keeps the
- *   trust boundary obvious — server code cannot accidentally touch
- *   the encryption key, and client code cannot accidentally touch
- *   the database.
+ * Student-side live whiteboard: encryption key from hash, encrypted
+ * sync to the same room as the tutor, and a real Excalidraw surface
+ * so the student can draw with the tutor in real time.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createWhiteboardSyncClient,
   type WhiteboardSyncClient,
 } from "@/lib/whiteboard/sync-client";
+import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
+import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
+import { useStudentWhiteboardCanvas } from "@/hooks/useStudentWhiteboardCanvas";
+import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
+import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 
 type Props = {
   whiteboardSessionId: string;
@@ -46,8 +27,9 @@ function readKeyFromHash(): string | null {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash;
   if (!hash || hash.length < 2) return null;
-  // Hash is `#k=...` or `#k=...&other=...` etc. Parse k/v pairs.
-  const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+  const params = new URLSearchParams(
+    hash.startsWith("#") ? hash.slice(1) : hash
+  );
   const k = params.get("k");
   return k && k.length >= 16 ? k : null;
 }
@@ -57,14 +39,17 @@ export function StudentWhiteboardClient({
   syncUrl,
   tutorName,
 }: Props) {
-  const clientRef = useRef<WhiteboardSyncClient | null>(null);
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
   const [keyMissing, setKeyMissing] = useState(false);
+  const [syncClient, setSyncClient] = useState<WhiteboardSyncClient | null>(
+    null
+  );
+  const [connected, setConnected] = useState(false);
+  const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawApiLike | null>(
+    null
+  );
+  const [otherPeerCount, setOtherPeerCount] = useState(0);
 
-  // Step 1: pull the encryption key out of the URL fragment exactly
-  // once after mount. Doing this in useEffect (not during render)
-  // guarantees we're on the client and `window` is defined.
   useEffect(() => {
     const k = readKeyFromHash();
     if (!k) {
@@ -74,10 +59,6 @@ export function StudentWhiteboardClient({
     setEncryptionKey(k);
   }, []);
 
-  // Step 2: bootstrap the sync client when we have the key. We mount
-  // the sync client AT MOST ONCE per `whiteboardSessionId + key`
-  // pair; the cleanup function tears it down on unmount or when
-  // either input changes.
   useEffect(() => {
     if (!encryptionKey) return;
     const client = createWhiteboardSyncClient({
@@ -86,17 +67,25 @@ export function StudentWhiteboardClient({
       encryptionKeyBase64Url: encryptionKey,
       role: "student",
     });
-    clientRef.current = client;
+    setSyncClient(client);
     setConnected(client.isConnected());
     const offConnect = client.onConnect(() => setConnected(true));
     const offDisconnect = client.onDisconnect(() => setConnected(false));
+    const offPeers = client.onPeerCountChange((n) => setOtherPeerCount(n));
     return () => {
       offConnect();
       offDisconnect();
+      offPeers();
       client.disconnect();
-      clientRef.current = null;
+      setSyncClient(null);
+      setConnected(false);
     };
   }, [encryptionKey, syncUrl, whiteboardSessionId]);
+
+  const { onCanvasChange } = useStudentWhiteboardCanvas(
+    syncClient,
+    excalidrawAPI
+  );
 
   if (keyMissing) {
     return (
@@ -110,8 +99,8 @@ export function StudentWhiteboardClient({
           <p className="muted" style={{ fontSize: 12 }}>
             Whiteboard links look like
             <code style={{ marginLeft: 6 }}>/w/&lt;token&gt;#k=&lt;key&gt;</code>.
-            The part after <code>#</code> is required and never gets sent
-            to the server, so it can&apos;t be recovered.
+            The part after <code>#</code> is required and never gets sent to
+            the server, so it can&apos;t be recovered.
           </p>
         </div>
       </div>
@@ -133,8 +122,11 @@ export function StudentWhiteboardClient({
         <div>
           <h1 style={{ margin: 0 }}>Whiteboard with {tutorName}</h1>
           <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
-            This session is being recorded by your tutor. Anything you draw
-            will be visible live.
+            This session is being recorded by your tutor. What you draw is
+            visible live.{" "}
+            {otherPeerCount === 0
+              ? "Waiting for others to join this room (besides you)."
+              : `Others in this room (not counting you): ${otherPeerCount}.`}
           </p>
         </div>
         <div
@@ -167,26 +159,30 @@ export function StudentWhiteboardClient({
         </div>
       </div>
 
-      {/* Placeholder mount for the live Excalidraw canvas. Replaced
-          with <WhiteboardLiveCanvas client={clientRef.current} /> in
-          the workspace todo. */}
+      <div
+        className="row"
+        style={{ marginTop: 8, flexWrap: "wrap", gap: 8, alignItems: "center" }}
+      >
+        <UndoRedoButtons disabled={!connected} />
+      </div>
+
       <div
         className="card"
         data-testid="student-whiteboard-canvas-mount"
         style={{
           marginTop: 12,
-          minHeight: 480,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
+          height: "calc(100vh - 260px)",
+          minHeight: 420,
         }}
       >
-        <div className="muted">
-          {connected
-            ? "Connected. The live drawing surface is loading…"
-            : "Waiting to connect to the whiteboard server…"}
-        </div>
+        <ExcalidrawDynamic
+          onChange={onCanvasChange}
+          excalidrawAPI={(api: unknown) => {
+            setExcalidrawAPI(api as ExcalidrawApiLike);
+          }}
+          UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+          validateEmbeddable={validateExcalidrawEmbeddable}
+        />
       </div>
     </div>
   );

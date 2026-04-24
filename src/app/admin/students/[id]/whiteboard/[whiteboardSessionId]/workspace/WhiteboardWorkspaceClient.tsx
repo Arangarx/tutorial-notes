@@ -39,7 +39,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -63,23 +62,9 @@ import { PdfImageUploadButton } from "@/components/whiteboard/PdfImageUploadButt
 import { MathInsertButton } from "@/components/whiteboard/MathInsertButton";
 import { DesmosInsertButton } from "@/components/whiteboard/DesmosInsertButton";
 import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
-import {
-  DESMOS_ALLOWED_HOSTS,
-  type ExcalidrawApiLike,
-} from "@/lib/whiteboard/insert-asset";
-
-// Excalidraw is ~1MB+ gzipped and pulls in its own React tree; never
-// SSR it. The dynamic import lets the workspace shell paint instantly
-// while the canvas hydrates client-side.
-const Excalidraw = dynamic(
-  async () => {
-    const mod = await import("@excalidraw/excalidraw");
-    // Side-effect CSS import — Excalidraw needs its bundled stylesheet.
-    await import("@excalidraw/excalidraw/index.css");
-    return mod.Excalidraw;
-  },
-  { ssr: false, loading: () => <CanvasPlaceholder label="Loading whiteboard…" /> }
-);
+import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
+import { type ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
+import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 
 type Props = {
   whiteboardSessionId: string;
@@ -176,27 +161,6 @@ function useAudioMsClock(active: boolean): () => number {
       accruedMsRef.current + (performance.now() - startedAtRef.current)
     );
   }, []);
-}
-
-/**
- * Excalidraw `validateEmbeddable` callback. Returns true if the URL
- * is on our Desmos allowlist; everything else falls through to
- * Excalidraw's default whitelist (YouTube/Twitter/etc) by returning
- * `undefined`. Returning `false` would *block* the URL.
- *
- * This is a UI gate only — the real cross-origin safety is the CSP
- * `frame-src` directive declared in `next.config.ts`.
- */
-function validateExcalidrawEmbeddable(
-  url: string
-): true | undefined {
-  try {
-    const parsed = new URL(url);
-    if (DESMOS_ALLOWED_HOSTS.includes(parsed.hostname)) return true;
-  } catch {
-    // ignore — fall through to library default
-  }
-  return undefined;
 }
 
 function formatDuration(ms: number): string {
@@ -820,13 +784,13 @@ export function WhiteboardWorkspaceClient({
 
       {/* Canvas */}
       <div style={{ height: "calc(100vh - 280px)", minHeight: 480 }}>
-        <Excalidraw
+        <ExcalidrawDynamic
           onChange={handleExcalidrawChange}
-          excalidrawAPI={(api) => {
+          excalidrawAPI={(api: unknown) => {
             // Cast through unknown so the structural ExcalidrawApiLike
             // shape (defined in insert-asset.ts) doesn't depend on the
             // upstream branded readonly types — see that file for why.
-            setExcalidrawAPI(api as unknown as ExcalidrawApiLike);
+            setExcalidrawAPI(api as ExcalidrawApiLike);
           }}
           // Hint Excalidraw to use a clean theme; the workspace shell
           // already provides chrome.

@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
 import { useParams } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -74,6 +75,8 @@ export function StudentWhiteboardClient({
     number | null
   >(null);
   const [now, setNow] = useState(() => Date.now());
+
+  useWindowScrollToTopOnMount();
 
   useEffect(() => {
     const k = readKeyFromHash();

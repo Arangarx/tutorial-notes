@@ -39,6 +39,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
 import { useRouter } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -187,6 +188,8 @@ export function WhiteboardWorkspaceClient({
   initialUserWantsRecording,
 }: Props) {
   const router = useRouter();
+
+  useWindowScrollToTopOnMount();
 
   // ---------------------------------------------------------------
   // Encryption key + sync client lifecycle

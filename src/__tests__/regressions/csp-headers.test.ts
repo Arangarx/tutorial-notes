@@ -18,6 +18,13 @@
  *     page sat on "Joining…" forever — the symptom that drove this file
  *     to be rewritten as a behavior test.
  *
+ *   - A missing `font-src data:` entry blocked Excalidraw 0.18's bundled
+ *     fonts (Cascadia/Virgil/Assistant — shipped as base64 data URIs in
+ *     the package's CSS) with "Loading the font '<URL>' violates the
+ *     following Content Security Policy directive: font-src 'self'".
+ *     The canvas silently fell back to system fonts, so labels rendered
+ *     in the wrong typeface. data: for fonts is safe (no network egress).
+ *
  * If you change the CSP and break one of these, FIRST verify there's an
  * alternative directive that still permits the same thing. Don't just
  * delete the assertion — the CSP exists to prevent supply-chain attacks
@@ -60,6 +67,19 @@ describe("buildContentSecurityPolicy — directive guards", () => {
     const directive = getDirective(csp, "img-src") ?? "";
     expect(directive).toMatch(/\bblob:/);
     expect(directive).toMatch(/\bdata:/);
+  });
+
+  test("font-src includes data: (Excalidraw 0.18 bundled-font regression guard)", () => {
+    // Excalidraw 0.18 inlines its custom fonts as base64 data URIs.
+    // Without `data:` here the canvas silently falls back to system
+    // fonts; tutors see strokes in the wrong typeface and Chrome logs
+    // "Loading the font '<URL>' violates the following CSP directive:
+    // font-src 'self'".
+    expect(getDirective(csp, "font-src")).toMatch(/\bdata:/);
+  });
+
+  test("font-src still includes 'self' (our own /_next/static fonts)", () => {
+    expect(getDirective(csp, "font-src")).toMatch(/'self'/);
   });
 
   test("frame-ancestors 'none' is preserved (clickjacking protection)", () => {

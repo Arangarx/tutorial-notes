@@ -69,6 +69,15 @@ export type CspOptions = {
  *     WHITEBOARD_SYNC_URL. socket.io tries websocket then falls back
  *     to https long-polling, so both schemes must be allowed.
  *
+ *   - `font-src 'self' data:` — Excalidraw 0.18 bundles its custom
+ *     fonts (Cascadia, Virgil, Assistant, etc.) as base64-encoded
+ *     `data:` URIs inside its built CSS. Without `data:` here the
+ *     browser blocks them with "Loading the font '<URL>' violates
+ *     the following Content Security Policy directive: font-src
+ *     'self'" — which silently degrades to fallback fonts and looks
+ *     wrong on the canvas. `data:` for fonts is safe (no network
+ *     egress, content is in the page itself).
+ *
  *   - `frame-ancestors 'none'` — clickjacking protection. Don't relax.
  */
 export function buildContentSecurityPolicy(opts: CspOptions = {}): string {
@@ -85,7 +94,7 @@ export function buildContentSecurityPolicy(opts: CspOptions = {}): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
-    "font-src 'self'",
+    "font-src 'self' data:",
     `connect-src ${connectSrc}`,
     "frame-ancestors 'none'",
   ].join("; ");

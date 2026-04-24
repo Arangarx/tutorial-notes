@@ -41,6 +41,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
 import { useExcalidrawThemeFromSystem } from "@/hooks/useExcalidrawThemeFromSystem";
+import { useSyncTombstonedElementIds } from "@/hooks/useSyncTombstonedElementIds";
 import { useRouter } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -197,6 +198,8 @@ export function WhiteboardWorkspaceClient({
 }: Props) {
   const router = useRouter();
   const excalidrawTheme = useExcalidrawThemeFromSystem();
+  const { onLocalElementSnapshot, shouldDropRemoteElement } =
+    useSyncTombstonedElementIds();
 
   useWindowScrollToTopOnMount();
 
@@ -260,12 +263,14 @@ export function WhiteboardWorkspaceClient({
       }
       applyingRemoteToCanvasRef.current = true;
       try {
-        await updateSceneMergingWithRemote(api, elements);
+        await updateSceneMergingWithRemote(api, elements, {
+          shouldDropRemoteElement,
+        });
       } finally {
         applyingRemoteToCanvasRef.current = false;
       }
     },
-    []
+    [shouldDropRemoteElement]
   );
 
   useEffect(() => {
@@ -715,6 +720,7 @@ export function WhiteboardWorkspaceClient({
   const handleExcalidrawChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {
       if (applyingRemoteToCanvasRef.current) return;
+      onLocalElementSnapshot(elements);
       if (sceneDraftTimerRef.current !== null) {
         clearTimeout(sceneDraftTimerRef.current);
         sceneDraftTimerRef.current = null;
@@ -729,7 +735,7 @@ export function WhiteboardWorkspaceClient({
       // doesn't break the call site.
       recorder.onCanvasChange(elements as ReadonlyArray<ExcalidrawLikeElement>);
     },
-    [recorder, whiteboardSessionId]
+    [onLocalElementSnapshot, recorder, whiteboardSessionId]
   );
 
   // ---------------------------------------------------------------

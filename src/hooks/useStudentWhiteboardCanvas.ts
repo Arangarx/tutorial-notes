@@ -9,6 +9,7 @@ import {
 } from "@/lib/whiteboard/hydrate-remote-files";
 import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
 import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
+import { useSyncTombstonedElementIds } from "@/hooks/useSyncTombstonedElementIds";
 
 /**
  * Wires the student Excalidraw instance to the encrypted sync client:
@@ -26,6 +27,8 @@ export function useStudentWhiteboardCanvas(
   excalidrawAPI: ExcalidrawApiLike | null,
   onHydrateResult?: (result: HydrateRemoteImageFilesResult) => void
 ) {
+  const { onLocalElementSnapshot, shouldDropRemoteElement } =
+    useSyncTombstonedElementIds();
   const applyingRemoteRef = useRef(false);
   const loadedRemoteFileIdsRef = useRef(new Set<string>());
   const giveUpFileIdsRef = useRef(new Set<string>());
@@ -48,7 +51,9 @@ export function useStudentWhiteboardCanvas(
             }
           );
           onHydrateResult?.(result);
-          await updateSceneMergingWithRemote(excalidrawAPI, elements);
+          await updateSceneMergingWithRemote(excalidrawAPI, elements, {
+            shouldDropRemoteElement,
+          });
         } catch (err) {
           console.warn(
             "[useStudentWhiteboardCanvas] remote scene apply failed:",
@@ -60,11 +65,12 @@ export function useStudentWhiteboardCanvas(
       })();
     });
     return off;
-  }, [sync, excalidrawAPI, onHydrateResult]);
+  }, [onHydrateResult, shouldDropRemoteElement, sync, excalidrawAPI]);
 
   const onCanvasChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {
       if (applyingRemoteRef.current) return;
+      onLocalElementSnapshot(elements);
       if (!sync) return;
       try {
         sync.broadcastScene(
@@ -77,7 +83,7 @@ export function useStudentWhiteboardCanvas(
         );
       }
     },
-    [sync]
+    [onLocalElementSnapshot, sync]
   );
 
   return { onCanvasChange };

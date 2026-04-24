@@ -67,6 +67,7 @@ import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
 import { type ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
+import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 
 type Props = {
   whiteboardSessionId: string;
@@ -239,7 +240,7 @@ export function WhiteboardWorkspaceClient({
       }
       applyingRemoteToCanvasRef.current = true;
       try {
-        api.updateScene({ elements: elements as ReadonlyArray<unknown> });
+        updateSceneMergingWithRemote(api, elements);
       } finally {
         applyingRemoteToCanvasRef.current = false;
       }

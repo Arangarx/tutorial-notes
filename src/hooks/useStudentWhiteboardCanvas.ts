@@ -8,6 +8,7 @@ import {
   type HydrateRemoteImageFilesResult,
 } from "@/lib/whiteboard/hydrate-remote-files";
 import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
+import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 
 /**
  * Wires the student Excalidraw instance to the encrypted sync client:
@@ -47,9 +48,7 @@ export function useStudentWhiteboardCanvas(
             }
           );
           onHydrateResult?.(result);
-          excalidrawAPI.updateScene({
-            elements: elements as ReadonlyArray<unknown>,
-          });
+          updateSceneMergingWithRemote(excalidrawAPI, elements);
         } catch (err) {
           console.warn(
             "[useStudentWhiteboardCanvas] remote scene apply failed:",

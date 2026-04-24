@@ -703,10 +703,21 @@ export function WhiteboardWorkspaceClient({
     const result = await recorder.acceptResume();
     const api = excalidrawAPIRef.current;
     if (!result || !api) return;
-    const excalidrawElements = result.elements.map((el) => toExcalidraw(el));
+    // Raw `toExcalidraw` is missing many required Excalidraw fields; replay
+    // also relies on `restoreElements` in practice for valid scene paint.
+    const { restoreElements } = await import("@excalidraw/excalidraw");
+    const rough = result.elements.map((el) => toExcalidraw(el));
+    const restored = restoreElements(rough as never, null, {
+      refreshDimensions: true,
+    });
     applyingRemoteToCanvasRef.current = true;
     try {
-      api.updateScene({ elements: excalidrawElements as ReadonlyArray<unknown> });
+      let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
+      if (toPaint.length === 0) {
+        const draft = loadSessionSceneDraft(whiteboardSessionId);
+        if (draft && draft.length > 0) toPaint = draft;
+      }
+      api.updateScene({ elements: toPaint });
     } finally {
       applyingRemoteToCanvasRef.current = false;
     }

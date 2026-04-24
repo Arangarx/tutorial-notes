@@ -28,6 +28,7 @@ import {
   deriveResumeGateState,
   describeResumeGate,
 } from "@/lib/whiteboard/resume-gate";
+import { markSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
 
 export type WorkspaceResumeGateProps = {
   whiteboardSessionId: string;
@@ -125,7 +126,10 @@ export function WorkspaceResumeGate({
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => setConsented(true)}
+          onClick={() => {
+            markSkipIndexedDbResumeAfterGate(whiteboardSessionId);
+            setConsented(true);
+          }}
           disabled={pending}
           data-testid="wb-resume-gate-resume"
           autoFocus
@@ -155,8 +159,9 @@ export function WorkspaceResumeGate({
       <p className="muted" style={{ fontSize: 12, marginTop: 16, marginBottom: 0 }}>
         Until you choose, this tab is NOT connected to the live whiteboard
         relay. Stale student tabs cannot rejoin while this prompt is showing.
-        A separate in-page banner may offer an IndexedDB <strong>event-log</strong>{" "}
-        recovery — that is for crash backup, not for this room check.
+        After you resume, we will not show a second “browser draft” dialog for
+        the same check — you can still use local draft restore from the
+        whiteboard if needed.
       </p>
     </div>
   );

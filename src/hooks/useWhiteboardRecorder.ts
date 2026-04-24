@@ -102,6 +102,7 @@ import {
   whiteboardOwnerKey,
   type SaveCheckpointResult,
 } from "@/lib/whiteboard/checkpoint-store";
+import { consumeSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
 
 void _audioOwnerKey;
 
@@ -632,6 +633,11 @@ export function useWhiteboardRecorder(
         if (cancelled) return;
         if (serverEnded) {
           await clearCheckpoint("whiteboard", ownerKey);
+          return;
+        }
+        // User already confirmed the stale room gate; skip a second
+        // IndexedDB prompt for this session on the same page load.
+        if (consumeSkipIndexedDbResumeAfterGate(whiteboardSessionId)) {
           return;
         }
         cachedResumeRef.current = {

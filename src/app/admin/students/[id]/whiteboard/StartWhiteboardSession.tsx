@@ -76,7 +76,11 @@ export function StartWhiteboardSession({
               maxWidth: 520,
               width: "calc(100% - 32px)",
               padding: 24,
-              background: "var(--color-surface, #fff)",
+              // Override .card's translucent --panel with a solid dark surface
+              // so the modal pops from the backdrop and inherited white text
+              // stays readable. Matches .admin-nav-drawer's hex.
+              background: "#0d1328",
+              border: "1px solid var(--border)",
             }}
           >
             <h3 id="wb-consent-title" style={{ marginTop: 0 }}>

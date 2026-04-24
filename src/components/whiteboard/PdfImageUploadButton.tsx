@@ -232,7 +232,10 @@ export function PdfImageUploadButton({
               maxWidth: 540,
               width: "calc(100% - 32px)",
               padding: 24,
-              background: "var(--color-surface, #fff)",
+              // Solid dark surface — translucent .card --panel + inherited
+              // dark-mode white text would render white-on-white otherwise.
+              background: "#0d1328",
+              border: "1px solid var(--border)",
               display: "grid",
               gap: 12,
             }}

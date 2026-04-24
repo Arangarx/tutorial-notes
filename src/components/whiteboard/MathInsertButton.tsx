@@ -224,7 +224,10 @@ export function MathInsertButton({
               maxWidth: 620,
               width: "calc(100% - 32px)",
               padding: 24,
-              background: "var(--color-surface, #fff)",
+              // Solid dark surface — the math field below keeps a white
+              // background of its own so equations stay dark-on-white.
+              background: "#0d1328",
+              border: "1px solid var(--border)",
               display: "grid",
               gap: 12,
             }}

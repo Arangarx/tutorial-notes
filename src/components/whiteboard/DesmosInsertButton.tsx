@@ -146,7 +146,10 @@ export function DesmosInsertButton({
             style={{
               width: "min(520px, 92vw)",
               padding: 20,
-              background: "#fff",
+              // Solid dark surface — translucent .card --panel + dark page text
+              // would render white-on-white over the modal backdrop.
+              background: "#0d1328",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               display: "grid",
               gap: 14,

@@ -106,6 +106,25 @@ import {
 void _audioOwnerKey;
 
 /**
+ * Ask the server whether a whiteboard row is already ended. Used to
+ * garbage-collect IndexedDB checkpoints after the tutor ends sessions
+ * from the student list — local IDB is not cleared by server actions.
+ */
+async function fetchSessionEndedOnServer(sessionId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `/api/whiteboard/${encodeURIComponent(sessionId)}/session-ended`,
+      { credentials: "same-origin" }
+    );
+    if (!res.ok) return false;
+    const j = (await res.json()) as { ended?: boolean };
+    return j.ended === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Diff throttle — Excalidraw fires onChange on every pointer move; one
  * canonical diff every 100 ms is plenty for replay smoothness and
  * keeps the events.json under the 500 KB target for typical sessions.
@@ -585,6 +604,15 @@ export function useWhiteboardRecorder(
       );
       if (cancelled) return;
       if (exact) {
+        // Server may have ended this session from another tab / the
+        // student-page list; IndexedDB still holds a local checkpoint
+        // until we clear it or the user Discards.
+        const serverEnded = await fetchSessionEndedOnServer(exact.sessionId);
+        if (cancelled) return;
+        if (serverEnded) {
+          await clearCheckpoint("whiteboard", ownerKey);
+          return;
+        }
         cachedResumeRef.current = {
           log: exact.payload.log,
           sessionId: exact.sessionId,
@@ -607,6 +635,15 @@ export function useWhiteboardRecorder(
       );
       if (cancelled) return;
       if (latest) {
+        const serverEnded = await fetchSessionEndedOnServer(latest.sessionId);
+        if (cancelled) return;
+        if (serverEnded) {
+          await clearCheckpoint(
+            "whiteboard",
+            whiteboardOwnerKey(adminUserId, studentId, latest.sessionId)
+          );
+          return;
+        }
         cachedResumeRef.current = {
           log: latest.payload.log,
           sessionId: latest.sessionId,

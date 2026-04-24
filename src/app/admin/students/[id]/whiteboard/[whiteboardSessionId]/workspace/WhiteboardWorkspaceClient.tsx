@@ -793,9 +793,12 @@ export function WhiteboardWorkspaceClient({
       )}
       {recorder.resumePrompt && (
         <Banner tone="info">
-          Found an unsaved whiteboard session from{" "}
+          <strong>This browser</strong> has a recoverable in-progress
+          whiteboard from{" "}
           {new Date(recorder.resumePrompt.startedAt).toLocaleString()} (
-          {formatDuration(recorder.resumePrompt.durationMs)} recorded).{" "}
+          {formatDuration(recorder.resumePrompt.durationMs)} in the local
+          draft). This is separate from the server &quot;open sessions&quot;
+          list.{" "}
           <button
             type="button"
             className="btn"

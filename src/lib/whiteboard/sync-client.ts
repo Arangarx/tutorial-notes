@@ -120,7 +120,17 @@ export type WhiteboardSyncClient = {
   onConnect: (cb: () => void) => () => void;
   /** Subscribe to "I just disconnected" notifications. */
   onDisconnect: (cb: () => void) => () => void;
-  /** Subscribe to room member list changes (size only — we don't expose ids). */
+  /**
+   * Subscribe to changes in the number of OTHER peers in the room
+   * (i.e. excludes our own socket). `count >= 1` means at least one
+   * other party (typically the student) is connected to the relay
+   * and sharing the room with us.
+   *
+   * Implementation note: excalidraw-room delivers the FULL members
+   * list on `room-user-change`. We subtract self before exposing the
+   * count; see the room-user-change handler in this file for the
+   * regression context (Sarah-pilot Apr 24 2026).
+   */
   onPeerCountChange: (cb: (count: number) => void) => () => void;
   /**
    * Queue an outbound scene broadcast. Throttled internally —
@@ -405,8 +415,30 @@ export function createWhiteboardSyncClient(
 
   socket.on("room-user-change", (members: unknown) => {
     if (disposed) return;
-    const count = Array.isArray(members) ? members.length : 0;
-    fan(peerCountSubs, count);
+    // CRITICAL: the count we report MUST exclude our own socket so
+    // callers can use `peerCount >= 1` to mean "another party is in
+    // the room with me." Excalidraw-room sends the FULL members list
+    // (including the recipient), so naively reporting members.length
+    // makes the tutor's own join trip the "Student connected" UI
+    // (Sarah-pilot regression, Apr 24 2026: green pill lit up at
+    // t=7s of a fresh session with no student present).
+    //
+    // We filter by socket id where possible (most precise — handles
+    // any future relay change that re-orders or deduplicates the
+    // members array), and fall back to `length - 1` when the id
+    // isn't known (defensive: room-user-change should always fire
+    // post-connect, so socket.id should always be set, but the
+    // fallback keeps us safe under any test-fake or future relay
+    // tweak that fires the event mid-handshake).
+    if (!Array.isArray(members)) {
+      fan(peerCountSubs, 0);
+      return;
+    }
+    const mySocketId = socket?.id;
+    const others = mySocketId
+      ? members.filter((m) => m !== mySocketId).length
+      : Math.max(0, members.length - 1);
+    fan(peerCountSubs, others);
   });
 
   socket.on(

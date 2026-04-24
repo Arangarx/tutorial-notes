@@ -40,6 +40,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
+import { useExcalidrawThemeFromSystem } from "@/hooks/useExcalidrawThemeFromSystem";
 import { useRouter } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -189,6 +190,7 @@ export function WhiteboardWorkspaceClient({
   initialUserWantsRecording,
 }: Props) {
   const router = useRouter();
+  const excalidrawTheme = useExcalidrawThemeFromSystem();
 
   useWindowScrollToTopOnMount();
 
@@ -886,8 +888,7 @@ export function WhiteboardWorkspaceClient({
               excalidrawAPIRef.current = like;
               setExcalidrawAPI(like);
             }}
-            // Match app dark shell so the editor chrome is visible on our bg.
-            theme="dark"
+            theme={excalidrawTheme}
             UIOptions={{ canvasActions: { saveToActiveFile: false } }}
             // Allow Desmos hosts in the embed-allowlist. The CSP
             // `frame-src` directive in `next.config.ts` is the real

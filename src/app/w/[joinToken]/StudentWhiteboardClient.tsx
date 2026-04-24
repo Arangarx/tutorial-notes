@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
+import { useExcalidrawThemeFromSystem } from "@/hooks/useExcalidrawThemeFromSystem";
 import { useParams } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -75,6 +76,7 @@ export function StudentWhiteboardClient({
     number | null
   >(null);
   const [now, setNow] = useState(() => Date.now());
+  const excalidrawTheme = useExcalidrawThemeFromSystem();
 
   useWindowScrollToTopOnMount();
 
@@ -361,7 +363,7 @@ export function StudentWhiteboardClient({
             excalidrawAPI={(api: unknown) => {
               setExcalidrawAPI(api as ExcalidrawApiLike);
             }}
-            theme="dark"
+            theme={excalidrawTheme}
             UIOptions={{ canvasActions: { saveToActiveFile: false } }}
             validateEmbeddable={validateExcalidrawEmbeddable}
           />

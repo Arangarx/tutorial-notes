@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ModalPortal } from "@/components/ModalPortal";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createWhiteboardSession } from "./actions";
 
@@ -19,8 +20,11 @@ import { createWhiteboardSession } from "./actions";
  * (Postman, browser devtools) still gets rejected. See the action's
  * docblock for the back/forward bypass rationale.
  *
- * Implementation note: native `<dialog>` element gives us focus trap
- * + escape-to-close + scroll lock for free, no library needed.
+ * The dialog is wrapped in `<ModalPortal>` so its `position: fixed`
+ * backdrop escapes the parent `.card`'s stacking context (the
+ * `.card { backdrop-filter: blur(...) }` rule creates a new stacking
+ * context that traps fixed children — see ModalPortal.tsx docblock
+ * for the gritty details).
  */
 export function StartWhiteboardSession({
   studentId,
@@ -37,18 +41,7 @@ export function StartWhiteboardSession({
     setError(null);
   };
 
-  return (
-    <>
-      <button
-        type="button"
-        className="btn"
-        onClick={() => setOpen(true)}
-        data-testid="start-whiteboard-session-btn"
-      >
-        Start whiteboard session
-      </button>
-
-      {open && (
+  const modal = open ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -178,7 +171,19 @@ export function StartWhiteboardSession({
             </form>
           </div>
         </div>
-      )}
+      ) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn"
+        onClick={() => setOpen(true)}
+        data-testid="start-whiteboard-session-btn"
+      >
+        Start whiteboard session
+      </button>
+      {modal ? <ModalPortal>{modal}</ModalPortal> : null}
     </>
   );
 }

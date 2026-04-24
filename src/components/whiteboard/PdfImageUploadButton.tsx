@@ -24,6 +24,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
+import { ModalPortal } from "@/components/ModalPortal";
 import {
   ExcalidrawApiLike,
   insertImageOnCanvas,
@@ -209,6 +210,7 @@ export function PdfImageUploadButton({
       </button>
 
       {state.kind !== "closed" && (
+        <ModalPortal>
         <div
           role="dialog"
           aria-modal="true"
@@ -357,6 +359,7 @@ export function PdfImageUploadButton({
             />
           </div>
         </div>
+        </ModalPortal>
       )}
     </>
   );

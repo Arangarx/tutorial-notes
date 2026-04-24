@@ -29,6 +29,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ModalPortal } from "@/components/ModalPortal";
 import {
   insertMathSvgOnCanvas,
   type ExcalidrawApiLike,
@@ -201,6 +202,7 @@ export function MathInsertButton({
       </button>
 
       {state.kind !== "closed" && (
+        <ModalPortal>
         <div
           role="dialog"
           aria-modal="true"
@@ -332,6 +334,7 @@ export function MathInsertButton({
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </>
   );

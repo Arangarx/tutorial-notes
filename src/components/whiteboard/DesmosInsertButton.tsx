@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { ModalPortal } from "@/components/ModalPortal";
 import {
   insertDesmosEmbedOnCanvas,
   validateDesmosUrl,
@@ -124,6 +125,7 @@ export function DesmosInsertButton({
       </button>
 
       {state.kind === "open" && (
+        <ModalPortal>
         <div
           role="dialog"
           aria-modal="true"
@@ -292,6 +294,7 @@ export function DesmosInsertButton({
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </>
   );

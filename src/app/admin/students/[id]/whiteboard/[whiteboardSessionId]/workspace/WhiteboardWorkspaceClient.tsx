@@ -62,6 +62,7 @@ import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter"
 import { PdfImageUploadButton } from "@/components/whiteboard/PdfImageUploadButton";
 import { MathInsertButton } from "@/components/whiteboard/MathInsertButton";
 import { DesmosInsertButton } from "@/components/whiteboard/DesmosInsertButton";
+import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
 import {
   DESMOS_ALLOWED_HOSTS,
   type ExcalidrawApiLike,
@@ -717,6 +718,7 @@ export function WhiteboardWorkspaceClient({
             testId="wb-timer"
           />
         </div>
+        <UndoRedoButtons disabled={endingState === "ending"} />
         <PdfImageUploadButton
           excalidrawAPI={excalidrawAPI}
           whiteboardSessionId={whiteboardSessionId}

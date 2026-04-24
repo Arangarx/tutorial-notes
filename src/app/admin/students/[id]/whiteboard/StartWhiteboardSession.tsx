@@ -110,7 +110,42 @@ export function StartWhiteboardSession({
                   ) {
                     throw err;
                   }
-                  setError(err instanceof Error ? err.message : "Could not start the session.");
+                  // In production, Next.js replaces server-action error
+                  // messages with the generic "An error occurred in the
+                  // Server Components render..." string and parks the
+                  // real failure behind a `digest`. Surfacing the digest
+                  // is the only way for the tutor to give us a needle to
+                  // grep Vercel logs by; the message alone is useless.
+                  const digest =
+                    err && typeof err === "object" && "digest" in err
+                      ? String((err as { digest?: unknown }).digest ?? "")
+                      : "";
+                  const rawMsg =
+                    err instanceof Error
+                      ? err.message
+                      : "Could not start the session.";
+                  // The redacted-in-production message is verbose and
+                  // scary. Replace it with friendlier copy when we see
+                  // it; keep dev/test messages as-is so devs see the
+                  // real cause.
+                  const isRedacted = rawMsg.includes(
+                    "omitted in production builds"
+                  );
+                  const friendlyMsg = isRedacted
+                    ? "Could not start the session — the server hit an unexpected error."
+                    : rawMsg;
+                  setError(
+                    digest
+                      ? `${friendlyMsg}\n\nError ID: ${digest}\n(copy this and send it back so we can find the failure in the server logs).`
+                      : friendlyMsg
+                  );
+                  // Also log the full error to the browser console so
+                  // devtools shows the entire payload.
+                  // eslint-disable-next-line no-console
+                  console.error(
+                    "[createWhiteboardSession] failed",
+                    { digest, message: rawMsg, err }
+                  );
                 }
               }}
               style={{ marginTop: 16 }}
@@ -152,6 +187,8 @@ export function StartWhiteboardSession({
                     color: "var(--color-error, #dc2626)",
                     fontSize: 13,
                     marginBottom: 12,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
                   }}
                 >
                   {error}

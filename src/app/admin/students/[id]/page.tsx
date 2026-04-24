@@ -11,6 +11,7 @@ import { ShareLinkRow } from "./ShareLinkRow";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
 import NoteEntrySection from "./NoteEntrySection";
+import { ActiveWhiteboardSessionsList } from "./whiteboard/ActiveWhiteboardSessionsList";
 import { StartWhiteboardSession } from "./whiteboard/StartWhiteboardSession";
 import { StudentRecordingDefaultToggle } from "./StudentRecordingDefaultToggle";
 import { env } from "@/lib/env";
@@ -54,6 +55,15 @@ export default async function StudentDetailPage({
       shareLinks: { where: { revokedAt: null }, orderBy: { createdAt: "desc" } },
       _count: { select: { notes: true } },
       notes: { orderBy: { date: "desc" }, take: 1, select: { date: true } },
+      // Still-running whiteboard rooms (endedAt = null) — surfaced under
+      // the "Start" button so tutors can continue or end stragglers
+      // without multiple forgotten live sessions piling up in the DB.
+      whiteboardSessions: {
+        where: { endedAt: null },
+        orderBy: { startedAt: "desc" },
+        take: 20,
+        select: { id: true, startedAt: true },
+      },
     },
   });
 
@@ -134,6 +144,10 @@ export default async function StudentDetailPage({
           </div>
           <StartWhiteboardSession studentId={student.id} />
         </div>
+        <ActiveWhiteboardSessionsList
+          studentId={student.id}
+          sessions={student.whiteboardSessions}
+        />
         <div style={{ marginTop: 10 }}>
           <StudentRecordingDefaultToggle
             studentId={student.id}

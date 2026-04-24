@@ -514,10 +514,36 @@ export async function endStaleWhiteboardSession(
     `[endStaleWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} endedAt=${updated.endedAt?.toISOString()} duration=${updated.durationSeconds}s`
   );
 
+  // Student detail lists open sessions + the resume-gate "End" path
+  // should both see the list update without a full router refresh;
+  // closing the room also means the workspace RSC re-reads endedAt.
+  revalidatePath(`/admin/students/${session.studentId}`);
+  revalidatePath(
+    `/admin/students/${session.studentId}/whiteboard/${whiteboardSessionId}/workspace`
+  );
+
   return {
     endedAt: updated.endedAt!.toISOString(),
     durationSeconds: updated.durationSeconds ?? 0,
   };
+}
+
+const WBSID_FIELD = "whiteboardSessionId";
+
+/**
+ * Form POST handler: end a still-open whiteboard from the student
+ * detail "Open whiteboard sessions" list. `endStaleWhiteboardSession`
+ * is the right primitive — no final events.json (tutor is cleaning up
+ * from the roster, not pressing Stop in the live workspace).
+ */
+export async function endOpenWhiteboardFromStudentPage(
+  formData: FormData
+): Promise<void> {
+  const raw = formData.get(WBSID_FIELD);
+  if (typeof raw !== "string" || !raw) {
+    throw new Error("Missing whiteboard session.");
+  }
+  await endStaleWhiteboardSession(raw);
 }
 
 /**

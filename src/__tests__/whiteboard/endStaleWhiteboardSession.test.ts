@@ -65,6 +65,12 @@ jest.mock("@/lib/action-correlation", () => ({
   createActionCorrelationId: () => "rid_test",
 }));
 
+const revalidatePathMock = jest.fn();
+jest.mock("next/cache", () => ({
+  __esModule: true,
+  revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+}));
+
 import { endStaleWhiteboardSession } from "@/app/admin/students/[id]/whiteboard/actions";
 
 beforeEach(() => {
@@ -73,6 +79,7 @@ beforeEach(() => {
   txWhiteboardFindUniqueMock.mockReset();
   dbTransactionMock.mockClear();
   assertOwnsWhiteboardSessionMock.mockReset();
+  revalidatePathMock.mockReset();
 });
 
 function setupActiveSession(opts: { startedAtAgoMs?: number } = {}) {
@@ -164,5 +171,16 @@ describe("endStaleWhiteboardSession", () => {
 
     expect(result.endedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(typeof result.durationSeconds).toBe("number");
+  });
+
+  it("revalidates the student page + workspace so lists/tabs refresh", async () => {
+    setupActiveSession();
+
+    await endStaleWhiteboardSession("wb_42");
+
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/students/stu_1");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/admin/students/stu_1/whiteboard/wb_42/workspace"
+    );
   });
 });

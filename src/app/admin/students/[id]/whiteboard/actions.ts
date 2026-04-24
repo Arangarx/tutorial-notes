@@ -423,6 +423,104 @@ export async function endWhiteboardSession(
 }
 
 /**
+ * End a stale (re-opened) whiteboard session WITHOUT requiring a
+ * finalized events.json blob URL.
+ *
+ * Why a separate action from `endWhiteboardSession`:
+ *
+ *   `endWhiteboardSession` is the "tutor pressed Stop in an active
+ *   session" path — the recorder hook has just uploaded the final
+ *   events.json and we atomically swap the placeholder URL for the
+ *   real one. That path REQUIRES the new URL.
+ *
+ *   `endStaleWhiteboardSession` is the "tutor opened the workspace
+ *   from a tab they forgot about, sees the Resume-or-End prompt, and
+ *   picks End" path. There IS no fresh events.json — the recorder
+ *   hook never mounted in this load. We just need to:
+ *
+ *     1. Stamp endedAt so the session row stops being treated as live.
+ *     2. Revoke any still-live join tokens so a stale student tab
+ *        gets a 404 the next time it tries to reconnect.
+ *     3. Compute durationSeconds from startedAt (consistent with
+ *        the active path).
+ *
+ *   We deliberately DO NOT clobber `eventsBlobUrl` — whatever was
+ *   uploaded last (often the empty placeholder, sometimes a real
+ *   final from the previous tab's Stop) stays so the read-only
+ *   review surface keeps working.
+ *
+ * Trust posture mirrors `endWhiteboardSession`:
+ *   - `assertOwnsWhiteboardSession` is the multi-tenant gate.
+ *   - Refuses to act on an already-ended session (idempotency:
+ *     two tabs both clicking End must not race).
+ */
+export async function endStaleWhiteboardSession(
+  whiteboardSessionId: string
+): Promise<{ endedAt: string; durationSeconds: number }> {
+  const rid = createActionCorrelationId();
+  const session = await assertOwnsWhiteboardSession(whiteboardSessionId);
+
+  if (session.endedAt) {
+    console.warn(
+      `[endStaleWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} REJECTED: already ended at ${session.endedAt.toISOString()}`
+    );
+    throw new Error("This whiteboard session has already ended.");
+  }
+
+  const now = new Date();
+  let updated;
+  try {
+    updated = await withDbRetry(
+      () =>
+        db.$transaction(async (tx) => {
+          const existing = await tx.whiteboardSession.findUnique({
+            where: { id: whiteboardSessionId },
+            select: { startedAt: true },
+          });
+          const durationSeconds = existing
+            ? Math.max(
+                0,
+                Math.floor((now.getTime() - existing.startedAt.getTime()) / 1000)
+              )
+            : 0;
+          const row = await tx.whiteboardSession.update({
+            where: { id: whiteboardSessionId },
+            data: {
+              endedAt: now,
+              durationSeconds,
+            },
+            select: { id: true, endedAt: true, durationSeconds: true },
+          });
+          await tx.whiteboardJoinToken.updateMany({
+            where: {
+              whiteboardSessionId,
+              revokedAt: null,
+            },
+            data: { revokedAt: now },
+          });
+          return row;
+        }),
+      { label: "endStaleWhiteboardSession" }
+    );
+  } catch (err) {
+    console.error(
+      `[endStaleWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} db.transaction failed:`,
+      err
+    );
+    throw new Error("Could not end the whiteboard session. Please try again.");
+  }
+
+  console.log(
+    `[endStaleWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} endedAt=${updated.endedAt?.toISOString()} duration=${updated.durationSeconds}s`
+  );
+
+  return {
+    endedAt: updated.endedAt!.toISOString(),
+    durationSeconds: updated.durationSeconds ?? 0,
+  };
+}
+
+/**
  * Revoke every still-live join token for a session. Called from the
  * Stop button (separate todo) so a tutor's "End session" click
  * immediately invalidates any links the student might still have

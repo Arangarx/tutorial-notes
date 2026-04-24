@@ -51,13 +51,16 @@ export function DesmosInsertButton({
   const [state, setState] = useState<DialogState>({ kind: "closed" });
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Pull the mode out into a stable, primitive dep so the linter can verify it.
+  const dialogMode = state.kind === "open" ? state.mode : null;
+
   useEffect(() => {
-    if (state.kind === "open" && state.mode === "url") {
+    if (dialogMode === "url") {
       // Defer focus a tick so the input is mounted before we focus it.
       const id = setTimeout(() => inputRef.current?.focus(), 0);
       return () => clearTimeout(id);
     }
-  }, [state.kind, state.kind === "open" ? state.mode : null]);
+  }, [dialogMode]);
 
   function open(mode: "blank" | "url") {
     setState({ kind: "open", mode, rawUrl: "", error: null });

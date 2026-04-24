@@ -31,7 +31,7 @@ jest.mock("next/cache", () => ({
 // Note: jest.mock() factories are hoisted before variable declarations,
 // so `dbMock` cannot be referenced inside the factory. Instead we build
 // the mock object inside the factory and export it via a side-channel.
-let dbMock: {
+type DbMock = {
   whiteboardSession: {
     findUnique: jest.Mock;
     update: jest.Mock;
@@ -52,8 +52,12 @@ let dbMock: {
   };
 };
 
+let dbMock: DbMock;
+
+type DbMockSidechannel = { __dbMock?: DbMock };
+
 jest.mock("@/lib/db", () => {
-  const mock = {
+  const mock: DbMock = {
     whiteboardSession: {
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -73,9 +77,7 @@ jest.mock("@/lib/db", () => {
       findUniqueOrThrow: jest.fn(),
     },
   };
-  // Expose to tests via module-level assignment.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (global as any).__dbMock = mock;
+  (globalThis as unknown as DbMockSidechannel).__dbMock = mock;
   return {
     __esModule: true,
     db: mock,
@@ -141,9 +143,7 @@ import {
   attachWhiteboardToNoteAction,
 } from "@/app/admin/students/[id]/whiteboard/actions";
 
-// Pick up the db mock exposed by the factory above.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-dbMock = (global as any).__dbMock;
+dbMock = (globalThis as unknown as DbMockSidechannel).__dbMock!;
 
 // ── Fetch mock ────────────────────────────────────────────────────────
 // jest.spyOn(global, "fetch") is unreliable in Node 18+ where fetch is

@@ -355,8 +355,8 @@ export function WhiteboardWorkspaceClient({
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);
       } else {
-        // Fallback: surface the link in an alert. Better than silent failure.
-        // eslint-disable-next-line no-alert
+        // Fallback: surface the link in a prompt. Better than silent failure
+        // when the Clipboard API is missing (older Safari, some embedded views).
         window.prompt("Copy this link for your student:", link);
       }
       setCopyState("copied");

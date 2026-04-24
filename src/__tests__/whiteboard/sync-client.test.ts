@@ -106,9 +106,9 @@ function realTick(ms = 5): Promise<void> {
   return new Promise((resolve) => {
     // Use the underlying real setTimeout so we don't get caught by
     // jest.useFakeTimers in adjacent describe blocks.
+    // jest.requireActual gives us the unfaked timer (a method call, not a
+    // CommonJS require — but stay explicit about that for future readers).
     const realSetTimeout: typeof setTimeout =
-      // jest.requireActual gives us the unfaked timer
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       (jest.requireActual("timers") as typeof import("timers")).setTimeout;
     realSetTimeout(resolve, ms);
   });

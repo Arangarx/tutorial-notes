@@ -264,7 +264,7 @@ export function PdfImageUploadButton({
                 }}
               >
                 <strong>iPhone/iPad note:</strong> Safari on iOS limits
-                memory per tab. If you're inserting a long PDF (more than
+                memory per tab. If you&apos;re inserting a long PDF (more than
                 ~10 colour pages), the tab may run out of memory mid-render.
                 Pick a smaller PDF or split into chunks.
               </div>

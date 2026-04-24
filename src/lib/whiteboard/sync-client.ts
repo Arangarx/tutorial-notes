@@ -297,8 +297,10 @@ export function createWhiteboardSyncClient(
   ) {
     for (const cb of set) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (cb as any)(...args);
+        // T is constrained to (...args: never[]) => void so this cast is sound:
+        // we erase the never[] for the call site, but every subscriber was
+        // registered with a matching signature when the Set was typed.
+        (cb as (...a: Parameters<T>) => void)(...args);
       } catch (err) {
         log.warn("subscriber threw:", (err as Error)?.message ?? String(err));
       }

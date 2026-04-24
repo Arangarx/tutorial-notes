@@ -2,6 +2,7 @@
 
 import { useTransition, useState, useImperativeHandle, forwardRef } from "react";
 import { createNote } from "./actions";
+import { formatLocalTimeSnapped, TIME_INPUT_STEP_SECONDS } from "@/lib/time/snap";
 
 export type PopulatePayload = {
   topics: string;
@@ -24,13 +25,15 @@ export type PopulatePayload = {
   sessionEndedAt?: string;
 };
 
-/** Format a UTC ISO timestamp as `HH:MM` in the browser's local timezone. */
+/**
+ * Format a UTC ISO timestamp as `HH:MM` in the browser's local timezone,
+ * snapped to the nearest 5-minute grid (matches `step={300}` on the
+ * inputs below — see lib/time/snap.ts for the full rationale).
+ */
 function formatLocalTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+  return formatLocalTimeSnapped(d);
 }
 
 export type NewNoteFormHandle = {
@@ -212,6 +215,12 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
             id="note-start-time"
             name="startTime"
             type="time"
+            // 5-minute increments — Sarah's explicit ask. Matches Wyzant's
+            // time picker and her own habit of rounding to the nearest 5.
+            // Pairs with the formatLocalTime() snap above so AI-prefilled
+            // times don't land off-grid and trigger HTML5 step validation
+            // on submit.
+            step={TIME_INPUT_STEP_SECONDS}
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
           />
@@ -222,6 +231,7 @@ const NewNoteForm = forwardRef<NewNoteFormHandle, Props>(function NewNoteForm(
             id="note-end-time"
             name="endTime"
             type="time"
+            step={TIME_INPUT_STEP_SECONDS}
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
           />

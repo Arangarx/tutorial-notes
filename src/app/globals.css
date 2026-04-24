@@ -1,4 +1,18 @@
 :root {
+  /* Tell the browser native form controls (checkbox, radio, scrollbar,
+     date/time picker, file input) belong on a DARK surface. Without
+     this, browsers fall back to the user's SYSTEM color-scheme — so a
+     Sarah-style Windows-light-mode visitor sees a light-mode checkbox
+     against our dark dialog, the checkmark is barely visible, and
+     clicking the box looks like nothing happened. Sarah Apr 2026
+     demo: "I can't click to accept even after I click the check
+     mark, I think the coloring is borked in dark mode." See
+     globals-css.test.ts for the regression. */
+  color-scheme: dark;
+  /* Brand-colored checkbox / radio fill so the checked state is
+     unambiguous and matches the rest of the UI accent palette. */
+  accent-color: #7c5cff;
+
   --bg: #0b1020;
   --panel: rgba(255, 255, 255, 0.06);
   --text: rgba(255, 255, 255, 0.92);

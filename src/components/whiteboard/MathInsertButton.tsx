@@ -34,7 +34,82 @@ import {
   insertMathSvgOnCanvas,
   type ExcalidrawApiLike,
 } from "@/lib/whiteboard/insert-asset";
-import { renderLatexToSvg } from "@/lib/whiteboard/math-render";
+
+/**
+ * Client-side wrapper for the `/api/whiteboard/[sessionId]/math/render`
+ * route. Replaces the previous direct dynamic import of
+ * `@/lib/whiteboard/math-render`, which forced webpack to ship
+ * `mathjax-full` (CommonJS) into the browser bundle and threw
+ * "require is not defined" on Insert.
+ *
+ * Returns the same shape the lib helper used to return so the
+ * downstream `insertMathSvgOnCanvas` call sees no contract change.
+ */
+type RenderMathSvgClientResult =
+  | {
+      ok: true;
+      svgBlob: Blob;
+      widthPx: number;
+      heightPx: number;
+    }
+  | { ok: false; reason: string };
+
+async function renderLatexToSvgViaRoute(
+  whiteboardSessionId: string,
+  latex: string,
+  displayMode: boolean
+): Promise<RenderMathSvgClientResult> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `/api/whiteboard/${encodeURIComponent(whiteboardSessionId)}/math/render`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ latex, displayMode }),
+      }
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `Could not reach the math renderer: ${(err as Error).message}`,
+    };
+  }
+  // 401 / 404 / 5xx — bubble a friendly message; the route returns
+  // 200 with `{ ok: false, reason }` for "expected" rejections like
+  // empty / oversized input, so any non-200 here is a real failure.
+  if (!res.ok) {
+    return {
+      ok: false,
+      reason: `Math renderer failed (HTTP ${res.status}).`,
+    };
+  }
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    return { ok: false, reason: "Math renderer returned malformed JSON." };
+  }
+  const p = payload as
+    | { ok: true; svg: string; widthPx: number; heightPx: number }
+    | { ok: false; reason: string }
+    | undefined;
+  if (!p || typeof p !== "object") {
+    return { ok: false, reason: "Math renderer returned an empty response." };
+  }
+  if (p.ok === false) {
+    return { ok: false, reason: p.reason || "Could not render equation." };
+  }
+  if (!p.ok || typeof p.svg !== "string") {
+    return { ok: false, reason: "Math renderer returned an invalid SVG." };
+  }
+  return {
+    ok: true,
+    svgBlob: new Blob([p.svg], { type: "image/svg+xml" }),
+    widthPx: p.widthPx,
+    heightPx: p.heightPx,
+  };
+}
 
 type Props = {
   excalidrawAPI: ExcalidrawApiLike | null;
@@ -161,7 +236,11 @@ export function MathInsertButton({
       return;
     }
     setState({ kind: "rendering" });
-    const render = await renderLatexToSvg(trimmed, { displayMode: true });
+    const render = await renderLatexToSvgViaRoute(
+      whiteboardSessionId,
+      trimmed,
+      true
+    );
     if (!render.ok) {
       setState({ kind: "error", message: render.reason });
       return;

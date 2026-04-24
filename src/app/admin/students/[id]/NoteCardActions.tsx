@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
 import { updateNote, deleteNote, setNoteStatus } from "./actions";
+import { TIME_INPUT_STEP_SECONDS } from "@/lib/time/snap";
 
 interface NoteCardActionsProps {
   noteId: string;
@@ -86,6 +87,10 @@ export function NoteCardActions({
               id={`edit-start-time-${noteId}`}
               name="startTime"
               type="time"
+              // 5-min increments — matches NewNoteForm. The defaultValue
+              // comes from formatTimeInput() in notes/page.tsx, which
+              // also snaps so existing-note editing stays on-grid.
+              step={TIME_INPUT_STEP_SECONDS}
               defaultValue={defaultValues.startTime}
             />
           </div>
@@ -95,6 +100,7 @@ export function NoteCardActions({
               id={`edit-end-time-${noteId}`}
               name="endTime"
               type="time"
+              step={TIME_INPUT_STEP_SECONDS}
               defaultValue={defaultValues.endTime}
             />
           </div>

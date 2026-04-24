@@ -1,7 +1,7 @@
 /**
  * Lightweight regression tests for src/app/globals.css.
  *
- * These guard against two failure modes that have repeatedly caused
+ * These guard against three failure modes that have repeatedly caused
  * dark-mode UI bugs (Sarah's recording-share card was invisible / mis-sized
  * across multiple sessions):
  *
@@ -15,6 +15,15 @@
  *      also matches <input type="checkbox">. Without an override, checkboxes
  *      stretch to fill their flex container and push adjacent label text past
  *      the edge of the card. Keep the override that restores native sizing.
+ *
+ *   3. `color-scheme: dark` on :root is what tells the browser to
+ *      render NATIVE form controls (checkbox tick, radio dot,
+ *      scrollbar, date/time picker chrome, file input) in dark mode.
+ *      Without it, controls fall back to the user's SYSTEM color
+ *      scheme — so a Windows-light-mode tutor sees a near-invisible
+ *      light-mode checkbox on our dark dialogs and can't tell whether
+ *      a click registered. Sarah hit this on the consent modal in
+ *      Apr 2026.
  */
 
 import { readFileSync } from "fs";
@@ -64,5 +73,22 @@ describe("globals.css — checkbox/radio sizing override", () => {
   test("checkbox override applies to radio too", () => {
     // Same fix should cover radio inputs to prevent the same class of bug.
     expect(CSS).toMatch(/input\[type="radio"\]/);
+  });
+});
+
+describe("globals.css — dark color-scheme declaration", () => {
+  test("declares color-scheme: dark on :root", () => {
+    // Match any whitespace / comment between the property name and `dark`.
+    // The :root block can contain other declarations between the brace
+    // and color-scheme, so we look for the property anywhere in the file
+    // — there's only one :root in this stylesheet, so this is safe.
+    expect(CSS).toMatch(/color-scheme\s*:\s*dark\b/);
+  });
+
+  test("declares an accent-color so checkmark / radio dot is visible", () => {
+    // Without accent-color, the checked state uses the browser default
+    // (typically a low-contrast blue-grey) which on our dark surfaces
+    // has caused tutors to think the click didn't register.
+    expect(CSS).toMatch(/accent-color\s*:/);
   });
 });

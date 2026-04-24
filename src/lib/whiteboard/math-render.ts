@@ -1,32 +1,48 @@
-"use client";
+import "server-only";
 
 /**
  * LaTeX -> SVG renderer used by the whiteboard "Insert math" flow.
+ *
+ * SERVER-ONLY. Imported by the `/api/whiteboard/[sessionId]/math/render`
+ * route; clients call that route over fetch and never bundle this file.
+ *
+ * Why server-only (regression context — Sarah demo, Apr 2026):
+ *
+ *   - `mathjax-full` is published as CommonJS. When this file was
+ *     `"use client"` and dynamic-imported from `MathInsertButton`,
+ *     webpack's CJS-interop wrappers emitted bare `require()` calls
+ *     into the browser bundle and the dialog blew up at runtime with
+ *     "Could not load the math renderer: require is not defined".
+ *   - Moving the renderer behind a server route deletes the entire
+ *     client-bundle vector. The `import "server-only"` guard turns
+ *     any future accidental client import into a build-time error
+ *     (Next.js' poison-pill module) so this can't silently regress.
+ *   - As a bonus, the workspace shell drops ~250 KB gzipped — the
+ *     mathjax dependency now lives in the serverless function.
  *
  * The flow:
  *
  *   1. The tutor types in a MathLive `<math-field>` (WYSIWYG editor)
  *      which spits out a LaTeX string.
- *   2. We pipe that LaTeX through MathJax (programmatic API, lite
- *      adaptor) to produce a self-contained SVG fragment.
- *   3. The SVG is uploaded as an asset and inserted onto the canvas
- *      as an `image` element with `customData.latex` preserving the
- *      source so the AI note-generation pipeline can read it back.
+ *   2. The client POSTs the LaTeX to
+ *      `/api/whiteboard/[sessionId]/math/render`, which calls
+ *      `renderLatexToSvg` here and returns the SVG string + intrinsic
+ *      dimensions.
+ *   3. The client wraps the SVG in a Blob, uploads it as an asset,
+ *      and drops an Excalidraw `image` element on the canvas with
+ *      `customData.latex` preserving the source so AI note generation
+ *      and replay can read it back.
  *
  * Why MathJax + lite adaptor (and not e.g. KaTeX or a CDN render):
  *
  *   - MathJax is the gold standard for LaTeX coverage; KaTeX trips on
  *     things like `\substack`, environments, and macro packages Sarah's
  *     materials use.
- *   - `liteAdaptor` works without a real DOM, so the same module
- *     functions in the browser bundle AND in jsdom tests + future
- *     server-side rendering. No browser globals required.
+ *   - `liteAdaptor` works without a real DOM, so MathJax runs cleanly
+ *     in a Node serverless function with no jsdom shim.
  *   - Self-contained SVG (with `fontCache: "local"`) means the asset
  *     uploaded to Vercel Blob renders correctly when fetched in
  *     isolation by replay or sharing — no external font deps.
- *
- * Bundle cost: pulled in via dynamic import from the Insert Math
- * button so the workspace shell stays light. ~250 KB gzipped.
  */
 
 let mathjaxModulesPromise: Promise<{

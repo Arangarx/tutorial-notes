@@ -7,15 +7,21 @@ import { NoteCardActions } from "../NoteCardActions";
 import { NotesSearchBar } from "@/components/notes/NotesSearchBar";
 import { PageSizeSelect } from "@/components/notes/PageSizeSelect";
 import { formatDateOnlyDisplay, formatDateOnlyInput } from "@/lib/date-only";
+import { formatUtcTimeSnapped } from "@/lib/time/snap";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULT_PAGE_SIZE = 20;
 
-/** Extract HH:MM (24-hour, UTC) for use in <input type="time"> defaultValue. */
+/**
+ * Extract HH:MM (UTC) for `<input type="time">` defaultValue, snapped
+ * to the 5-minute grid the edit dialog ships with (see NoteCardActions).
+ * Historical notes saved before the step constraint (e.g. 10:53) would
+ * otherwise be `:invalid` on open and block save until manually nudged.
+ * Shared snap helper: `lib/time/snap.ts`.
+ */
 function formatTimeInput(d: Date | null): string {
-  if (!d) return "";
-  return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
+  return formatUtcTimeSnapped(d);
 }
 
 /** Format a UTC DateTime as "3:00 PM" for display. */

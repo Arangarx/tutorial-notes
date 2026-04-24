@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter";
-import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
+import {
+  hydrateRemoteImageFilesForScene,
+  type HydrateRemoteImageFilesResult,
+} from "@/lib/whiteboard/hydrate-remote-files";
 import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
 
 /**
@@ -19,10 +22,13 @@ import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
  */
 export function useStudentWhiteboardCanvas(
   sync: WhiteboardSyncClient | null,
-  excalidrawAPI: ExcalidrawApiLike | null
+  excalidrawAPI: ExcalidrawApiLike | null,
+  onHydrateResult?: (result: HydrateRemoteImageFilesResult) => void
 ) {
   const applyingRemoteRef = useRef(false);
   const loadedRemoteFileIdsRef = useRef(new Set<string>());
+  const giveUpFileIdsRef = useRef(new Set<string>());
+  const warnDedupeRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!sync || !excalidrawAPI) return;
@@ -30,11 +36,17 @@ export function useStudentWhiteboardCanvas(
       void (async () => {
         applyingRemoteRef.current = true;
         try {
-          await hydrateRemoteImageFilesForScene(
+          const result = await hydrateRemoteImageFilesForScene(
             excalidrawAPI,
             elements,
-            loadedRemoteFileIdsRef.current
+            loadedRemoteFileIdsRef.current,
+            {
+              logContext: "student",
+              giveUpFileIds: giveUpFileIdsRef.current,
+              warnDedupe: warnDedupeRef.current,
+            }
           );
+          onHydrateResult?.(result);
           excalidrawAPI.updateScene({
             elements: elements as ReadonlyArray<unknown>,
           });
@@ -49,7 +61,7 @@ export function useStudentWhiteboardCanvas(
       })();
     });
     return off;
-  }, [sync, excalidrawAPI]);
+  }, [sync, excalidrawAPI, onHydrateResult]);
 
   const onCanvasChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {

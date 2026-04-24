@@ -6,7 +6,7 @@
  * so the student can draw with the tutor in real time.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -21,6 +21,7 @@ import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddab
 import { useStudentWhiteboardCanvas } from "@/hooks/useStudentWhiteboardCanvas";
 import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
+import type { HydrateRemoteImageFilesResult } from "@/lib/whiteboard/hydrate-remote-files";
 
 type Props = {
   whiteboardSessionId: string;
@@ -157,9 +158,30 @@ export function StudentWhiteboardClient({
   const showWaitingForOther =
     serverActiveMs === 0 && !bothPresent && connected;
 
+  const [materialNotice, setMaterialNotice] = useState<
+    "none" | "load" | "missing"
+  >("none");
+  const [dismissedMaterialNotice, setDismissedMaterialNotice] = useState(false);
+
+  const onRemoteHydrateResult = useCallback(
+    (result: HydrateRemoteImageFilesResult) => {
+      if (result.fetchFailed.length > 0) {
+        setMaterialNotice("load");
+        setDismissedMaterialNotice(false);
+        return;
+      }
+      if (result.missingAssetUrlFileIds.length > 0) {
+        setMaterialNotice((prev) => (prev === "load" ? "load" : "missing"));
+        setDismissedMaterialNotice(false);
+      }
+    },
+    []
+  );
+
   const { onCanvasChange } = useStudentWhiteboardCanvas(
     syncClient,
-    excalidrawAPI
+    excalidrawAPI,
+    onRemoteHydrateResult
   );
 
   if (keyMissing) {
@@ -202,6 +224,11 @@ export function StudentWhiteboardClient({
             {otherPeerCount === 0
               ? "Waiting for others to join this room (besides you)."
               : `Others in this room (not counting you): ${otherPeerCount}.`}
+          </p>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: 12, maxWidth: 640 }}>
+            Worksheets and images your tutor insert from the toolbar should
+            appear here. If something is missing, check your connection, refresh
+            the page, or ask your tutor to re-insert the page.
           </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -253,6 +280,49 @@ export function StudentWhiteboardClient({
           </div>
         </div>
       </div>
+
+      {materialNotice !== "none" && !dismissedMaterialNotice && (
+        <div
+          role="status"
+          className="card"
+          data-testid="student-material-safeguards-banner"
+          style={{
+            marginTop: 10,
+            padding: "10px 14px",
+            background: "rgba(234,179,8,0.12)",
+            border: "1px solid rgba(234,179,8,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13 }}>
+            {materialNotice === "load" ? (
+              <>
+                We couldn&apos;t load a worksheet or image. Check your network,
+                try refreshing the page, or ask your tutor to re-insert the file
+                from the PDF/image buttons.
+              </>
+            ) : (
+              <>
+                A drawing on the board can&apos;t be shared with a file link
+                (for example, a pasted image). Ask your tutor to add the
+                material using the insert buttons so you both see the same
+                thing.
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setDismissedMaterialNotice(true)}
+            aria-label="Dismiss notice"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div
         className="row"

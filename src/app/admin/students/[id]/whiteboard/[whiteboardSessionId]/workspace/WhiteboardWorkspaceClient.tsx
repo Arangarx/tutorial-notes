@@ -206,16 +206,34 @@ export function WhiteboardWorkspaceClient({
   const excalidrawAPIRef = useRef<ExcalidrawApiLike | null>(null);
   const applyingRemoteToCanvasRef = useRef(false);
   const loadedRemoteFileIdsForTutorRef = useRef(new Set<string>());
+  const giveUpTutorFileIdsRef = useRef(new Set<string>());
+  const warnDedupeTutorRef = useRef(new Set<string>());
+
+  const [peerImageMaterialNotice, setPeerImageMaterialNotice] = useState<
+    "none" | "load" | "missing"
+  >("none");
 
   const applyRemoteToCanvas = useCallback(
     async (elements: ReadonlyArray<ExcalidrawLikeElement>) => {
       const api = excalidrawAPIRef.current;
       if (!api) return;
-      await hydrateRemoteImageFilesForScene(
+      const result = await hydrateRemoteImageFilesForScene(
         api,
         elements,
-        loadedRemoteFileIdsForTutorRef.current
+        loadedRemoteFileIdsForTutorRef.current,
+        {
+          logContext: "tutor",
+          giveUpFileIds: giveUpTutorFileIdsRef.current,
+          warnDedupe: warnDedupeTutorRef.current,
+        }
       );
+      if (result.fetchFailed.length > 0) {
+        setPeerImageMaterialNotice("load");
+      } else if (result.missingAssetUrlFileIds.length > 0) {
+        setPeerImageMaterialNotice((prev) =>
+          prev === "load" ? "load" : "missing"
+        );
+      }
       applyingRemoteToCanvasRef.current = true;
       try {
         api.updateScene({ elements: elements as ReadonlyArray<unknown> });
@@ -766,6 +784,28 @@ export function WhiteboardWorkspaceClient({
       {copyState === "error" && copyError && (
         <Banner tone="error" onDismiss={() => setCopyState("idle")}>
           Could not copy student link: {copyError}
+        </Banner>
+      )}
+      {peerImageMaterialNotice !== "none" && (
+        <Banner
+          tone="warning"
+          testId="wb-peer-material-notice"
+          onDismiss={() => setPeerImageMaterialNotice("none")}
+        >
+          {peerImageMaterialNotice === "load" ? (
+            <>
+              Couldn&apos;t load a shared image (network or link). If the
+              board looks wrong, check your connection or re-insert the
+              worksheet with PDF/image. For pasted images, the student may need
+              to re-draw or you can re-add the file from your machine.
+            </>
+          ) : (
+            <>
+              The live scene includes an image with no file link (often a
+              device paste). Re-inserting from PDF/image is the most reliable
+              way to put the same material on both sides.
+            </>
+          )}
         </Banner>
       )}
       {endingState === "error" && endingError && (

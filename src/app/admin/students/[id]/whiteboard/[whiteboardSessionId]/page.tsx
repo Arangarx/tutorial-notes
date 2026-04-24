@@ -9,6 +9,14 @@ import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * generateNotesFromWhiteboardSessionAction (called from WhiteboardNotesPanel)
+ * runs the same Whisper + LLM pipeline as the student detail page, so it
+ * inherits the same multi-minute worst-case budget. See the budget
+ * breakdown comment in /admin/students/[id]/page.tsx.
+ */
+export const maxDuration = 300;
+
 export async function generateMetadata({
   params,
 }: {

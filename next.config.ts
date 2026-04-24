@@ -27,8 +27,10 @@ import type { NextConfig } from "next";
  *     assets uploaded to Vercel Blob render. Tightening this further
  *     would require enumerating each blob host, which churns.
  *
- *   font-src 'self' data:
- *     `data:` is required by MathJax's local font cache.
+ *   font-src 'self' data: blob:
+ *     `data:` for MathJax + Excalidraw base64 fonts; `blob:` for
+ *     @font-face / object URLs. Must match `src/lib/security/csp.ts`
+ *     (middleware also sets CSP; policies combine — keep in sync).
  *
  *   connect-src 'self' https: wss:
  *     Whisper API, Vercel Blob client uploads, the WHITEBOARD_SYNC_URL
@@ -68,7 +70,7 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
+  "font-src 'self' data: blob:",
   "connect-src 'self' https: wss:",
   "frame-src 'self' https://www.desmos.com https://desmos.com",
   "worker-src 'self' blob:",

@@ -78,6 +78,11 @@ describe("buildContentSecurityPolicy — directive guards", () => {
     expect(getDirective(csp, "font-src")).toMatch(/\bdata:/);
   });
 
+  test("font-src includes blob: (Excalidraw / canvas @font-face via object URL)", () => {
+    // Some code paths use blob: URLs for font faces, not just data:.
+    expect(getDirective(csp, "font-src")).toMatch(/\bblob:/);
+  });
+
   test("font-src still includes 'self' (our own /_next/static fonts)", () => {
     expect(getDirective(csp, "font-src")).toMatch(/'self'/);
   });

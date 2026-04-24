@@ -69,6 +69,12 @@ import { type ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
+import { toExcalidraw } from "@/lib/whiteboard/excalidraw-adapter";
+import {
+  clearSessionSceneDraft,
+  loadSessionSceneDraft,
+  saveSessionSceneDraft,
+} from "@/lib/whiteboard/session-scene-draft";
 
 type Props = {
   whiteboardSessionId: string;
@@ -211,6 +217,18 @@ export function WhiteboardWorkspaceClient({
   );
   const excalidrawAPIRef = useRef<ExcalidrawApiLike | null>(null);
   const applyingRemoteToCanvasRef = useRef(false);
+  /** Per-tab sessionStorage draft — see `session-scene-draft.ts`. */
+  const sceneDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasHydratedSessionDraftRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (sceneDraftTimerRef.current !== null) {
+        clearTimeout(sceneDraftTimerRef.current);
+        sceneDraftTimerRef.current = null;
+      }
+    };
+  }, []);
   const loadedRemoteFileIdsForTutorRef = useRef(new Set<string>());
   const giveUpTutorFileIdsRef = useRef(new Set<string>());
   const warnDedupeTutorRef = useRef(new Set<string>());
@@ -639,6 +657,7 @@ export function WhiteboardWorkspaceClient({
       // killed before the user can retry.
       await revokeJoinTokensForSession(whiteboardSessionId).catch(() => undefined);
       await recorder.markPersisted();
+      clearSessionSceneDraft(whiteboardSessionId);
       router.push(`/admin/students/${studentId}/whiteboard/${whiteboardSessionId}`);
     } catch (err) {
       setEndingState("error");
@@ -649,19 +668,68 @@ export function WhiteboardWorkspaceClient({
   }, [recorder, router, studentId, whiteboardSessionId]);
 
   // ---------------------------------------------------------------
+  // Restore a per-tab Excalidraw draft after refresh (strokes while
+  // "waiting for student" were never in the event log / IDB).
+  // ---------------------------------------------------------------
+
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+    if (hasHydratedSessionDraftRef.current) return;
+    const draft = loadSessionSceneDraft(whiteboardSessionId);
+    if (!draft) {
+      hasHydratedSessionDraftRef.current = true;
+      return;
+    }
+    applyingRemoteToCanvasRef.current = true;
+    try {
+      excalidrawAPI.updateScene({ elements: draft });
+    } finally {
+      applyingRemoteToCanvasRef.current = false;
+    }
+    hasHydratedSessionDraftRef.current = true;
+  }, [excalidrawAPI, whiteboardSessionId]);
+
+  // ---------------------------------------------------------------
+  // IndexedDB checkpoint "Resume" — the hook recovers the log, but the
+  // live canvas only updates if we push elements into Excalidraw here.
+  // ---------------------------------------------------------------
+
+  const handleAcceptCheckpointResume = useCallback(async () => {
+    const result = await recorder.acceptResume();
+    const api = excalidrawAPIRef.current;
+    if (!result || !api) return;
+    const excalidrawElements = result.elements.map((el) => toExcalidraw(el));
+    applyingRemoteToCanvasRef.current = true;
+    try {
+      api.updateScene({ elements: excalidrawElements as ReadonlyArray<unknown> });
+    } finally {
+      applyingRemoteToCanvasRef.current = false;
+    }
+    clearSessionSceneDraft(whiteboardSessionId);
+  }, [recorder, whiteboardSessionId]);
+
+  // ---------------------------------------------------------------
   // Excalidraw onChange wiring
   // ---------------------------------------------------------------
 
   const handleExcalidrawChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {
       if (applyingRemoteToCanvasRef.current) return;
+      if (sceneDraftTimerRef.current !== null) {
+        clearTimeout(sceneDraftTimerRef.current);
+        sceneDraftTimerRef.current = null;
+      }
+      sceneDraftTimerRef.current = setTimeout(() => {
+        saveSessionSceneDraft(whiteboardSessionId, elements);
+        sceneDraftTimerRef.current = null;
+      }, 800);
       // Cast through ExcalidrawLikeElement — the adapter only reads the
       // structural fields we declared. We keep the parameter typed as
       // unknown[] so a future Excalidraw upgrade with a stricter type
       // doesn't break the call site.
       recorder.onCanvasChange(elements as ReadonlyArray<ExcalidrawLikeElement>);
     },
-    [recorder]
+    [recorder, whiteboardSessionId]
   );
 
   // ---------------------------------------------------------------
@@ -828,25 +896,26 @@ export function WhiteboardWorkspaceClient({
       )}
       {recorder.resumePrompt && (
         <Banner tone="info">
-          <strong>This browser</strong> has a recoverable in-progress
-          whiteboard from{" "}
-          {new Date(recorder.resumePrompt.startedAt).toLocaleString()} (
-          {formatDuration(recorder.resumePrompt.durationMs)} in the local
-          draft). This is separate from the server &quot;open sessions&quot;
-          list.{" "}
+          <strong>Browser recovery (IndexedDB):</strong> a whiteboard
+          event draft from{" "}
+          {new Date(recorder.resumePrompt.startedAt).toLocaleString()} (~
+          {formatDuration(recorder.resumePrompt.durationMs)} of logged
+          time). This is <em>not</em> the &quot;stale session&quot; room
+          dialog (that one only controls reconnecting to the live relay).{" "}
           <button
             type="button"
             className="btn"
             style={{ marginLeft: 8 }}
-            onClick={() => recorder.acceptResume()}
+            disabled={!excalidrawAPI}
+            onClick={() => void handleAcceptCheckpointResume()}
           >
-            Resume
+            Load draft into board
           </button>
           <button
             type="button"
             className="btn"
             style={{ marginLeft: 4 }}
-            onClick={() => recorder.declineResume()}
+            onClick={() => void recorder.declineResume()}
           >
             Discard
           </button>

@@ -155,6 +155,8 @@ export function WorkspaceResumeGate({
       <p className="muted" style={{ fontSize: 12, marginTop: 16, marginBottom: 0 }}>
         Until you choose, this tab is NOT connected to the live whiteboard
         relay. Stale student tabs cannot rejoin while this prompt is showing.
+        A separate in-page banner may offer an IndexedDB <strong>event-log</strong>{" "}
+        recovery — that is for crash backup, not for this room check.
       </p>
     </div>
   );

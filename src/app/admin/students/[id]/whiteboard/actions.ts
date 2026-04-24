@@ -113,7 +113,16 @@ export async function createWhiteboardSession(
       `whiteboard-sessions/${scope.adminId}/${studentId}/${Date.now()}-events.json`,
       emptyEventsJson(startedAtIso),
       {
-        access: "public",
+        // The Vercel Blob store backing this project is configured for
+        // PRIVATE access. Passing "public" returns:
+        //   "Vercel Blob: Cannot use public access on a private store."
+        // Replay reads this URL through /api/whiteboard/[id]/events
+        // (and the share-token sibling /public-events), which proxy
+        // the bytes server-side using BLOB_READ_WRITE_TOKEN — so
+        // private works end-to-end. See lib/blob.ts header for the
+        // full posture and __tests__/regressions/upload-access-private.test.ts
+        // for the regression that pins all whiteboard upload paths.
+        access: "private",
         contentType: "application/json",
         addRandomSuffix: true,
       }

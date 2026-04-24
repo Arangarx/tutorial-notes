@@ -1,48 +1,99 @@
 /**
- * Regression test for src/lib/recording/upload.ts client-direct upload.
+ * Regression: every code path that writes to Vercel Blob in this
+ * project MUST use `access: "private"`.
  *
  * Background: the Vercel Blob store backing this project is configured
  * for private access (URL host is `<storeId>.private.blob.vercel-storage.com`).
- * Calling upload() with access:"public" against a private store returns
- * a 400 from Vercel's edge with NO CORS headers attached, which surfaces
- * in the browser as the very misleading combination of:
+ * Calling put()/upload() with access:"public" against a private store
+ * fails with one of two equally confusing symptoms depending on which
+ * SDK surface you hit:
  *
- *   "Access to fetch at '...' from origin 'http://localhost:3000' has
- *    been blocked by CORS policy: No 'Access-Control-Allow-Origin'
- *    header is present on the requested resource."
- *   PUT https://vercel.com/api/blob/?... net::ERR_FAILED 400 (Bad Request)
+ *   Server `put()` (server actions, route handlers):
+ *     -> throws "Vercel Blob: Cannot use public access on a private
+ *        store. The store is configured with private access."
  *
- * It is NOT a CORS bug; the CORS message is collateral damage from a
- * 400 issued before the CORS middleware runs. The fix is access:"private".
+ *   Client `upload()` (browser, @vercel/blob/client):
+ *     -> 400 from Vercel's edge with NO CORS headers attached, which
+ *        the browser surfaces as:
+ *          "Access to fetch at '...' from origin '...' has been blocked
+ *           by CORS policy: No 'Access-Control-Allow-Origin' header
+ *           is present on the requested resource."
+ *          PUT https://vercel.com/api/blob/?... net::ERR_FAILED 400
+ *        It is NOT a CORS bug; the CORS message is collateral damage
+ *        from a 400 issued before the CORS middleware runs.
  *
- * Audio playback does NOT need this to be public — every consumer goes
- * through the /api/audio/[recordingId] proxy (server-side fetch with
- * Bearer token, then stream to the browser), so private storage works
- * end to end.
+ * Why this never breaks consumers: every browser-facing read goes
+ * through a server proxy route that fetches with
+ * BLOB_READ_WRITE_TOKEN as a Bearer header:
+ *   - audio:                    /api/audio/[recordingId]
+ *   - whiteboard events:        /api/whiteboard/[id]/events
+ *                               /api/whiteboard/[id]/public-events
+ *   - whiteboard snapshots:     /api/whiteboard/[id]/snapshot
+ *                               /api/whiteboard/[id]/public-snapshot
  *
- * If you switch this back to "public", local dev WILL break and so will
- * production unless you also reconfigure the Vercel Blob store. Don't.
+ * If you flip any of these to "public", local dev AND production will
+ * break the moment the upload runs. Don't.
+ *
+ * Each test guard does string-matching against source so we don't have
+ * to spin up Vercel Blob to validate the contract — same posture as
+ * the original audio guard.
  */
 
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const SRC = readFileSync(
-  join(__dirname, "..", "..", "lib", "recording", "upload.ts"),
-  "utf8"
-);
+const ROOT = join(__dirname, "..", "..");
 
-describe("recording/upload.ts client-direct access type", () => {
-  test("uploadAudioDirect uses access:'private' (matches the Vercel Blob store)", () => {
-    expect(SRC).toMatch(/access:\s*"private"/);
-  });
+function readSrc(...rel: string[]): string {
+  return readFileSync(join(ROOT, ...rel), "utf8");
+}
 
-  test("uploadAudioDirect does NOT pass access:'public' (would 400 + CORS)", () => {
-    // Strip line + block comments before checking; the comment EXPLAINS
-    // why we can't use "public" and is allowed to mention it.
-    const codeOnly = SRC
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/\/\/[^\n]*/g, "");
-    expect(codeOnly).not.toMatch(/access:\s*"public"/);
-  });
+/**
+ * Strip block + line comments before asserting "no access: public".
+ * The comments in these files DELIBERATELY mention the failure mode
+ * so the next dev understands why public is forbidden — that
+ * documentation is allowed.
+ */
+function codeOnly(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+const PATHS_BY_NAME: Record<string, string[]> = {
+  // Audio (the original failure that introduced this guard).
+  "lib/recording/upload.ts": ["lib", "recording", "upload.ts"],
+  // Whiteboard client-direct upload helpers (events, snapshot, assets).
+  "lib/whiteboard/upload.ts": ["lib", "whiteboard", "upload.ts"],
+  // Whiteboard server actions — `createWhiteboardSession` seeds the
+  // empty events.json via put().
+  "app/admin/students/[id]/whiteboard/actions.ts": [
+    "app",
+    "admin",
+    "students",
+    "[id]",
+    "whiteboard",
+    "actions.ts",
+  ],
+  // Whiteboard partial-checkpoint upload route — server-side put().
+  "app/api/whiteboard/[sessionId]/checkpoint/route.ts": [
+    "app",
+    "api",
+    "whiteboard",
+    "[sessionId]",
+    "checkpoint",
+    "route.ts",
+  ],
+};
+
+describe("Vercel Blob writes use access:'private' across every upload path", () => {
+  for (const [name, rel] of Object.entries(PATHS_BY_NAME)) {
+    describe(name, () => {
+      const src = readSrc(...rel);
+      test("declares access:'private' at least once", () => {
+        expect(src).toMatch(/access:\s*"private"/);
+      });
+      test("does NOT contain access:'public' in active code", () => {
+        expect(codeOnly(src)).not.toMatch(/access:\s*"public"/);
+      });
+    });
+  }
 });

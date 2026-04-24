@@ -26,8 +26,17 @@ async function uploadGeneric(
 ): Promise<WhiteboardUploadResult> {
   try {
     const { upload } = await import("@vercel/blob/client");
+    // access: "private" is REQUIRED — the project's Vercel Blob store
+    // is configured for private access (same store backing audio).
+    // Passing "public" returns a 400 from Vercel's edge with no CORS
+    // headers, surfacing in the browser as a misleading
+    // "blocked by CORS policy" error. Whiteboard reads always go
+    // through the /api/whiteboard/[id]/{events,snapshot} proxy
+    // routes which use BLOB_READ_WRITE_TOKEN to fetch the bytes
+    // server-side, so private storage works end-to-end. See
+    // src/lib/recording/upload.ts for the parallel audio rationale.
     const result = await upload(pathname, blob, {
-      access: "public",
+      access: "private",
       handleUploadUrl: "/api/upload/blob",
       contentType,
       clientPayload: JSON.stringify(clientPayload),

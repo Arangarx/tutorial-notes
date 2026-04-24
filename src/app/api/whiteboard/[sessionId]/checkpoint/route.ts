@@ -91,16 +91,16 @@ export async function POST(
 
   try {
     const result = await put(pathname, parsed.eventsJson, {
-      access: "public", // private requires a token to fetch; checkpoints
-                        // are tutor-only and gated by the route handler
-                        // already, but we want the simpler URL for
-                        // resume-from-other-device. The pathname is
-                        // randomised + scoped to the session, so the
-                        // URL is not enumerable.
+      // The Vercel Blob store is configured for PRIVATE access. Even
+      // though checkpoints are tutor-only and route-gated, we MUST use
+      // "private" here because public against a private store is a
+      // hard 400 from Vercel's edge ("Cannot use public access on a
+      // private store"). When/if cross-device resume is built it'll
+      // need to fetch through a tutor-gated proxy route the same way
+      // /api/whiteboard/[id]/events does — see lib/blob.ts header.
+      access: "private",
       contentType: "application/json",
       addRandomSuffix: true,
-      // Allow overwrite isn't relevant since we addRandomSuffix; each
-      // checkpoint gets a fresh URL.
     });
     console.log(
       `[wbCheckpoint.route] rid=${rid} wbsid=${sessionId} schemaVersion=${parsed.schemaVersion} bytes=${parsed.eventsJson.length} url=${result.url}`

@@ -13,13 +13,13 @@ import { assertOwnsWhiteboardSession } from "@/lib/whiteboard-scope";
  * `credentials: "omit"` in the replay player, which means it needs
  * the tutor to be logged in and this route to proxy the content.
  *
- * Why a proxy rather than a public Blob URL:
- *   - Whiteboard events may contain patient-identifying content (names
- *     the tutor writes; student first names in text elements, etc.).
- *   - The Blob is stored with `access: "public"` for CDN reachability
- *     from the tutor's browser, but we never surface that raw URL to
- *     anyone except the logged-in owner. The proxy keeps the URL
- *     opaque in all rendered HTML.
+ * Why a proxy rather than a direct Blob URL:
+ *   - Whiteboard events may contain student-identifying content
+ *     (names the tutor writes; student first names in text elements).
+ *   - The Blob is stored with `access: "private"` so the raw URL
+ *     returns 403 without a Bearer token. This route fetches with
+ *     BLOB_READ_WRITE_TOKEN server-side and streams the bytes back,
+ *     so the URL is never directly reachable from the browser.
  *
  * wbsid= logging: mirrors `rid=` from the audio routes so every
  * event-log download appears in the observability log.

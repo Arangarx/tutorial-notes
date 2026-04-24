@@ -19,9 +19,23 @@ export const dynamic = "force-dynamic";
 
 /**
  * Whisper + LLM can exceed default ~10s serverless limits.
- * Vercel caps this by plan (e.g. 60s Hobby, 300s Pro) — higher values are clamped.
+ *
+ * Budget for a worst-case ~60-minute single audio upload on this page:
+ *   blob download   ~10 s
+ *   ffmpeg split    ~40 s   (3–4 parts for a 60-min recording)
+ *   Whisper calls   ~3–4 min (each ~22 MB chunk runs ~50–70 s sequentially)
+ *   AI structuring  ~15 s
+ *   ─────────────────────
+ *   total           ~5 min
+ *
+ * 300 s (Vercel Pro maximum, also the cap on Hobby) gives us the full budget.
+ * Anything beyond ~60 min would need to be split into a queue/worker pattern.
+ *
+ * This timeout applies to all server actions invoked from this page,
+ * including transcribeAndGenerateAction. Vercel clamps to plan limits, so
+ * a value larger than 300 is safe to set but will be capped.
  */
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export default async function StudentDetailPage({
   params,

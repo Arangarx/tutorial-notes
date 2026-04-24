@@ -115,8 +115,16 @@ export default function AiAssistPanel({ studentId, formRef, enabled, blobEnabled
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[AiAssistPanel] transcribeAndGenerateAction threw:", err);
+        // The Next.js framework error here ("An unexpected response was
+        // received from the server") almost always means the function
+        // exceeded its serverless time budget — a long single recording
+        // hits Whisper N times sequentially and can run several minutes.
+        // Surface that explicitly so the tutor knows why and what to try.
         setError(
-          `Request failed before the server finished (${msg}). On iPhone, try the Upload tab instead of Record, or use Wi‑Fi.`
+          `The server stopped responding before transcription finished (${msg}). ` +
+            "This usually happens with very long single recordings (~60 min+). " +
+            "Try splitting the audio into two shorter files and uploading them separately. " +
+            "On iPhone, try the Upload tab instead of Record, or use Wi-Fi."
         );
       }
     });

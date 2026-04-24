@@ -48,7 +48,7 @@ export function useStudentWhiteboardCanvas(
             }
           );
           onHydrateResult?.(result);
-          updateSceneMergingWithRemote(excalidrawAPI, elements);
+          await updateSceneMergingWithRemote(excalidrawAPI, elements);
         } catch (err) {
           console.warn(
             "[useStudentWhiteboardCanvas] remote scene apply failed:",

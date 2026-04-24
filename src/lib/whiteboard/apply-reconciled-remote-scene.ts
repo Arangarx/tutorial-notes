@@ -10,14 +10,19 @@
  * @see `packages/excalidraw/data/reconcile.ts` in upstream Excalidraw.
  */
 
-import { reconcileElements } from "@excalidraw/excalidraw";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter";
 
-export function updateSceneMergingWithRemote(
+/**
+ * Dynamic import so the tutor/student first paint is not forced to
+ * fully initialize `@excalidraw/excalidraw` before `next/dynamic` loads
+ * the Excalidraw component chunk.
+ */
+export async function updateSceneMergingWithRemote(
   excalidrawAPI: ExcalidrawApiLike,
   remoteElements: ReadonlyArray<ExcalidrawLikeElement | unknown>
-): void {
+): Promise<void> {
+  const { reconcileElements } = await import("@excalidraw/excalidraw");
   const local = excalidrawAPI.getSceneElements() as Parameters<
     typeof reconcileElements
   >[0];

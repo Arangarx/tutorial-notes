@@ -339,18 +339,33 @@ export function StudentWhiteboardClient({
         data-testid="student-whiteboard-canvas-mount"
         style={{
           marginTop: 12,
-          height: "calc(100vh - 260px)",
+          padding: 0,
           minHeight: 420,
+          height: "max(420px, calc(100vh - 260px))",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <ExcalidrawDynamic
-          onChange={onCanvasChange}
-          excalidrawAPI={(api: unknown) => {
-            setExcalidrawAPI(api as ExcalidrawApiLike);
+        <div
+          style={{
+            flex: 1,
+            minHeight: 360,
+            width: "100%",
+            position: "relative",
           }}
-          UIOptions={{ canvasActions: { saveToActiveFile: false } }}
-          validateEmbeddable={validateExcalidrawEmbeddable}
-        />
+        >
+          <ExcalidrawDynamic
+            style={{ width: "100%", height: "100%" }}
+            onChange={onCanvasChange}
+            excalidrawAPI={(api: unknown) => {
+              setExcalidrawAPI(api as ExcalidrawApiLike);
+            }}
+            theme="dark"
+            UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+            validateEmbeddable={validateExcalidrawEmbeddable}
+          />
+        </div>
       </div>
     </div>
   );

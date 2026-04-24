@@ -240,7 +240,7 @@ export function WhiteboardWorkspaceClient({
       }
       applyingRemoteToCanvasRef.current = true;
       try {
-        updateSceneMergingWithRemote(api, elements);
+        await updateSceneMergingWithRemote(api, elements);
       } finally {
         applyingRemoteToCanvasRef.current = false;
       }
@@ -851,27 +851,51 @@ export function WhiteboardWorkspaceClient({
         </Banner>
       )}
 
-      {/* Canvas */}
-      <div style={{ height: "calc(100vh - 280px)", minHeight: 480 }}>
-        <ExcalidrawDynamic
-          onChange={handleExcalidrawChange}
-          excalidrawAPI={(api: unknown) => {
-            // Cast through unknown so the structural ExcalidrawApiLike
-            // shape (defined in insert-asset.ts) doesn't depend on the
-            // upstream branded readonly types — see that file for why.
-            const like = api as ExcalidrawApiLike;
-            excalidrawAPIRef.current = like;
-            setExcalidrawAPI(like);
+      {/* Canvas: explicit card + height chain + fill so Excalidraw isn't 0px tall */}
+      <div
+        className="card"
+        data-testid="tutor-whiteboard-canvas-mount"
+        style={{
+          marginTop: 4,
+          padding: 0,
+          minHeight: 480,
+          height: "max(480px, calc(100vh - 300px))",
+          width: "100%",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 400,
+            width: "100%",
+            position: "relative",
           }}
-          // Hint Excalidraw to use a clean theme; the workspace shell
-          // already provides chrome.
-          UIOptions={{ canvasActions: { saveToActiveFile: false } }}
-          // Allow Desmos hosts in the embed-allowlist. The CSP
-          // `frame-src` directive in `next.config.ts` is the real
-          // safety boundary — this just stops Excalidraw from showing
-          // its "untrusted source" warning panel for Desmos.
-          validateEmbeddable={validateExcalidrawEmbeddable}
-        />
+        >
+          <ExcalidrawDynamic
+            style={{ width: "100%", height: "100%" }}
+            onChange={handleExcalidrawChange}
+            excalidrawAPI={(api: unknown) => {
+              // Cast through unknown so the structural ExcalidrawApiLike
+              // shape (defined in insert-asset.ts) doesn't depend on the
+              // upstream branded readonly types — see that file for why.
+              const like = api as ExcalidrawApiLike;
+              excalidrawAPIRef.current = like;
+              setExcalidrawAPI(like);
+            }}
+            // Match app dark shell so the editor chrome is visible on our bg.
+            theme="dark"
+            UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+            // Allow Desmos hosts in the embed-allowlist. The CSP
+            // `frame-src` directive in `next.config.ts` is the real
+            // safety boundary — this just stops Excalidraw from showing
+            // its "untrusted source" warning panel for Desmos.
+            validateEmbeddable={validateExcalidrawEmbeddable}
+          />
+        </div>
       </div>
 
       {/* Footer status — small text muted, helps debugging mid-session */}

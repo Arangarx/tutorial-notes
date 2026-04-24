@@ -87,7 +87,14 @@ export default async function WhiteboardWorkspacePage({
           activeMs: true,
           lastActiveAt: true,
           eventsBlobUrl: true,
-          student: { select: { id: true, name: true } },
+          // Per-student "Start with recording on?" default — biases the
+          // workspace toggle's initial value (Sarah, Apr 2026 pilot ask).
+          // The workspace client treats this as a SUGGESTED initial
+          // state, not a hard rule; the tutor can always flip per
+          // session.
+          student: {
+            select: { id: true, name: true, recordingDefaultEnabled: true },
+          },
         },
       }),
     { label: "WhiteboardWorkspacePage.detail" }
@@ -144,6 +151,7 @@ export default async function WhiteboardWorkspacePage({
         initialActiveMs={detail.activeMs}
         initialLastActiveAtIso={detail.lastActiveAt?.toISOString() ?? null}
         syncUrl={syncEnabled ? env.WHITEBOARD_SYNC_URL! : null}
+        initialUserWantsRecording={detail.student.recordingDefaultEnabled}
       />
     </div>
   );

@@ -29,6 +29,16 @@ model Student {
   /** Tutor who owns this student (multi-tenant). Null = legacy rows before scoping or env-only admin. */
   adminUserId String?
   adminUser   AdminUser?   @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  /**
+   * Per-student default for the whiteboard "Start recording" toggle
+   * (Sarah, Apr 2026 pilot ask): some students decline recording, so
+   * the workspace should remember that and show Start unticked for
+   * them next time. The tutor can still flip it per session — this is
+   * just the initial state. Defaults to true so the existing behavior
+   * is unchanged for current students until a tutor explicitly opts
+   * one out.
+   */
+  recordingDefaultEnabled Boolean @default(true)
   notes       SessionNote[]
   shareLinks  ShareLink[]
   recordings  SessionRecording[]

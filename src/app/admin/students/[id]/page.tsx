@@ -12,6 +12,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
 import NoteEntrySection from "./NoteEntrySection";
 import { StartWhiteboardSession } from "./whiteboard/StartWhiteboardSession";
+import { StudentRecordingDefaultToggle } from "./StudentRecordingDefaultToggle";
 import { env } from "@/lib/env";
 import { formatDateOnlyDisplay } from "@/lib/date-only";
 
@@ -132,6 +133,12 @@ export default async function StudentDetailPage({
             </p>
           </div>
           <StartWhiteboardSession studentId={student.id} />
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <StudentRecordingDefaultToggle
+            studentId={student.id}
+            initialEnabled={student.recordingDefaultEnabled}
+          />
         </div>
       </div>
 

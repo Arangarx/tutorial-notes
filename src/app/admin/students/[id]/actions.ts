@@ -701,6 +701,33 @@ export async function deleteStudent(studentId: string) {
   revalidatePath("/admin/students");
 }
 
+/**
+ * Persist the per-student default for the whiteboard "Start recording"
+ * toggle. Sarah's pilot ask (Apr 2026): some students decline being
+ * recorded, so the workspace toggle should remember that across
+ * sessions. The tutor can still flip the toggle per session — this
+ * just biases the initial value.
+ *
+ * Trust posture mirrors `renameStudent`:
+ *   - `assertOwnsStudent` is the multi-tenant gate.
+ *   - We don't touch any session-in-progress state; the workspace
+ *     reads this on its NEXT mount, not retroactively. That's
+ *     intentional — flipping the default mid-session must NOT silently
+ *     stop recording for the active session (the tutor would be
+ *     mid-lesson and not expect that).
+ */
+export async function setStudentRecordingDefault(
+  studentId: string,
+  enabled: boolean
+): Promise<void> {
+  await assertOwnsStudent(studentId);
+  await db.student.update({
+    where: { id: studentId },
+    data: { recordingDefaultEnabled: enabled },
+  });
+  revalidatePath(`/admin/students/${studentId}`);
+}
+
 export async function updateNote(noteId: string, studentId: string, formData: FormData) {
   await assertOwnsStudent(studentId);
   const existing = await db.sessionNote.findFirst({ where: { id: noteId, studentId } });

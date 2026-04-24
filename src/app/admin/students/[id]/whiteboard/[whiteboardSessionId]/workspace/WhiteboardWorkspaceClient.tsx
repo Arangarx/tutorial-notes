@@ -93,6 +93,14 @@ type Props = {
   /** Server-stamped wall-clock of the most recent positive heartbeat (ISO), or null if paused. */
   initialLastActiveAtIso: string | null;
   syncUrl: string | null;
+  /**
+   * Per-student "Start whiteboard recording on by default" preference.
+   * Sarah's pilot ask (Apr 2026): the workspace toggle should ship in
+   * the right initial position for each student so she's not unticking
+   * Start every time for students who declined recording. The tutor
+   * can still flip mid-session — this is the initial state only.
+   */
+  initialUserWantsRecording: boolean;
 };
 
 function CanvasPlaceholder({ label }: { label: string }) {
@@ -211,6 +219,7 @@ export function WhiteboardWorkspaceClient({
   initialActiveMs,
   initialLastActiveAtIso,
   syncUrl,
+  initialUserWantsRecording,
 }: Props) {
   const router = useRouter();
 
@@ -277,7 +286,14 @@ export function WhiteboardWorkspaceClient({
   // when the student drops — see `deriveRecordingPresence` below.
   // Sarah's pilot ask (Apr 2026): "I don't think the recording needs
   // to keep going if the student isn't connected."
-  const [userWantsRecording, setUserWantsRecording] = useState(false);
+  //
+  // The initial value comes from `Student.recordingDefaultEnabled`
+  // (also Sarah's ask): students who declined recording ship the
+  // toggle off so the tutor doesn't have to untick Start every time.
+  // The tutor can still flip mid-session.
+  const [userWantsRecording, setUserWantsRecording] = useState(
+    initialUserWantsRecording
+  );
 
   const sync = syncReady ? syncClientRef.current : null;
 

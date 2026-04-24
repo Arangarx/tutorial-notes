@@ -67,6 +67,36 @@ export async function GET(
     );
   }
 
+  // Validate the upstream actually returned JSON before streaming
+  // through. Reasons this matters in practice:
+  //
+  //   - Vercel Blob can return a 200 HTML "your token is wrong /
+  //     this object isn't here anymore" page in certain auth-misconfig
+  //     edge cases. Streaming that body with `Content-Type:
+  //     application/json` causes the browser to JSON.parse `<!DOCTYPE`
+  //     and the player surfaces "Unexpected token '<'" to the tutor.
+  //   - A future migration that swaps storage backends could yield
+  //     200 responses with a different content type.
+  //
+  // We trust ".startsWith('application/json')" because the writer
+  // path (createWhiteboardSession + useWhiteboardRecorder) ALWAYS
+  // sets contentType: "application/json". Any other content type
+  // here is a sign the URL doesn't point at our event-log object —
+  // surface a clean 502 instead of poisoning the player.
+  const upstreamCt = blobRes.headers.get("Content-Type") ?? "";
+  if (!upstreamCt.toLowerCase().startsWith("application/json")) {
+    console.error(
+      `[wbEvents.route] wbsid=${sessionId} rid=${rid} blob returned non-JSON content-type=${upstreamCt}`
+    );
+    return NextResponse.json(
+      {
+        error:
+          "The recording for this session is in an unexpected format and cannot be replayed.",
+      },
+      { status: 502 }
+    );
+  }
+
   const sizeHint = blobRes.headers.get("Content-Length") ?? "?";
   console.log(
     `[wbEvents.route] wbsid=${sessionId} rid=${rid} bytes=${sizeHint} ok`

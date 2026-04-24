@@ -146,9 +146,32 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
       try {
         const res = await fetch(eventsBlobUrl, { credentials: "omit" });
         if (!res.ok) {
-          throw new Error(`Could not load whiteboard events (${res.status}).`);
+          // Best-effort: try to read the proxy's `{ error }` JSON so
+          // we surface the server's friendly copy. If that fails too,
+          // fall back to a generic message — never let the raw HTML
+          // body bubble into the UI.
+          const friendly = await readJsonError(res);
+          throw new Error(
+            friendly ??
+              `Could not load whiteboard events (status ${res.status}).`
+          );
         }
-        const raw = (await res.json()) as { schemaVersion?: unknown };
+        // Defensive parse: read as text first so a non-JSON body
+        // (HTML error page, login redirect, etc.) becomes a clean
+        // human message instead of "Unexpected token '<'..." which
+        // is what tutors used to see when the proxy or Blob returned
+        // HTML 200 (Sarah's Apr 24 repro on a stale session URL).
+        const text = await res.text();
+        let raw: { schemaVersion?: unknown };
+        try {
+          raw = JSON.parse(text) as { schemaVersion?: unknown };
+        } catch {
+          throw new Error(
+            "The recording file isn't a valid whiteboard event log. " +
+              "It may have been deleted, or the storage backend is " +
+              "misconfigured."
+          );
+        }
         if (typeof raw.schemaVersion !== "number") {
           throw new Error("Whiteboard events file is missing schemaVersion.");
         }
@@ -370,6 +393,32 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
   const log = loadState.log;
   const hasAudio = !!audioBlobUrl;
 
+  // Empty-events case: the session row exists and the events.json is
+  // valid (schemaVersion + startedAt + events array), but no events
+  // were ever recorded. This is the steady state for a session that
+  // was ended via the Resume-or-End gate (Sarah's pilot fix, Apr
+  // 2026) — the recorder hook never mounted in that path, so the
+  // empty placeholder events.json is what's on disk.
+  //
+  // Render a clear "nothing was recorded" card instead of an empty
+  // Excalidraw canvas with no explanation. The host page still
+  // shows the notes panel below this, so the tutor isn't dead-ended.
+  if (log.events.length === 0 && !hasAudio) {
+    return (
+      <div className="card" style={{ padding: 16 }} data-testid="wb-replay-empty">
+        <h3 style={{ margin: 0, fontSize: 15 }}>
+          {title ?? "Whiteboard session"}
+        </h3>
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
+          No whiteboard activity was recorded for this session.{" "}
+          {log.durationMs > 0
+            ? `The session was ended (${formatDurationMs(log.durationMs)} elapsed) without any drawing or audio.`
+            : "The session was ended before any drawing or audio was captured."}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "grid", gap: 12 }} data-testid="wb-replay">
       {title && (
@@ -460,6 +509,37 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
 // -------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------
+
+/**
+ * Read the proxy's `{ error: string }` JSON body if present, returning
+ * just the message. Used to surface the server's friendly copy on
+ * non-2xx responses instead of a generic status code.
+ *
+ * Defensive in three ways:
+ *   - Wrapped in try/catch so a non-JSON error body can't crash the
+ *     player's catch handler (which would lose the original error).
+ *   - Returns null on any shape mismatch — the caller falls back to
+ *     a generic "(status N)" message.
+ *   - Reads `res.text()` not `res.json()` so a `Content-Type: text/html`
+ *     error page doesn't second-throw inside the parse.
+ */
+async function readJsonError(res: Response): Promise<string | null> {
+  try {
+    const text = await res.text();
+    const parsed = JSON.parse(text) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "error" in parsed &&
+      typeof (parsed as { error: unknown }).error === "string"
+    ) {
+      return (parsed as { error: string }).error;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function PlayerPlaceholder({ label }: { label: string }) {
   return (

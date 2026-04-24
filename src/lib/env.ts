@@ -42,6 +42,24 @@ const EnvSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().optional()
   ),
+  /**
+   * URL of the excalidraw-room sync server (Phase 1 whiteboard live
+   * collaboration). Format: `wss://wb.example.com` — no trailing
+   * slash. Optional in dev: when unset, the whiteboard runs in
+   * tutor-solo mode (no live student join, recording still works).
+   * Production must set this; the workspace UI reflects the missing
+   * URL with a copy hint pointing at `pipeline-projects/whiteboard-sync/README.md`.
+   */
+  WHITEBOARD_SYNC_URL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z
+      .string()
+      .url()
+      .refine((u) => u.startsWith("wss://") || u.startsWith("ws://"), {
+        message: "must start with wss:// (prod) or ws:// (dev)",
+      })
+      .optional()
+  ),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -63,6 +81,7 @@ const parsed = EnvSchema.safeParse({
   OPERATOR_EMAILS: process.env.OPERATOR_EMAILS,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+  WHITEBOARD_SYNC_URL: process.env.WHITEBOARD_SYNC_URL,
 });
 
 if (!parsed.success) {

@@ -11,6 +11,7 @@ import { ShareLinkRow } from "./ShareLinkRow";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StudentActions } from "./StudentActions";
 import NoteEntrySection from "./NoteEntrySection";
+import { StartWhiteboardSession } from "./whiteboard/StartWhiteboardSession";
 import { env } from "@/lib/env";
 import { formatDateOnlyDisplay } from "@/lib/date-only";
 
@@ -104,6 +105,21 @@ export default async function StudentDetailPage({
       <div className="divider" />
 
       <NoteEntrySection studentId={student.id} aiEnabled={!!env.OPENAI_API_KEY} blobEnabled={!!env.BLOB_READ_WRITE_TOKEN} />
+
+      <div className="divider" />
+
+      <div className="card">
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Whiteboard session</h3>
+            <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+              Live whiteboard with audio recording for tutoring sessions.
+              Generates session notes from what you wrote and said.
+            </p>
+          </div>
+          <StartWhiteboardSession studentId={student.id} />
+        </div>
+      </div>
 
       <div className="divider" />
 

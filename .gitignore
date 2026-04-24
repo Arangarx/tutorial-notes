@@ -11,3 +11,9 @@ test-results/
 .vercel
 .env*.local
 *.tsbuildinfo
+
+# Copied at install time by scripts/copy-pdfjs-worker.mjs.
+# The worker file is large (~1MB) and version-locked to the pdfjs-dist
+# entry in package-lock.json — re-deriving it from node_modules keeps
+# the repo lean and avoids version drift.
+public/pdfjs/

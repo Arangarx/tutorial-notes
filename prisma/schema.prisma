@@ -32,6 +32,7 @@ model Student {
   notes       SessionNote[]
   shareLinks  ShareLink[]
   recordings  SessionRecording[]
+  whiteboardSessions WhiteboardSession[]
 
   @@index([adminUserId])
 }
@@ -81,6 +82,8 @@ model SessionNote {
 
   /** Recordings for this note (0 = no recording, 1 = single, N = multi-segment). */
   recordings SessionRecording[]
+  /** Whiteboard sessions attached to this note (0..N — same note can collect multiple sessions over time). */
+  whiteboardSessions WhiteboardSession[]
   views      NoteView[]
 
   createdAt DateTime  @default(now())
@@ -104,6 +107,17 @@ model SessionRecording {
   /** Order within the note (0-indexed). Determines Part 1 of N labeling. */
   orderIndex Int          @default(0)
 
+  /**
+   * Whiteboard session that produced this recording, if any. The audio
+   * was captured by `useWhiteboardRecorder` (which composes the audio
+   * recorder under the hood) and the strokes for the same time window
+   * live on the WhiteboardSession row's eventsBlobUrl. SetNull so
+   * deleting a whiteboard session leaves the audio recoverable for
+   * attach-to-note flows.
+   */
+  whiteboardSessionId String?
+  whiteboardSession   WhiteboardSession? @relation("WhiteboardAudio", fields: [whiteboardSessionId], references: [id], onDelete: SetNull)
+
   /** Private Vercel Blob URL. Never expose directly — generate signed read URLs at render time. */
   blobUrl         String
   mimeType        String
@@ -116,6 +130,108 @@ model SessionRecording {
   @@index([adminUserId])
   @@index([studentId])
   @@index([noteId])
+  @@index([whiteboardSessionId])
+}
+
+/**
+ * A live whiteboard tutoring session — the canvas + strokes + audio +
+ * (in Phase 2) text/code documents the tutor and student worked through
+ * together. Created when the tutor clicks "Start whiteboard session"
+ * after acknowledging the consent checkbox; finalized on Stop.
+ *
+ * The model is intentionally library-agnostic (see plan guardrail #3):
+ * the events blob is OUR canonical diff log shape (see
+ * `src/lib/whiteboard/event-log.ts`), not Excalidraw's internal shape,
+ * so we can swap canvas libraries later without invalidating recorded
+ * sessions.
+ */
+model WhiteboardSession {
+  id          String    @id @default(uuid())
+  /** Tutor who created the session (multi-tenant ownership). */
+  adminUserId String
+  adminUser   AdminUser @relation("AdminWhiteboards", fields: [adminUserId], references: [id], onDelete: Cascade)
+  /** Student the session was for. */
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  /** Optional link to a note this session produced. SetNull so a note delete leaves the session itself recoverable. */
+  noteId      String?
+  note        SessionNote? @relation(fields: [noteId], references: [id], onDelete: SetNull)
+
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  /**
+   * Guardrail #4 — tutor checked the consent box before starting.
+   * Server-action enforces this on create, the workspace page
+   * re-validates on render. Audit trail.
+   */
+  consentAcknowledged Boolean @default(false)
+
+  /**
+   * Vercel Blob URL for the canonical diff event log (JSON).
+   * NOT the raw Excalidraw scene shape. Schema documented inline
+   * in `src/lib/whiteboard/event-log.ts`. Stored in Blob (not
+   * inline on the row) because event logs grow with session length
+   * and we already own the upload route + retention policy for Blob
+   * storage.
+   */
+  eventsBlobUrl String
+
+  /**
+   * Schema version of the event log on disk. Bumped only when the
+   * canonical format itself changes. The replay player switches on
+   * this from day one (`switch (schemaVersion) { case 1: ... }`)
+   * so old recordings keep playing after a v2.
+   */
+  eventsSchemaVersion Int @default(1)
+
+  /**
+   * Final canvas as a PNG snapshot for thumbnails + multimodal AI.
+   * Optional because exportToBlob can fail on Stop and we never want
+   * a snapshot failure to block the events.json upload.
+   */
+  snapshotBlobUrl String?
+
+  /**
+   * Sarah's explicit ask (blocker #24): session timer that starts when
+   * BOTH parties first connect to the live room and is read by both
+   * clients to compute elapsed. Survives one-side disconnect — the
+   * other side's clock keeps running off this fixed point. Null until
+   * the student joins (tutor-solo sessions stay null and show no timer).
+   */
+  bothConnectedAt DateTime?
+
+  /** Audio segments captured alongside the strokes (parallel to SessionNote.recordings). */
+  audioRecordings SessionRecording[]    @relation("WhiteboardAudio")
+  /** Tokenized join links the tutor mints to invite the student to the live session. */
+  joinTokens      WhiteboardJoinToken[]
+
+  createdAt DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([studentId])
+  @@index([noteId])
+}
+
+/**
+ * Tokenized join link the tutor sends to the student so they can enter
+ * the live whiteboard room without an account. Same trust pattern as
+ * `ShareLink` for parents — the token IS the credential, so it's
+ * scoped to the session, time-limited (default 30 min), and revocable
+ * on tutor Stop.
+ */
+model WhiteboardJoinToken {
+  id                  String   @id @default(uuid())
+  whiteboardSessionId String
+  whiteboardSession   WhiteboardSession @relation(fields: [whiteboardSessionId], references: [id], onDelete: Cascade)
+  token               String   @unique
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([whiteboardSessionId])
+  @@index([token])
 }
 
 model NoteView {
@@ -175,6 +291,7 @@ model AdminUser {
   emailConfigs  EmailConfig[] @relation("AdminEmailConfigs")
   oauthConnections OAuthEmailConnection[] @relation("AdminOAuthConnections")
   recordings    SessionRecording[] @relation("AdminRecordings")
+  whiteboardSessions WhiteboardSession[] @relation("AdminWhiteboards")
 }
 
 // One-time password reset links (hashed token, email delivery).

@@ -266,6 +266,14 @@ Is "started writing mid-session, not ready for parent eyes yet" a real workflow,
 
 ## Weeks, real engineering — this is where the moat lives
 
+- **🚧 Phase 1 in progress (match Wyzant for Sarah + AI wedge)** — See `docs/WHITEBOARD-STATUS.md` for item-by-item status. Core loop delivered:
+  - Excalidraw canvas (real-time student ↔ tutor sync via `excalidraw-room` on Fly.io; E2E AES-GCM-256 encrypted relay).
+  - Whiteboard session recording: stroke event log (canonical diff format, `event-log.ts`) + audio (existing `useWhiteboardRecorder` composing `useAudioRecorder`). Crash recovery via IndexedDB (`checkpoint-store.ts`) + Vercel Blob periodic checkpoints.
+  - PDF/image upload to canvas, MathLive WYSIWYG LaTeX → MathJax SVG, Desmos iframe embed.
+  - Shared `<WhiteboardReplay>` player (audio-synced scene reconstruction, schema-version dispatch, per-client color attribution, asset prefetch).
+  - Review page (`/admin/students/[id]/whiteboard/[sessionId]`) + share-token replay (`/s/[token]/whiteboard/[sessionId]`).
+  - **AI wedge (THE moat feature):** `generateNotesFromWhiteboardSessionAction` — transcribes whiteboard audio via existing Whisper pipeline → `generateSessionNote` → creates draft note linked to the session. `attachWhiteboardToNoteAction` (link/create-blank/detach). 376 Jest tests.
+  - **Still pending before Sarah handoff:** session timer (1.6), acceptance checklist (1.13).
 - **Web-based collaborative whiteboard for online sessions.** Browser-only, works on Chromebook + tutor's desktop. `tldraw` is the leading candidate (open source, real-time sync engine available). Tutor opens a whiteboard "under the student's name" — i.e. attached to a Student record. **Both tutor and student draw on the same canvas in real time.** This is the table-stakes feature to compete with Wyzant's whiteboard.
 - **🎯 Whiteboard session recording (THE differentiator per Sarah).** When tutor opens a whiteboard, prompt: *"Record this whiteboard session?"* If yes:
   - Record **stroke events** as a time-indexed event log (replay as scrubbable video, not flattened video file — much smaller, and lets students step through).
@@ -376,3 +384,175 @@ These are not features — they're things we don't yet know enough to decide. Re
 - **Recording storage:** stroke event log (JSON, small) is easy. Audio (MB-scale per session) needs a real plan: object storage (S3/R2/Vercel Blob), retention policy, cost per tutor. Decide before shipping recording feature publicly.
 - **Audio blob retention policy.** Once a recording is transcribed, there are two options: (a) delete immediately — transcript is in the DB, blob has no further purpose unless we offer re-download; (b) keep for N days (30-day window?) so tutor can re-transcribe or download before it expires. Currently blobs are never cleaned up. Also: student/note delete should cascade to blob deletion. Decide: do we want recordings to be re-downloadable by the tutor? If no, delete on successful transcription. If yes, set a retention window and a cron/cleanup job. Either way, add `deleteBlob()` calls to the note and student delete paths.
 - **Replay video format:** stroke-event-replay (custom player) vs flatten-to-MP4 server-side (familiar to students, larger file). Probably stroke-event-replay first (cheaper, scrubbable, smaller); add MP4 export if students ask.
+
+---
+
+## Reliability gaps — audit findings (2026-04-23)
+
+Audit run as part of the Whiteboard plan rollout — applying the new
+`.cursor/rules/reliability-bar.mdc` 5-axis lens (data durability, clock/ordering,
+race conditions, cross-platform parity, observability) to the existing recorder
++ note flow.
+
+These items are **not** speculative blue-sky risks. They are concrete gaps the
+audit found by reading `useAudioRecorder.ts`, `lib/recording/upload.ts`,
+`lib/ai.ts`, the `actions.ts` server actions, and the `/api/upload/audio`,
+`/api/audio/[recordingId]` routes. Each one is the same class of bug Sarah
+already hit in the earlier rounds (17.9 MB silent drop, slider unmount,
+silence hallucination, iOS Server Action) — caught during planning instead
+of after.
+
+Tagged `[BLOCKER-PROD]` if the gap can lose user data or silently confuse a
+real session; `[FOLLOW-UP]` if it's a polish/scaling concern. BLOCKER-PROD
+items should be on the active path before the next pilot tutor is added.
+
+### Axis 1 — Data durability (recorder)
+
+1. **[BLOCKER-PROD] In-progress segment dies on browser crash / refresh / OOM.**
+   `useAudioRecorder` keeps the live `MediaRecorder`'s chunks in `chunksRef`
+   (in-memory only). A 50-min segment with 49 min recorded + tab crash = 49 min
+   of audio lost. The completed *previous* segments are uploaded to Blob, but
+   the in-progress one has no IndexedDB safety net. Mirror the pattern from
+   the whiteboard plan blocker #1: serialize partial chunks to IndexedDB on a
+   30-second cadence, surface a "Recover unfinished recording from XX:XX?"
+   banner on next mount. Same `findInProgressSession` shape works for both
+   features.
+2. **[BLOCKER-PROD] Upload-failure persistence dies on page navigation.**
+   `uploadAudioWithRetry` retries once. If both attempts fail (genuine network
+   outage, Vercel Blob 5xx storm), the user sees the friendly error — and the
+   blob in browser memory dies the moment they close the tab or click "back to
+   the student page." There is no IndexedDB hold-the-blob-until-retry flow.
+   Sarah-level mitigation: persist the blob to IndexedDB on retry exhaustion,
+   surface a "Upload failed — your recording is saved on this device. [Retry]"
+   banner that survives page navigation in the same browser. Same pattern as
+   whiteboard plan blocker #7.
+3. **[FOLLOW-UP] No cross-device recovery.** Even with IndexedDB persistence,
+   a tutor who switches from desktop to phone mid-session loses the local copy.
+   Acceptable for v1; track if anyone reports it.
+
+### Axis 2 — Clock + ordering correctness
+
+4. **[FOLLOW-UP] Session timer drift on iOS.** Already in BACKLOG as
+   "Session timer stops when phone idles" (line 32). Reframe under reliability
+   gaps so it gets the same triage discipline. Fix is also already proposed
+   (reconcile against `Date.now() - startedAt` on `visibilitychange`); this
+   item just elevates priority.
+5. **[FOLLOW-UP] WebM/MP4 duration is unreliable for scrubbing.** Already in
+   BACKLOG (search "scrub"). Reframe under reliability gaps. The fix is to
+   either re-mux server-side on upload to add a proper `cues` atom or to
+   pre-compute duration via `ffprobe` and store it on `SessionRecording`.
+   Today the share-link audio player can't scrub long segments accurately,
+   which is a real parent-side trust hit.
+
+### Axis 3 — Race conditions on user input
+
+6. **[BLOCKER-PROD] Note save vs transcribe race.** If a tutor types into the
+   note form while `transcribeAndGenerateAction` is running on a fresh
+   recording, the action's `populate()` callback overwrites the form fields
+   when the AI response arrives. Tutor's hand-typed text is silently lost.
+   This is a Sarah-class bug — the loss is silent and the tutor only notices
+   if they remember they had typed something. Fix options: (a) refuse to
+   `populate()` if any field has been edited since the action started (track
+   `dirtyAt` per field), (b) show a "AI is filling — your edits will be
+   merged, not overwritten" indicator, (c) merge AI fields only into empty
+   fields. (a) is the safest default. Test: dirty a field, fire the AI, assert
+   it doesn't clobber.
+7. **[BLOCKER-PROD] Hot-swap mic / headphones unplug mid-record is silent.**
+   `MediaRecorder` keeps producing data even after the underlying device
+   disappears (the stream becomes silence), and `useAudioRecorder` does not
+   subscribe to `MediaStreamTrack.onended` or check `track.readyState`. Sarah
+   yanks her USB headset, the next 20 minutes is silence, Whisper hallucinates,
+   note is empty. Fix: subscribe to `track.onended`, surface a banner "Audio
+   device disconnected — recording paused. Reconnect or change device to
+   continue.", optionally auto-pause the recording. This is the device-side
+   analog of the silence-hallucination guard.
+8. **[FOLLOW-UP] Pause clicked while a segment is mid-finalize.** Possible
+   race between the user-driven Pause and the auto-rollover finalize path.
+   B5's "single-shot rollover guard" (`rolloverInProgressRef`) handles
+   double-rollovers but doesn't gate against a manual Pause arriving in the
+   gap. Low probability; verify with a stress test before declaring fixed.
+9. **[FOLLOW-UP] Browser back button mid-recording.** No `beforeunload` guard
+   exists. Tutor accidentally backs out, recording is lost (would benefit from
+   the IndexedDB persistence in #1). Add a `beforeunload` confirm when
+   `recordingActive`, paired with the IndexedDB safety net so even a confirmed
+   navigation doesn't lose data.
+
+### Axis 4 — Cross-platform parity
+
+10. **[BLOCKER-PROD] iOS Safari real-hardware test matrix is implicit.** The
+    code has iOS-Safari-specific branches (no-timeslice MP4 guard, iOS Server
+    Action HTML response, mic permission re-prompt on rollover) but the
+    "tested on a real iPhone" checklist is in `RECORDER-REFACTOR-STATUS.md`
+    smoke as a single line, not a matrix. Build a real explicit list:
+
+    | Feature                              | Real iOS Safari | jsdom | Playwright WebKit |
+    |---|---|---|---|
+    | Cold mic acquire + record + stop     | Sarah's flow    | yes   | yes               |
+    | Auto-rollover at segment cap         | **untested**    | yes   | opt-in            |
+    | Tab background → return → keep going | **untested**    | no    | no                |
+    | Screen lock → unlock mid-record      | **untested**    | no    | no                |
+    | Hot-swap from speaker to headphones  | **untested**    | no    | no                |
+    | Sign-out → sign-in (BACKLOG line 30) | **broken**      | no    | no                |
+    | Upload of >10 MB blob                | **untested**    | yes   | yes               |
+
+    Each "untested" cell is a Sarah-might-hit-it bug waiting to happen. Either
+    test on real hardware (Andrew has an iPhone) and tick the cell, or add an
+    explicit iOS-Safari "limitations" copy block in the recorder UI so the
+    user knows what we have and haven't validated.
+11. **[FOLLOW-UP] Android Chrome is "passes Sarah's flow" but otherwise
+    untested.** Same matrix as #10 should be filled in for Android Chrome
+    once a second pilot tutor or PO test happens.
+12. **[FOLLOW-UP] Firefox is completely untested.** Lower priority because
+    no current user uses Firefox; flag if anyone ever reports a Firefox
+    issue.
+
+### Axis 5 — Observability
+
+13. **[BLOCKER-PROD] `rid=` coverage is partial.** Audit findings:
+    - **`transcribeAndGenerateAction`** (`actions.ts:291`) — has `rid`
+      logged at begin / ok / returned-ok-false / thrown.
+    - **`/api/upload/audio` route** (`route.ts:66`) — has `rid` on token
+      generation.
+    - **`createNote` / `editNote` / `deleteNote` / `regenerateShareLink` /
+      `revokeShareLink` / `deleteRecording` / `generateNoteFromTextAction`**
+      — no `rid`. When Sarah reports "I saved a note and it disappeared" we
+      have no way to correlate her timestamp to a specific server-side
+      execution. Fix: thread `createActionCorrelationId()` through every
+      mutating server action; log `[<actionName>] rid=<uuid> studentId=<id>
+      noteId=<id> begin/ok/error`. Mechanical; pure Sonnet work.
+    - **Client-side errors** are `console.error`-only with no per-action
+      `rid` echoed back to the user. Add the `Ref:` short-id to non-action
+      client-side errors too where possible.
+14. **[BLOCKER-PROD] No structured per-recording lifecycle log.** A
+    `SessionRecording` row goes through Created → Uploaded → Transcribed →
+    AttachedToNote → Deleted, but each transition logs in a different format
+    (or not at all). Build a single grep-friendly format:
+    `[recording] rid=<id> recordingId=<id> studentId=<id> phase=<created|uploaded|transcribed|attached|deleted> ok=<bool> details=<short>`.
+    Lets us trace any single recording end-to-end through Vercel logs in 30
+    seconds.
+15. **[FOLLOW-UP] Whisper API call observability.** When Whisper returns a
+    junk transcript, the existing silence-hallucination guard catches it but
+    there's no log line saying "Whisper returned <N> chars for a <M>-second
+    segment, looked like silence boilerplate." Add at warn level, link by
+    `rid + recordingId`, so we can correlate "Sarah's note has Topics: 'thanks
+    for watching'" to the exact Whisper response.
+
+### Triage suggestion
+
+| Priority | Items | Rough scope |
+|---|---|---|
+| **Active path next** (BLOCKER-PROD on data loss) | 1, 2, 6, 7 | ~3-5 evenings: IndexedDB persistence module reused by recorder + whiteboard, dirty-field guard on `populate`, `track.onended` subscription. |
+| **Active path soon** (BLOCKER-PROD on observability + iOS) | 10, 13, 14 | ~2-3 evenings: rid plumbing through remaining actions, recording-lifecycle log helper, real iPhone test pass + matrix. |
+| **Track for next sweep** | 3, 4, 5, 8, 9, 11, 12, 15 | Backlog — bring up at next planning when scope allows. |
+
+The first row could plausibly be folded into the whiteboard Phase 1 hook +
+checkpoint-store work — `useWhiteboardRecorder` and `useAudioRecorder` would
+share the IndexedDB persistence module, and the dirty-field + `track.onended`
+patterns can be added to the recorder hook in the same session.
+
+### Why this audit lives in BACKLOG.md and not in a separate doc
+
+These are **recorder-and-note** gaps, and BACKLOG.md is the canonical list
+for the recorder/note flow. The whiteboard feature gets its own
+`docs/WHITEBOARD-STATUS.md` for its sub-phases and audit. Both are governed
+by the same `.cursor/rules/reliability-bar.mdc` standard.

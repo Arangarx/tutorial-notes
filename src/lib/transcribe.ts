@@ -80,10 +80,14 @@ export async function transcribeAudio(
       parts = await splitAudioIntoWhisperParts(buffer, filename, mimeType);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[transcribe] ffmpeg split failed:", msg);
+      console.error(
+        `[transcribe] ffmpeg split failed (file=${filename} bytes=${buffer.byteLength}):`,
+        msg
+      );
       return {
         error:
-          "This recording is too large to prepare for transcription automatically. Try a shorter session, split into multiple recordings, or use Upload with a smaller file.",
+          "This recording is too large to split automatically — the audio processor couldn't prepare it for transcription. " +
+          "Try uploading the recording in two shorter parts, or paste a text summary instead.",
       };
     }
   }

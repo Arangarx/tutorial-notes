@@ -50,6 +50,7 @@ import {
   ACTIVE_PING_STALE_MS,
   computeDisplayActiveMs,
 } from "@/lib/whiteboard/active-time";
+import { deriveRecordingPresence } from "@/lib/whiteboard/recording-presence";
 import { useWhiteboardRecorder } from "@/hooks/useWhiteboardRecorder";
 import { uploadWhiteboardEvents } from "@/lib/whiteboard/upload";
 import {
@@ -269,10 +270,77 @@ export function WhiteboardWorkspaceClient({
   // means replay shows strokes correctly (with the t timeline) but
   // there's no audio to play alongside.
 
-  const [recordingActive, setRecordingActive] = useState(false);
-  const getAudioMs = useAudioMsClock(recordingActive);
+  // `userWantsRecording` is the tutor's explicit intent (Start / Pause
+  // button). The actual `recordingActive` we hand to the recorder hook
+  // is the AND of intent + presence so the recorder pauses itself
+  // when the student drops — see `deriveRecordingPresence` below.
+  // Sarah's pilot ask (Apr 2026): "I don't think the recording needs
+  // to keep going if the student isn't connected."
+  const [userWantsRecording, setUserWantsRecording] = useState(false);
 
   const sync = syncReady ? syncClientRef.current : null;
+
+  // We need `bothPresent` to drive both the active-ping heartbeat AND
+  // the recording gate, but `bothPresent` itself depends on
+  // `recorder.syncConnected` (set by the hook). To break the cycle we
+  // compute `bothPresent` from a peerCount state + sync-client
+  // connection state below, then re-derive recording presence, then
+  // pass the gated `recordingActive` into the recorder. The recorder
+  // hook treats the resulting transitions as ordinary pause/resume —
+  // it already emits the right event-log markers (`pause`, `resume`,
+  // `sync-disconnect`, `sync-reconnect`) for replay attribution.
+
+  // Peer count (= number of OTHER peers; >=1 means a student joined).
+  const [peerCount, setPeerCount] = useState(0);
+
+  useEffect(() => {
+    if (!sync) return;
+    const off = sync.onPeerCountChange((count) => {
+      setPeerCount(count);
+    });
+    return off;
+  }, [sync]);
+
+  // Tutor's own socket state. We poll the sync client directly here
+  // rather than via `recorder.syncConnected` because the recorder
+  // hook receives the gated `recordingActive` and we'd create a
+  // dependency cycle. The polling cost is trivial (1 boolean read /s).
+  const [tutorSyncConnected, setTutorSyncConnected] = useState(false);
+
+  useEffect(() => {
+    if (!sync) {
+      setTutorSyncConnected(false);
+      return;
+    }
+    const off1 = sync.onConnect(() => setTutorSyncConnected(true));
+    const off2 = sync.onDisconnect(() => setTutorSyncConnected(false));
+    setTutorSyncConnected(sync.isConnected());
+    return () => {
+      off1();
+      off2();
+    };
+  }, [sync]);
+
+  const bothPresent = tutorSyncConnected && peerCount >= 1;
+
+  // Sticky latch: once both parties have ever met this session, we
+  // know future "auto-pauses" are reconnect waits, not first-join
+  // waits. Lets the banner say "we'll resume automatically" instead
+  // of "we'll start when they join" after the first meet.
+  const everBothPresentRef = useRef(false);
+  if (bothPresent && !everBothPresentRef.current) {
+    everBothPresentRef.current = true;
+  }
+
+  const presence = deriveRecordingPresence({
+    userWantsRecording,
+    bothPresent,
+    syncEnabled: !!syncUrl,
+    everBothPresent: everBothPresentRef.current,
+  });
+  const recordingActive = presence.recordingActive;
+
+  const getAudioMs = useAudioMsClock(recordingActive);
 
   const recorder = useWhiteboardRecorder({
     whiteboardSessionId,
@@ -321,23 +389,9 @@ export function WhiteboardWorkspaceClient({
     number | null
   >(initialLastActiveAtIso ? new Date(initialLastActiveAtIso).getTime() : null);
 
-  // Sync-client peer count (= number of OTHER peers; >=1 means a
-  // student joined). Combined with the tutor's own socket state to
-  // decide "both present".
-  const [peerCount, setPeerCount] = useState(0);
-
-  useEffect(() => {
-    if (!sync) return;
-    const off = sync.onPeerCountChange((count) => {
-      setPeerCount(count);
-    });
-    return off;
-  }, [sync]);
-
-  // True when the tutor's workspace is connected AND at least one
-  // other peer (the student) is in the room. Drives the heartbeat,
-  // the timer math, and the "Student connected" pill.
-  const bothPresent = recorder.syncConnected && peerCount >= 1;
+  // `bothPresent` and `peerCount` are computed above so the recording
+  // gate (`deriveRecordingPresence`) can read them. They drive both
+  // the heartbeat below and the "Student connected" pill.
 
   // POST a single ping. Returns the server's new state on success.
   const pingActive = useCallback(
@@ -537,7 +591,7 @@ export function WhiteboardWorkspaceClient({
     try {
       // Stop recording first so the buildFinalEventsJson call captures
       // the post-pause state including any in-flight diff frames.
-      setRecordingActive(false);
+      setUserWantsRecording(false);
       // Tiny tick to let the recorder's recordingActive effect run + flush.
       await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
@@ -597,11 +651,11 @@ export function WhiteboardWorkspaceClient({
         }}
       >
         <div className="row" style={{ gap: 8, alignItems: "center" }}>
-          {!recordingActive ? (
+          {!userWantsRecording ? (
             <button
               type="button"
               className="btn primary"
-              onClick={() => setRecordingActive(true)}
+              onClick={() => setUserWantsRecording(true)}
               disabled={endingState === "ending"}
               data-testid="wb-start-recording"
             >
@@ -611,7 +665,7 @@ export function WhiteboardWorkspaceClient({
             <button
               type="button"
               className="btn"
-              onClick={() => setRecordingActive(false)}
+              onClick={() => setUserWantsRecording(false)}
               data-testid="wb-pause-recording"
             >
               Pause recording
@@ -630,8 +684,8 @@ export function WhiteboardWorkspaceClient({
         <div style={{ flex: 1 }} />
         <div className="row" style={{ gap: 8, alignItems: "center" }}>
           <StatusPill
-            color={recordingActive ? "red" : "grey"}
-            label={recordingActive ? "Recording" : "Paused"}
+            color={presence.pillColor}
+            label={presence.pillLabel}
             testId="wb-recording-pill"
           />
           {syncUrl && (
@@ -639,14 +693,14 @@ export function WhiteboardWorkspaceClient({
               color={
                 bothPresent
                   ? "green"
-                  : recorder.syncConnected
+                  : tutorSyncConnected
                     ? "amber"
                     : "grey"
               }
               label={
                 bothPresent
                   ? "Student connected"
-                  : recorder.syncConnected
+                  : tutorSyncConnected
                     ? "Awaiting student"
                     : "Connecting…"
               }
@@ -697,6 +751,11 @@ export function WhiteboardWorkspaceClient({
       </div>
 
       {/* Banners */}
+      {presence.bannerMessage && (
+        <Banner tone="warning" testId="wb-recording-autopause-banner">
+          {presence.bannerMessage}
+        </Banner>
+      )}
       {copyState === "error" && copyError && (
         <Banner tone="error" onDismiss={() => setCopyState("idle")}>
           Could not copy student link: {copyError}
@@ -829,10 +888,12 @@ function Banner({
   tone,
   children,
   onDismiss,
+  testId,
 }: {
   tone: "error" | "warning" | "info";
   children: React.ReactNode;
   onDismiss?: () => void;
+  testId?: string;
 }) {
   const palette = {
     error: { bg: "rgba(220,38,38,0.12)", border: "rgba(220,38,38,0.4)" },
@@ -842,6 +903,7 @@ function Banner({
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
+      data-testid={testId}
       className="card"
       style={{
         padding: "10px 14px",

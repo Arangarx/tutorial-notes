@@ -46,6 +46,10 @@ import {
   generateEncryptionKeyBase64Url,
   type WhiteboardSyncClient,
 } from "@/lib/whiteboard/sync-client";
+import {
+  ACTIVE_PING_STALE_MS,
+  computeDisplayActiveMs,
+} from "@/lib/whiteboard/active-time";
 import { useWhiteboardRecorder } from "@/hooks/useWhiteboardRecorder";
 import { uploadWhiteboardEvents } from "@/lib/whiteboard/upload";
 import {
@@ -82,6 +86,10 @@ type Props = {
   adminUserId: string;
   startedAtIso: string;
   bothConnectedAtIso: string | null;
+  /** Server-truth accumulated billable ms at SSR time. */
+  initialActiveMs: number;
+  /** Server-stamped wall-clock of the most recent positive heartbeat (ISO), or null if paused. */
+  initialLastActiveAtIso: string | null;
   syncUrl: string | null;
 };
 
@@ -198,6 +206,8 @@ export function WhiteboardWorkspaceClient({
   adminUserId,
   startedAtIso,
   bothConnectedAtIso,
+  initialActiveMs,
+  initialLastActiveAtIso,
   syncUrl,
 }: Props) {
   const router = useRouter();
@@ -275,44 +285,177 @@ export function WhiteboardWorkspaceClient({
   });
 
   // ---------------------------------------------------------------
-  // Live timer (counts continuously while session is open)
+  // Live timer — Wyzant-style "both connected" billable clock
   // ---------------------------------------------------------------
   //
-  // Sarah's explicit ask: counter that survives disconnects and starts
-  // when BOTH parties are connected. `bothConnectedAtIso` is stamped
-  // server-side when the student opens the join link
-  // (`/w/[joinToken]/page.tsx`). Until the student joins, it's null
-  // and the timer counts from `startedAtIso` as a fallback.
+  // Sarah's expectation (Apr 2026): the timer should PAUSE whenever
+  // the student isn't in the room. Wall-clock from a single anchor
+  // doesn't satisfy that — a student dropping off mid-session would
+  // keep the clock running.
   //
-  // We store the anchor in state (not just use the prop) so the poll
-  // below can update it without a full page reload.
+  // Implementation:
+  //   1. Watch sync-client peer count + tutor's own connection state
+  //      to decide "are both parties present right now?".
+  //   2. While both-present, POST a heartbeat to /active-ping every
+  //      ~10s. The server adds (now - lastActiveAt) to the persisted
+  //      `activeMs` (with a staleness cap so a closed tab doesn't
+  //      retroactively bill).
+  //   3. On flip to NOT-present, fire a `false` ping immediately.
+  //   4. On window unload, fire a `false` beacon so the segment
+  //      closes even if the tutor closes the tab abruptly.
+  //   5. Display `activeMs (server) + (now - lastActiveAt)` while
+  //      we're locally active so the pill keeps ticking between
+  //      heartbeats; otherwise display the server value verbatim.
+  //   6. On mount and every ~30s, GET /timer-anchor to stay in sync
+  //      with cross-device tutor refreshes.
+  //
+  // Legacy `bothConnectedAt` is still stamped (by the student page on
+  // first open + by the active-ping route on first positive ping)
+  // so the read-only review surface keeps showing "first overlap
+  // at HH:MM" — but the displayed live timer no longer reads from it.
+  void bothConnectedAtIso; // kept on the prop boundary for SSR; not used here
 
-  const [timerAnchorIso, setTimerAnchorIso] = useState<string | null>(
-    bothConnectedAtIso
+  // Server-truth state, refreshed by the polling effect below.
+  const [serverActiveMs, setServerActiveMs] = useState<number>(initialActiveMs);
+  const [serverLastActiveAtMs, setServerLastActiveAtMs] = useState<
+    number | null
+  >(initialLastActiveAtIso ? new Date(initialLastActiveAtIso).getTime() : null);
+
+  // Sync-client peer count (= number of OTHER peers; >=1 means a
+  // student joined). Combined with the tutor's own socket state to
+  // decide "both present".
+  const [peerCount, setPeerCount] = useState(0);
+
+  useEffect(() => {
+    if (!sync) return;
+    const off = sync.onPeerCountChange((count) => {
+      setPeerCount(count);
+    });
+    return off;
+  }, [sync]);
+
+  // True when the tutor's workspace is connected AND at least one
+  // other peer (the student) is in the room. Drives the heartbeat,
+  // the timer math, and the "Student connected" pill.
+  const bothPresent = recorder.syncConnected && peerCount >= 1;
+
+  // POST a single ping. Returns the server's new state on success.
+  const pingActive = useCallback(
+    async (active: boolean): Promise<void> => {
+      try {
+        const res = await fetch(
+          `/api/whiteboard/${whiteboardSessionId}/active-ping`,
+          {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ active }),
+            keepalive: true, // best-effort persist on tab close
+          }
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          activeMs: number;
+          lastActiveAt: string | null;
+        };
+        setServerActiveMs(data.activeMs);
+        setServerLastActiveAtMs(
+          data.lastActiveAt ? new Date(data.lastActiveAt).getTime() : null
+        );
+      } catch {
+        // Network hiccup — the next heartbeat will retry. We never
+        // surface ping failures to the UI; they're an internal
+        // accounting concern, not a tutor-facing error.
+      }
+    },
+    [whiteboardSessionId]
   );
 
-  // Poll for bothConnectedAt every 5 s until we have it.
+  // Fire a ping immediately whenever bothPresent flips, and run a
+  // ~10s heartbeat while it stays true.
   useEffect(() => {
-    if (timerAnchorIso) return; // already set — stop polling
-    const poll = async () => {
+    if (!syncUrl) return; // tutor-solo mode — no billable timer
+    void pingActive(bothPresent);
+    if (!bothPresent) return;
+    const HEARTBEAT_MS = 10_000;
+    const id = setInterval(() => {
+      void pingActive(true);
+    }, HEARTBEAT_MS);
+    return () => clearInterval(id);
+  }, [bothPresent, pingActive, syncUrl]);
+
+  // Best-effort "I'm leaving" beacon. sendBeacon is the only way to
+  // get a reliable POST off during pagehide on most browsers; we fall
+  // back to fetch with keepalive when sendBeacon is unavailable.
+  useEffect(() => {
+    if (!syncUrl) return;
+    const url = `/api/whiteboard/${whiteboardSessionId}/active-ping`;
+    const beacon = () => {
+      const payload = JSON.stringify({ active: false });
+      try {
+        if (
+          typeof navigator !== "undefined" &&
+          typeof navigator.sendBeacon === "function"
+        ) {
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon(url, blob);
+          return;
+        }
+      } catch {
+        // fall through to fetch
+      }
+      try {
+        void fetch(url, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        });
+      } catch {
+        // best-effort only; ignore failures on unload
+      }
+    };
+    window.addEventListener("pagehide", beacon);
+    window.addEventListener("beforeunload", beacon);
+    return () => {
+      window.removeEventListener("pagehide", beacon);
+      window.removeEventListener("beforeunload", beacon);
+    };
+  }, [syncUrl, whiteboardSessionId]);
+
+  // Periodic refetch of the server-truth state. Catches: another
+  // device for the same tutor wrote (cross-device sessions are
+  // single-tutor in practice but the refetch is cheap insurance),
+  // and any drift between the client's optimistic state and what
+  // landed in the DB.
+  useEffect(() => {
+    if (!syncUrl) return;
+    const ANCHOR_REFRESH_MS = 30_000;
+    const refresh = async () => {
       try {
         const res = await fetch(
           `/api/whiteboard/${whiteboardSessionId}/timer-anchor`,
           { credentials: "same-origin" }
         );
         if (!res.ok) return;
-        const data = (await res.json()) as { bothConnectedAt: string | null };
-        if (data.bothConnectedAt) {
-          setTimerAnchorIso(data.bothConnectedAt);
+        const data = (await res.json()) as {
+          activeMs?: number;
+          lastActiveAt?: string | null;
+        };
+        if (typeof data.activeMs === "number") setServerActiveMs(data.activeMs);
+        if (data.lastActiveAt !== undefined) {
+          setServerLastActiveAtMs(
+            data.lastActiveAt ? new Date(data.lastActiveAt).getTime() : null
+          );
         }
       } catch {
-        // network hiccup — silently retry on next interval
+        // ignore — next tick will retry
       }
     };
-    void poll();
-    const id = setInterval(poll, 5000);
+    const id = setInterval(refresh, ANCHOR_REFRESH_MS);
     return () => clearInterval(id);
-  }, [timerAnchorIso, whiteboardSessionId]);
+  }, [syncUrl, whiteboardSessionId]);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -320,12 +463,24 @@ export function WhiteboardWorkspaceClient({
     return () => clearInterval(id);
   }, []);
 
-  const liveTimerMs = useMemo(() => {
-    const anchor = timerAnchorIso
-      ? new Date(timerAnchorIso).getTime()
-      : new Date(startedAtIso).getTime();
-    return Math.max(0, now - anchor);
-  }, [timerAnchorIso, startedAtIso, now]);
+  const liveTimerMs = useMemo(
+    () =>
+      computeDisplayActiveMs({
+        nowMs: now,
+        serverActiveMs,
+        serverLastActiveAtMs,
+        clientActiveNow: bothPresent,
+        staleThresholdMs: ACTIVE_PING_STALE_MS,
+      }),
+    [now, serverActiveMs, serverLastActiveAtMs, bothPresent]
+  );
+
+  // Whether to show the "(waiting for student)" qualifier. True until
+  // we've ever accumulated billable time AND we're not currently
+  // both-present. (Once any time is on the clock, we just show the
+  // number — pausing is implied by the digits not advancing.)
+  const showWaitingForStudent =
+    !!syncUrl && serverActiveMs === 0 && !bothPresent;
 
   // ---------------------------------------------------------------
   // Copy student link
@@ -481,9 +636,19 @@ export function WhiteboardWorkspaceClient({
           />
           {syncUrl && (
             <StatusPill
-              color={recorder.syncConnected ? "green" : "amber"}
+              color={
+                bothPresent
+                  ? "green"
+                  : recorder.syncConnected
+                    ? "amber"
+                    : "grey"
+              }
               label={
-                recorder.syncConnected ? "Student connected" : "Awaiting student"
+                bothPresent
+                  ? "Student connected"
+                  : recorder.syncConnected
+                    ? "Awaiting student"
+                    : "Connecting…"
               }
               testId="wb-sync-pill"
             />
@@ -491,9 +656,9 @@ export function WhiteboardWorkspaceClient({
           <StatusPill
             color="blue"
             label={
-              timerAnchorIso
-                ? `Session: ${formatDuration(liveTimerMs)}`
-                : `Session: ${formatDuration(liveTimerMs)} (waiting for student)`
+              showWaitingForStudent
+                ? `Session: ${formatDuration(liveTimerMs)} (waiting for student)`
+                : `Session: ${formatDuration(liveTimerMs)}`
             }
             testId="wb-timer"
           />

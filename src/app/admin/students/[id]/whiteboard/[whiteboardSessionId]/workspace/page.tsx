@@ -84,6 +84,8 @@ export default async function WhiteboardWorkspacePage({
           id: true,
           startedAt: true,
           bothConnectedAt: true,
+          activeMs: true,
+          lastActiveAt: true,
           eventsBlobUrl: true,
           student: { select: { id: true, name: true } },
         },
@@ -139,6 +141,8 @@ export default async function WhiteboardWorkspacePage({
         adminUserId={session.adminUserId}
         startedAtIso={detail.startedAt.toISOString()}
         bothConnectedAtIso={detail.bothConnectedAt?.toISOString() ?? null}
+        initialActiveMs={detail.activeMs}
+        initialLastActiveAtIso={detail.lastActiveAt?.toISOString() ?? null}
         syncUrl={syncEnabled ? env.WHITEBOARD_SYNC_URL! : null}
       />
     </div>

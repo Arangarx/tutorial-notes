@@ -3,16 +3,26 @@ import { db, withDbRetry } from "@/lib/db";
 import { assertOwnsWhiteboardSession } from "@/lib/whiteboard-scope";
 
 /**
- * Returns the `bothConnectedAt` timestamp for a whiteboard session.
+ * Returns the live-timer state for a whiteboard session.
  *
  * GET /api/whiteboard/[sessionId]/timer-anchor
  *
+ * Response shape:
+ *   {
+ *     bothConnectedAt: string | null,  // legacy "first overlap" anchor
+ *     activeMs:        number,         // accumulated billable ms
+ *     lastActiveAt:    string | null,  // server's last "still active" stamp
+ *   }
+ *
  * Auth: admin session (same as /events and /snapshot).
  *
- * The tutor's workspace polls this every 5 s while bothConnectedAt is
- * null, then stops once it gets a value. This lets the live timer
- * anchor shift from "session started" to "student joined" without a
- * full page reload.
+ * The tutor's workspace fetches this on mount AND every ~30s after
+ * to stay in sync with the server-truth billable timer (the heartbeat
+ * route /active-ping is the writer; this is the reader).
+ *
+ * The legacy `bothConnectedAt` is kept in the response for
+ * backwards compatibility with older clients still polling the v1
+ * shape — the displayed timer now reads `activeMs` instead.
  */
 export async function GET(
   _req: Request,
@@ -26,16 +36,24 @@ export async function GET(
     () =>
       db.whiteboardSession.findUnique({
         where: { id: sessionId },
-        select: { bothConnectedAt: true },
+        select: {
+          bothConnectedAt: true,
+          activeMs: true,
+          lastActiveAt: true,
+        },
       }),
     { label: "timerAnchor.findUnique" }
   );
 
   return NextResponse.json(
-    { bothConnectedAt: row?.bothConnectedAt?.toISOString() ?? null },
+    {
+      bothConnectedAt: row?.bothConnectedAt?.toISOString() ?? null,
+      activeMs: row?.activeMs ?? 0,
+      lastActiveAt: row?.lastActiveAt?.toISOString() ?? null,
+    },
     {
       headers: {
-        // Short cache: the value starts null and flips once, so 3s is fine.
+        // Per-tutor live values; never cache.
         "Cache-Control": "no-store",
       },
     }

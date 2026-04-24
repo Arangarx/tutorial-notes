@@ -199,8 +199,38 @@ model WhiteboardSession {
    * clients to compute elapsed. Survives one-side disconnect — the
    * other side's clock keeps running off this fixed point. Null until
    * the student joins (tutor-solo sessions stay null and show no timer).
+   *
+   * Kept for backwards compatibility + the read-only review surface
+   * ("session anchor" in case a tutor wants to know when the student
+   * first showed up). NOT used as the displayed timer anymore — see
+   * `activeMs` / `lastActiveAt` for the Wyzant-style billable clock.
    */
   bothConnectedAt DateTime?
+
+  /**
+   * Wyzant-style billable time: total milliseconds during which BOTH
+   * parties were connected to the live room. Persisted by heartbeats
+   * from the tutor's workspace via POST /api/whiteboard/[id]/active-ping.
+   *
+   * Sarah's expectation (Apr 2026): "the timer should pause when the
+   * student isn't there". Storing the accumulated value (rather than
+   * computing wall-clock from `bothConnectedAt`) means a student drop /
+   * tutor refresh / brief network blip never adds time the parties
+   * weren't actually together. Survives reload because the server is
+   * the source of truth — the workspace re-fetches on mount.
+   */
+  activeMs Int @default(0)
+
+  /**
+   * Server-observed timestamp of the last "still active" heartbeat.
+   * Null when the workspace last reported `active=false` (student
+   * disconnected, tab closed, tutor refreshed). The next ping with
+   * `active=true` adds (now - lastActiveAt) to `activeMs` ONLY if the
+   * gap is below the staleness threshold (~30s) — bigger gaps are
+   * treated as a fresh segment so a closed tab doesn't bill until the
+   * next heartbeat.
+   */
+  lastActiveAt DateTime?
 
   /** Audio segments captured alongside the strokes (parallel to SessionNote.recordings). */
   audioRecordings SessionRecording[]    @relation("WhiteboardAudio")

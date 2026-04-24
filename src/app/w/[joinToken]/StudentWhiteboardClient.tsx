@@ -8,7 +8,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
-import { useWhiteboardPageScrollLock } from "@/hooks/useWhiteboardPageScrollLock";
 import { useParams } from "next/navigation";
 import {
   createWhiteboardSyncClient,
@@ -78,7 +77,6 @@ export function StudentWhiteboardClient({
   const [now, setNow] = useState(() => Date.now());
 
   useWindowScrollToTopOnMount();
-  useWhiteboardPageScrollLock();
 
   useEffect(() => {
     const k = readKeyFromHash();
@@ -210,24 +208,11 @@ export function StudentWhiteboardClient({
   }
 
   return (
-    <div
-      className="container"
-      style={{
-        maxWidth: 1200,
-        width: "100%",
-        margin: "0 auto",
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div className="container" style={{ maxWidth: 1200 }}>
       <div
         className="card"
         style={{
           display: "flex",
-          flexShrink: 0,
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
@@ -306,7 +291,6 @@ export function StudentWhiteboardClient({
           data-testid="student-material-safeguards-banner"
           style={{
             marginTop: 10,
-            flexShrink: 0,
             padding: "10px 14px",
             background: "rgba(234,179,8,0.12)",
             border: "1px solid rgba(234,179,8,0.4)",
@@ -345,13 +329,7 @@ export function StudentWhiteboardClient({
 
       <div
         className="row"
-        style={{
-          marginTop: 8,
-          flexWrap: "wrap",
-          gap: 8,
-          alignItems: "center",
-          flexShrink: 0,
-        }}
+        style={{ marginTop: 8, flexWrap: "wrap", gap: 8, alignItems: "center" }}
       >
         <UndoRedoButtons disabled={!connected} />
       </div>
@@ -361,34 +339,18 @@ export function StudentWhiteboardClient({
         data-testid="student-whiteboard-canvas-mount"
         style={{
           marginTop: 12,
-          flex: 1,
-          minHeight: 0,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          overscrollBehavior: "none",
+          height: "calc(100vh - 260px)",
+          minHeight: 420,
         }}
       >
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            minWidth: 0,
-            position: "relative",
+        <ExcalidrawDynamic
+          onChange={onCanvasChange}
+          excalidrawAPI={(api: unknown) => {
+            setExcalidrawAPI(api as ExcalidrawApiLike);
           }}
-        >
-          <div style={{ position: "absolute", inset: 0 }}>
-            <ExcalidrawDynamic
-              onChange={onCanvasChange}
-              excalidrawAPI={(api: unknown) => {
-                setExcalidrawAPI(api as ExcalidrawApiLike);
-              }}
-              UIOptions={{ canvasActions: { saveToActiveFile: false } }}
-              validateEmbeddable={validateExcalidrawEmbeddable}
-            />
-          </div>
-        </div>
+          UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+          validateEmbeddable={validateExcalidrawEmbeddable}
+        />
       </div>
     </div>
   );

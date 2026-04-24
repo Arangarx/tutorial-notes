@@ -113,19 +113,10 @@ export default async function StudentWhiteboardPage({
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <StudentWhiteboardClient
-        whiteboardSessionId={tokenRow.whiteboardSession.id}
-        syncUrl={env.WHITEBOARD_SYNC_URL}
-        tutorName={tutorName}
-      />
-    </div>
+    <StudentWhiteboardClient
+      whiteboardSessionId={tokenRow.whiteboardSession.id}
+      syncUrl={env.WHITEBOARD_SYNC_URL}
+      tutorName={tutorName}
+    />
   );
 }

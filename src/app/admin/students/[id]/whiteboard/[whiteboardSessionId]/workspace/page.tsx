@@ -105,19 +105,7 @@ export default async function WhiteboardWorkspacePage({
   const syncEnabled = Boolean(env.WHITEBOARD_SYNC_URL);
 
   return (
-    <div
-      className="container"
-      style={{
-        maxWidth: 1280,
-        width: "100%",
-        flex: 1,
-        minHeight: 0,
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div className="container" style={{ maxWidth: 1280 }}>
       <div
         className="row"
         style={{
@@ -126,7 +114,6 @@ export default async function WhiteboardWorkspacePage({
           marginBottom: 12,
           flexWrap: "wrap",
           gap: 8,
-          flexShrink: 0,
         }}
       >
         <div>
@@ -155,36 +142,26 @@ export default async function WhiteboardWorkspacePage({
         )}
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
+      <WorkspaceResumeGate
+        whiteboardSessionId={detail.id}
+        studentId={detail.student.id}
+        startedAtIso={detail.startedAt.toISOString()}
+        initialLastActiveAtIso={detail.lastActiveAt?.toISOString() ?? null}
+        syncEnabled={syncEnabled}
       >
-        <WorkspaceResumeGate
+        <WhiteboardWorkspaceClient
           whiteboardSessionId={detail.id}
           studentId={detail.student.id}
+          studentName={detail.student.name}
+          adminUserId={session.adminUserId}
           startedAtIso={detail.startedAt.toISOString()}
+          bothConnectedAtIso={detail.bothConnectedAt?.toISOString() ?? null}
+          initialActiveMs={detail.activeMs}
           initialLastActiveAtIso={detail.lastActiveAt?.toISOString() ?? null}
-          syncEnabled={syncEnabled}
-        >
-          <WhiteboardWorkspaceClient
-            whiteboardSessionId={detail.id}
-            studentId={detail.student.id}
-            studentName={detail.student.name}
-            adminUserId={session.adminUserId}
-            startedAtIso={detail.startedAt.toISOString()}
-            bothConnectedAtIso={detail.bothConnectedAt?.toISOString() ?? null}
-            initialActiveMs={detail.activeMs}
-            initialLastActiveAtIso={detail.lastActiveAt?.toISOString() ?? null}
-            syncUrl={syncEnabled ? env.WHITEBOARD_SYNC_URL! : null}
-            initialUserWantsRecording={detail.student.recordingDefaultEnabled}
-          />
-        </WorkspaceResumeGate>
-      </div>
+          syncUrl={syncEnabled ? env.WHITEBOARD_SYNC_URL! : null}
+          initialUserWantsRecording={detail.student.recordingDefaultEnabled}
+        />
+      </WorkspaceResumeGate>
     </div>
   );
 }

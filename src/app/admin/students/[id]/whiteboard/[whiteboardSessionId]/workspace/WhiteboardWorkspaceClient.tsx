@@ -497,39 +497,64 @@ export function WhiteboardWorkspaceClient({
     };
   }, [pageList, syncUrl]);
 
-  const selectTutorPage = useCallback((nextId: string) => {
-    if (nextId === activePageIdRef.current) return;
-    const api = excalidrawAPIRef.current;
-    if (!api) {
+  const recorder = useWhiteboardRecorder({
+    whiteboardSessionId,
+    adminUserId,
+    studentId,
+    startedAtIso,
+    getAudioMs,
+    recordingActive,
+    sync,
+    applyRemoteToCanvas,
+    getScenePageIdForBroadcast: () => activePageIdRef.current,
+    getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
+  });
+  const { flushThrottledFrameNow, broadcastScenePageSnapshot } = recorder;
+
+  const selectTutorPage = useCallback(
+    (nextId: string) => {
+      if (nextId === activePageIdRef.current) return;
+      const api = excalidrawAPIRef.current;
+      if (!api) {
+        activePageIdRef.current = nextId;
+        setActivePageId(nextId);
+        return;
+      }
+      // Drain the throttled onChange+sync for the old tab *before* we bump
+      // `activePageIdRef` — otherwise a flush after the switch can label page-1
+      // pixels with `scenePageId` p2 and peers paint the wrong tab.
+      flushThrottledFrameNow();
+      const from = activePageIdRef.current;
+      // `getSceneElements()` can still reflect the *previous* tab for a frame when
+      // the user flips pages faster than Excalidraw flushes. onChange is keyed by
+      // `activePageIdRef` and already mirrors the true per-tab state.
+      if (pageDataRef.current[from] === undefined) {
+        pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+      }
+      const next =
+        (pageDataRef.current[nextId] as
+          | ReadonlyArray<ExcalidrawLikeElement>
+          | undefined) ?? [];
       activePageIdRef.current = nextId;
+      pageSwitchProgrammaticRef.current += 1;
+      try {
+        api.updateScene({ elements: next as ReadonlyArray<unknown> });
+      } finally {
+        setTimeout(() => {
+          pageSwitchProgrammaticRef.current = Math.max(
+            0,
+            pageSwitchProgrammaticRef.current - 1
+          );
+        }, 0);
+      }
       setActivePageId(nextId);
-      return;
-    }
-    const from = activePageIdRef.current;
-    // `getSceneElements()` can still reflect the *previous* tab for a frame when
-    // the user flips pages faster than Excalidraw flushes. onChange is keyed by
-    // `activePageIdRef` and already mirrors the true per-tab state.
-    if (pageDataRef.current[from] === undefined) {
-      pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
-    }
-    const next =
-      (pageDataRef.current[nextId] as
-        | ReadonlyArray<ExcalidrawLikeElement>
-        | undefined) ?? [];
-    activePageIdRef.current = nextId;
-    pageSwitchProgrammaticRef.current += 1;
-    try {
-      api.updateScene({ elements: next as ReadonlyArray<unknown> });
-    } finally {
-      setTimeout(() => {
-        pageSwitchProgrammaticRef.current = Math.max(
-          0,
-          pageSwitchProgrammaticRef.current - 1
-        );
-      }, 0);
-    }
-    setActivePageId(nextId);
-  }, []);
+      broadcastScenePageSnapshot({
+        elements: next,
+        scenePageId: nextId,
+      });
+    },
+    [broadcastScenePageSnapshot, flushThrottledFrameNow]
+  );
 
   const addTutorPage = useCallback(() => {
     const api = excalidrawAPIRef.current;
@@ -539,6 +564,7 @@ export function WhiteboardWorkspaceClient({
         pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
       }
     }
+    flushThrottledFrameNow();
     const n = pageList.length + 1;
     const newId = `p${Date.now()}`;
     setPageList((pl) => [...pl, { id: newId, title: `Page ${n}` }]);
@@ -556,22 +582,10 @@ export function WhiteboardWorkspaceClient({
           );
         }, 0);
       }
+      broadcastScenePageSnapshot({ elements: [], scenePageId: newId });
     }
     setActivePageId(newId);
-  }, [pageList.length]);
-
-  const recorder = useWhiteboardRecorder({
-    whiteboardSessionId,
-    adminUserId,
-    studentId,
-    startedAtIso,
-    getAudioMs,
-    recordingActive,
-    sync,
-    applyRemoteToCanvas,
-    getScenePageIdForBroadcast: () => activePageIdRef.current,
-    getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
-  });
+  }, [broadcastScenePageSnapshot, flushThrottledFrameNow, pageList.length]);
 
   // ---------------------------------------------------------------
   // Live timer — Wyzant-style "both connected" billable clock

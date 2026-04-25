@@ -292,6 +292,21 @@ export type UseWhiteboardRecorderReturn = {
    */
   postGateAutoCanvas: ResumeResult | null;
   acknowledgePostGateAutoCanvas: () => void;
+  /**
+   * Drop the trailing-edge diff timer and flush now. Call **before** changing
+   * `activePageId` on a board tab so the last throttled frame still tags the
+   * page you are leaving.
+   */
+  flushThrottledFrameNow: () => void;
+  /**
+   * Send a scene to sync immediately with an explicit `scenePageId` (call
+   * right after a programmatic `updateScene` from a tab switch so peers do not
+   * briefly see the new tab tagged with the old page’s pixels).
+   */
+  broadcastScenePageSnapshot: (args: {
+    elements: ReadonlyArray<ExcalidrawLikeElement>;
+    scenePageId: string;
+  }) => void;
 };
 
 export type ResumeAvailability = {
@@ -494,6 +509,40 @@ export function useWhiteboardRecorder(
       }
     },
     [flushPendingDiff]
+  );
+
+  const flushThrottledFrameNow = useCallback(() => {
+    if (diffTimerRef.current !== null) {
+      clearTimeout(diffTimerRef.current);
+      diffTimerRef.current = null;
+    }
+    flushPendingDiff();
+  }, [flushPendingDiff]);
+
+  const broadcastScenePageSnapshot = useCallback(
+    (args: {
+      elements: ReadonlyArray<ExcalidrawLikeElement>;
+      scenePageId: string;
+    }) => {
+      const client = syncRef.current;
+      pendingFrameRef.current = args.elements;
+      pendingScenePageIdRef.current = args.scenePageId;
+      if (!client) return;
+      try {
+        const baseExtras = getWireBroadcastExtrasRef.current?.() ?? undefined;
+        const extras: WhiteboardWireBroadcastExtras =
+          baseExtras != null
+            ? { ...baseExtras, scenePageId: args.scenePageId }
+            : { scenePageId: args.scenePageId };
+        client.broadcastScene(args.elements, extras);
+      } catch (err) {
+        console.warn(
+          `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcastScenePageSnapshot failed:`,
+          (err as Error)?.message ?? String(err)
+        );
+      }
+    },
+    [whiteboardSessionId]
   );
 
   const ingestRemote = useCallback(
@@ -897,5 +946,7 @@ export function useWhiteboardRecorder(
     checkpointMountResolved,
     postGateAutoCanvas,
     acknowledgePostGateAutoCanvas,
+    flushThrottledFrameNow,
+    broadcastScenePageSnapshot,
   };
 }

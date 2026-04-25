@@ -237,6 +237,16 @@ export function WhiteboardWorkspaceClient({
   );
   const excalidrawAPIRef = useRef<ExcalidrawApiLike | null>(null);
   const applyingRemoteToCanvasRef = useRef(false);
+  /**
+   * Ref-count for programmatic `updateScene` when switching/adding board tabs.
+   * This is separate from `applyingRemoteToCanvasRef` (used by async remote
+   * merge) so a trailing Excalidraw onChange in a microtask cannot smear the
+   * *previous* tab into the new `pageDataRef` key after a fast page flip.
+   * We decrement from `setTimeout(0)` (macrotask) so microtask onChange runs
+   * while this count is still positive. A stack covers several clicks before the first
+   * timeout runs.
+   */
+  const pageSwitchProgrammaticRef = useRef(0);
   /** Per-tab sessionStorage draft — see `session-scene-draft.ts`. */
   const sceneDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHydratedSessionDraftRef = useRef(false);
@@ -495,18 +505,27 @@ export function WhiteboardWorkspaceClient({
       return;
     }
     const from = activePageIdRef.current;
-    const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
-    pageDataRef.current[from] = current;
+    // `getSceneElements()` can still reflect the *previous* tab for a frame when
+    // the user flips pages faster than Excalidraw flushes. onChange is keyed by
+    // `activePageIdRef` and already mirrors the true per-tab state.
+    if (pageDataRef.current[from] === undefined) {
+      pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+    }
     const next =
       (pageDataRef.current[nextId] as
         | ReadonlyArray<ExcalidrawLikeElement>
         | undefined) ?? [];
     activePageIdRef.current = nextId;
-    applyingRemoteToCanvasRef.current = true;
+    pageSwitchProgrammaticRef.current += 1;
     try {
       api.updateScene({ elements: next as ReadonlyArray<unknown> });
     } finally {
-      applyingRemoteToCanvasRef.current = false;
+      setTimeout(() => {
+        pageSwitchProgrammaticRef.current = Math.max(
+          0,
+          pageSwitchProgrammaticRef.current - 1
+        );
+      }, 0);
     }
     setActivePageId(nextId);
   }, []);
@@ -515,19 +534,27 @@ export function WhiteboardWorkspaceClient({
     const api = excalidrawAPIRef.current;
     if (api) {
       const from = activePageIdRef.current;
-      const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
-      pageDataRef.current[from] = current;
+      if (pageDataRef.current[from] === undefined) {
+        pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+      }
     }
     const n = pageList.length + 1;
     const newId = `p${Date.now()}`;
     setPageList((pl) => [...pl, { id: newId, title: `Page ${n}` }]);
     pageDataRef.current[newId] = [];
     activePageIdRef.current = newId;
-    applyingRemoteToCanvasRef.current = true;
-    try {
-      api?.updateScene({ elements: [] });
-    } finally {
-      applyingRemoteToCanvasRef.current = false;
+    if (api) {
+      pageSwitchProgrammaticRef.current += 1;
+      try {
+        api.updateScene({ elements: [] });
+      } finally {
+        setTimeout(() => {
+          pageSwitchProgrammaticRef.current = Math.max(
+            0,
+            pageSwitchProgrammaticRef.current - 1
+          );
+        }, 0);
+      }
     }
     setActivePageId(newId);
   }, [pageList.length]);
@@ -902,6 +929,7 @@ export function WhiteboardWorkspaceClient({
       files?: Readonly<Record<string, BinaryFileFromExcalidraw>>
     ) => {
       if (applyingRemoteToCanvasRef.current) return;
+      if (pageSwitchProgrammaticRef.current > 0) return;
       const els = elements as ReadonlyArray<ExcalidrawLikeElement>;
       pageDataRef.current[activePageIdRef.current] = [...els];
       onLocalElementSnapshot(elements);

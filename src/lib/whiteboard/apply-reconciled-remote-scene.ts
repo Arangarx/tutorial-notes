@@ -83,3 +83,34 @@ export async function updateSceneMergingWithRemote(
     elements: merged as ReadonlyArray<unknown>,
   });
 }
+
+/**
+ * Reconcile a peer snapshot into a page bucket without reading the current
+ * Excalidraw canvas. Used when the tutor is viewing page A and the
+ * student’s strokes target page B (multi-page).
+ */
+export async function mergeScenesReconciled(
+  localElements: ReadonlyArray<ExcalidrawLikeElement | unknown>,
+  remoteElements: ReadonlyArray<ExcalidrawLikeElement | unknown>,
+  appState: unknown,
+  options?: MergeRemoteSceneOptions
+): Promise<ReadonlyArray<ExcalidrawLikeElement>> {
+  const { reconcileElements } = await import("@excalidraw/excalidraw");
+  const { shouldDropRemoteElement } = options ?? {};
+  const filteredRemote: ExcalidrawLikeElement[] = shouldDropRemoteElement
+    ? (remoteElements as ExcalidrawLikeElement[]).filter((el) => {
+        const id = el.id ?? elementIdOf(el);
+        if (typeof id !== "string") return true;
+        return !shouldDropRemoteElement(id);
+      })
+    : (remoteElements as ExcalidrawLikeElement[]);
+  if (filteredRemote.length === 0 && localElements.length > 0) {
+    return localElements as ExcalidrawLikeElement[];
+  }
+  const local = localElements as Parameters<typeof reconcileElements>[0];
+  return reconcileElements(
+    local,
+    filteredRemote as unknown as Parameters<typeof reconcileElements>[1],
+    appState as Parameters<typeof reconcileElements>[2]
+  ) as ReadonlyArray<ExcalidrawLikeElement>;
+}

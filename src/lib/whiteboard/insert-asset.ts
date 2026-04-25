@@ -486,6 +486,11 @@ export async function insertPdfPagesOnCanvas(args: InsertAssetCommonArgs & {
   }> = [];
 
   for (let i = 0; i < pages.length; i++) {
+    // Space out token requests slightly on long PDFs — pairs with upload
+    // retries in `upload.ts` for "Failed to retrieve the client token".
+    if (i > 0) {
+      await new Promise<void>((r) => setTimeout(r, 75));
+    }
     const page = pages[i];
     const pagePath = `${filename || "document"}-p${page.pageIndex}.png`;
     const upload = await uploadWhiteboardAsset({
@@ -548,8 +553,8 @@ export async function insertPdfPagesOnCanvas(args: InsertAssetCommonArgs & {
   const existing = excalidrawAPI.getSceneElements() as ReadonlyArray<unknown>;
   excalidrawAPI.updateScene({ elements: [...existing, ...newElements] });
   try {
-    excalidrawAPI.scrollToContent?.([newElements[0]], {
-      fitToContent: false,
+    excalidrawAPI.scrollToContent?.(newElements as never, {
+      fitToContent: true,
       animate: true,
     });
   } catch {

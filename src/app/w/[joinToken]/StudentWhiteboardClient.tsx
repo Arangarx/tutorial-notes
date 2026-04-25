@@ -196,20 +196,21 @@ export function StudentWhiteboardClient({
     []
   );
 
-  const [tutorPageLabel, setTutorPageLabel] = useState<string | null>(null);
-  const [independentView, setIndependentView] = useState(false);
+  const [independentView, setIndependentView] = useState(true);
 
-  const { onCanvasChange: studentSyncOnCanvas } = useStudentWhiteboardCanvas(
+  const {
+    onCanvasChange: studentSyncOnCanvas,
+    snapToTutorView,
+    getPageBroadcastExtras,
+    pageList,
+    activePageId: studentActivePageId,
+  } = useStudentWhiteboardCanvas(
     syncClient,
     excalidrawAPI,
     onRemoteHydrateResult,
     {
       joinToken: pathJoinToken,
       followTutorView: !independentView,
-      onTutorPageMeta: (p) => {
-        const t = p.pageList.find((x) => x.id === p.activePageId)?.title;
-        setTutorPageLabel(t ? `Tutor: ${t}` : null);
-      },
     }
   );
 
@@ -243,12 +244,13 @@ export function StudentWhiteboardClient({
             fileIdToAssetUrl: studentNativeImageFileIdToAssetUrlRef.current,
             inFlight: studentNativeImageUploadInFlightRef.current,
           });
-          if (patched) {
+            if (patched) {
             const live = excalidrawAPIRef.current;
             if (live) {
               live.updateScene({ elements: patched });
               syncClient?.broadcastScene(
-                patched as ReadonlyArray<ExcalidrawLikeElement>
+                patched as ReadonlyArray<ExcalidrawLikeElement>,
+                getPageBroadcastExtras()
               );
             }
           }
@@ -260,7 +262,7 @@ export function StudentWhiteboardClient({
         }
       })();
     },
-    [studentSyncOnCanvas, whiteboardSessionId, studentId, pathJoinToken, syncClient]
+    [studentSyncOnCanvas, whiteboardSessionId, studentId, pathJoinToken, syncClient, getPageBroadcastExtras]
   );
 
   if (keyMissing) {
@@ -378,13 +380,74 @@ export function StudentWhiteboardClient({
               checked={!independentView}
               onChange={(e) => setIndependentView(!e.target.checked)}
             />
-            Follow tutor’s view and page (on by default)
+            Keep pan &amp; zoom synced to tutor
           </label>
-          {tutorPageLabel && (
-            <span className="muted" style={{ fontSize: 12 }}>
-              {tutorPageLabel}
+          <button
+            type="button"
+            onClick={() => snapToTutorView()}
+            style={{
+              padding: "4px 10px",
+              fontSize: 12,
+              borderRadius: 6,
+              border: "1px solid rgba(148,163,184,0.5)",
+              background: "rgba(15,23,42,0.04)",
+              cursor: "pointer",
+            }}
+          >
+            Match tutor’s view now
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="card"
+        data-testid="student-board-pages-strip"
+        style={{
+          marginTop: 4,
+          padding: "10px 14px",
+          background: "rgba(16, 185, 129, 0.06)",
+          border: "1px solid rgba(16, 185, 129, 0.22)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+          }}
+        >
+          Board pages
+        </div>
+        <p
+          className="muted"
+          style={{ margin: "6px 0 8px", fontSize: 12, lineHeight: 1.45, maxWidth: 720 }}
+        >
+          These tabs mirror your tutor’s board. The highlighted page is the one
+          you’re working on; your lines stay on that page and won’t overwrite the
+          tutor’s other tabs.
+        </p>
+        <div
+          className="row"
+          style={{ flexWrap: "wrap", gap: 6, alignItems: "center" }}
+        >
+          {pageList.map((p) => (
+            <span
+              key={p.id}
+              className="btn"
+              style={{
+                display: "inline-block",
+                pointerEvents: "none",
+                opacity: p.id === studentActivePageId ? 1 : 0.75,
+                fontWeight: p.id === studentActivePageId ? 700 : 400,
+                borderWidth: p.id === studentActivePageId ? 2 : 1,
+                borderColor: "var(--border-strong, #999)",
+                cursor: "default",
+              }}
+              aria-current={p.id === studentActivePageId ? "true" : undefined}
+            >
+              {p.title}
             </span>
-          )}
+          ))}
         </div>
       </div>
 

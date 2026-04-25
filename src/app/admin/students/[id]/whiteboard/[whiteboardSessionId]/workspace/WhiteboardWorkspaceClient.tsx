@@ -77,9 +77,16 @@ import {
 } from "@/lib/whiteboard/ensure-native-image-asset-urls-for-sync";
 import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import { resolveWhiteboardAssetReadUrl } from "@/lib/whiteboard/resolve-asset-read-url";
-import type { WhiteboardWireBroadcastExtras } from "@/lib/whiteboard/sync-client";
+import type {
+  WhiteboardWireBroadcastExtras,
+  WhiteboardWirePage,
+} from "@/lib/whiteboard/sync-client";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
-import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
+import {
+  mergeScenesReconciled,
+  updateSceneMergingWithRemote,
+} from "@/lib/whiteboard/apply-reconciled-remote-scene";
+import type { RemoteSceneIngestLogHint } from "@/hooks/useWhiteboardRecorder";
 import { toExcalidraw } from "@/lib/whiteboard/excalidraw-adapter";
 import {
   clearSessionSceneDraft,
@@ -267,9 +274,18 @@ export function WhiteboardWorkspaceClient({
   >("none");
 
   const applyRemoteToCanvas = useCallback(
-    async (elements: ReadonlyArray<ExcalidrawLikeElement>) => {
+    async (
+      elements: ReadonlyArray<ExcalidrawLikeElement>,
+      details?: { page?: WhiteboardWirePage }
+    ): Promise<RemoteSceneIngestLogHint | void> => {
       const api = excalidrawAPIRef.current;
       if (!api) return;
+      // Student wire payloads should tag the board page. Legacy: single-
+      // canvas clients behave like page 1 so we do not smear p1 into the
+      // tutor’s currently open tab.
+      const targetId = details?.page?.activePageId ?? "p1";
+      const curActive = activePageIdRef.current;
+
       const result = await hydrateRemoteImageFilesForScene(
         api,
         elements,
@@ -292,14 +308,34 @@ export function WhiteboardWorkspaceClient({
           prev === "load" ? "load" : "missing"
         );
       }
-      applyingRemoteToCanvasRef.current = true;
-      try {
-        await updateSceneMergingWithRemote(api, elements, {
-          shouldDropRemoteElement,
-        });
-      } finally {
-        applyingRemoteToCanvasRef.current = false;
+      const appState = api.getAppState() as unknown;
+
+      if (targetId === curActive) {
+        applyingRemoteToCanvasRef.current = true;
+        try {
+          await updateSceneMergingWithRemote(api, elements, {
+            shouldDropRemoteElement,
+          });
+          const merged = api.getSceneElements() as ExcalidrawLikeElement[];
+          pageDataRef.current[curActive] = merged;
+          return { recordScene: merged };
+        } finally {
+          applyingRemoteToCanvasRef.current = false;
+        }
       }
+
+      const prev =
+        (pageDataRef.current[targetId] as
+          | ReadonlyArray<ExcalidrawLikeElement>
+          | undefined) ?? [];
+      const merged = await mergeScenesReconciled(
+        prev,
+        elements,
+        appState,
+        { shouldDropRemoteElement }
+      );
+      pageDataRef.current[targetId] = merged;
+      return { record: "skip" };
     },
     [shouldDropRemoteElement, whiteboardSessionId]
   );
@@ -938,6 +974,69 @@ export function WhiteboardWorkspaceClient({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {/* Board pages — own row so it isn’t buried in the recording/toolbar cluster */}
+      <div
+        className="card"
+        data-testid="wb-tutor-page-strip"
+        style={{
+          padding: "12px 14px",
+          background: "rgba(37, 99, 235, 0.06)",
+          border: "1px solid rgba(37, 99, 235, 0.22)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+            color: "var(--text, inherit)",
+          }}
+        >
+          Board pages
+        </div>
+        <p
+          className="muted"
+          style={{ margin: "6px 0 10px", fontSize: 12, lineHeight: 1.45, maxWidth: 720 }}
+        >
+          Switch pages like separate worksheets. Inserts (PDF, image) land on
+          the page you have open. When live sync is on, the student sees which
+          page you are on.
+        </p>
+        <div
+          className="row"
+          style={{
+            gap: 6,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {pageList.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="btn"
+              onClick={() => void selectTutorPage(p.id)}
+              disabled={endingState === "ending" || p.id === activePageId}
+              style={
+                p.id === activePageId
+                  ? { fontWeight: 700, borderWidth: 2, borderColor: "var(--border-strong, #999)" }
+                  : undefined
+              }
+            >
+              {p.title}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="btn primary"
+            onClick={addTutorPage}
+            disabled={endingState === "ending" || pageList.length >= 20}
+          >
+            + Add page
+          </button>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div
         className="card"
@@ -1015,47 +1114,6 @@ export function WhiteboardWorkspaceClient({
             testId="wb-timer"
           />
         </div>
-        {syncUrl && (
-          <div
-            className="row"
-            style={{
-              width: "100%",
-              flexBasis: "100%",
-              gap: 6,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-            data-testid="wb-tutor-page-strip"
-          >
-            <span className="muted" style={{ fontSize: 12 }}>
-              Pages
-            </span>
-            {pageList.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="btn"
-                onClick={() => void selectTutorPage(p.id)}
-                disabled={endingState === "ending" || p.id === activePageId}
-                style={
-                  p.id === activePageId
-                    ? { fontWeight: 700, borderWidth: 2, borderColor: "var(--border-strong, #999)" }
-                    : undefined
-                }
-              >
-                {p.title}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="btn"
-              onClick={addTutorPage}
-              disabled={endingState === "ending" || pageList.length >= 20}
-            >
-              + Page
-            </button>
-          </div>
-        )}
         <UndoRedoButtons disabled={endingState === "ending"} />
         <PdfImageUploadButton
           excalidrawAPI={excalidrawAPI}

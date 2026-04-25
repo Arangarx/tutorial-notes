@@ -18,45 +18,66 @@ function safeName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_") || "blob.bin";
 }
 
+const TOKEN_RETRYABLE =
+  /client token|Failed to retrieve|token|rate|limit|5\d\d|network|fetch|timeout|AbortError/i;
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function uploadGeneric(
   pathname: string,
   blob: Blob,
   contentType: string,
   clientPayload: Record<string, unknown> & { joinToken?: string }
 ): Promise<WhiteboardUploadResult> {
-  try {
-    const { upload } = await import("@vercel/blob/client");
-    // access: "private" is REQUIRED — the project's Vercel Blob store
-    // is configured for private access (same store backing audio).
-    // Passing "public" returns a 400 from Vercel's edge with no CORS
-    // headers, surfacing in the browser as a misleading
-    // "blocked by CORS policy" error. Whiteboard reads always go
-    // through the /api/whiteboard/[id]/{events,snapshot} proxy
-    // routes which use BLOB_READ_WRITE_TOKEN to fetch the bytes
-    // server-side, so private storage works end-to-end. See
-    // src/lib/recording/upload.ts for the parallel audio rationale.
-    const result = await upload(pathname, blob, {
-      access: "private",
-      handleUploadUrl: "/api/upload/blob",
-      contentType,
-      clientPayload: JSON.stringify(clientPayload),
-    });
-    return { ok: true, blobUrl: result.url, sizeBytes: blob.size };
-  } catch (err) {
-    const raw = err instanceof Error ? err.message : String(err);
-    if (typeof console !== "undefined") {
-      console.error("[whiteboard.upload] upload failed", {
-        pathname,
-        contentType,
-        sizeBytes: blob.size,
-        rawError: raw,
-      });
+  const { upload } = await import("@vercel/blob/client");
+  // Long PDF runs issue many back-to-back token requests; Vercel can
+  // occasionally fail a single "retrieve the client token" call — retry
+  // with light backoff (same path as the audio uploader’s resilience).
+  const backoffs = [0, 400, 1_200];
+  let lastRaw = "Unknown error";
+  for (let attempt = 0; attempt < backoffs.length; attempt++) {
+    if (backoffs[attempt]! > 0) {
+      await sleepMs(backoffs[attempt]!);
     }
-    return {
-      ok: false,
-      error: `Could not upload to whiteboard storage. Please try again. (${raw})`,
-    };
+    try {
+      const result = await upload(pathname, blob, {
+        access: "private",
+        handleUploadUrl: "/api/upload/blob",
+        contentType,
+        clientPayload: JSON.stringify(clientPayload),
+      });
+      return { ok: true, blobUrl: result.url, sizeBytes: blob.size };
+    } catch (err) {
+      lastRaw = err instanceof Error ? err.message : String(err);
+      const retry = attempt < backoffs.length - 1 && TOKEN_RETRYABLE.test(lastRaw);
+      if (typeof console !== "undefined" && !retry) {
+        console.error("[whiteboard.upload] upload failed", {
+          pathname,
+          contentType,
+          sizeBytes: blob.size,
+          rawError: lastRaw,
+          attempt,
+        });
+      } else if (typeof console !== "undefined" && retry) {
+        console.warn("[whiteboard.upload] retrying after token/client error", {
+          attempt: attempt + 1,
+          rawError: lastRaw,
+        });
+      }
+      if (!retry) {
+        return {
+          ok: false,
+          error: `Could not upload to whiteboard storage. Please try again. (${lastRaw})`,
+        };
+      }
+    }
   }
+  return {
+    ok: false,
+    error: `Could not upload to whiteboard storage. Please try again. (${lastRaw})`,
+  };
 }
 
 /**

@@ -9,9 +9,10 @@ import { assertOwnsWhiteboardSession } from "@/lib/whiteboard-scope";
  * GET /api/whiteboard/[sessionId]/events
  *
  * Auth: admin session only — same ownership check as every other
- * whiteboard server action. The events blob was recorded with
- * `credentials: "omit"` in the replay player, which means it needs
- * the tutor to be logged in and this route to proxy the content.
+ * whiteboard server action. The replay player must call this same-
+ * origin URL with cookies (`credentials: "include"`) so the tutor
+ * session is sent; the route then proxies the private Blob with the
+ * server token.
  *
  * Why a proxy rather than a direct Blob URL:
  *   - Whiteboard events may contain student-identifying content

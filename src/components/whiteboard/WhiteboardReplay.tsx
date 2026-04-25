@@ -144,7 +144,13 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
     setLoadState({ kind: "loading" });
     (async () => {
       try {
-        const res = await fetch(eventsBlobUrl, { credentials: "omit" });
+        // Same-origin admin proxy (`/api/whiteboard/.../events`) requires the
+        // tutor session cookie. `omit` strips cookies; the server then cannot
+        // authenticate and may return HTML → JSON.parse fails with the generic
+        // "isn't a valid whiteboard event log" message (Apr 24 2026 repro).
+        const res = await fetch(eventsBlobUrl, {
+          credentials: credentialsForReplayFetch(eventsBlobUrl),
+        });
         if (!res.ok) {
           // Best-effort: try to read the proxy's `{ error }` JSON so
           // we surface the server's friendly copy. If that fails too,
@@ -509,6 +515,23 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
 // -------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------
+
+/**
+ * Admin review uses a same-origin API route that authenticates via cookie.
+ * Public share pages may pass absolute Blob or token URLs — those still use
+ * `omit` so we do not leak cookies cross-site.
+ */
+function credentialsForReplayFetch(url: string): RequestCredentials {
+  if (typeof window === "undefined") return "omit";
+  if (url.startsWith("/")) return "include";
+  try {
+    const resolved = new URL(url, window.location.href);
+    if (resolved.origin === window.location.origin) return "include";
+  } catch {
+    // ignore
+  }
+  return "omit";
+}
 
 /**
  * Read the proxy's `{ error: string }` JSON body if present, returning

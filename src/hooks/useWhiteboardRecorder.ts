@@ -103,7 +103,11 @@ import {
   type SaveCheckpointResult,
 } from "@/lib/whiteboard/checkpoint-store";
 import { consumeSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
-import type { WhiteboardWireBroadcastExtras } from "@/lib/whiteboard/sync-client";
+import type {
+  WhiteboardWireBroadcastExtras,
+  WhiteboardWireFollow,
+  WhiteboardWirePage,
+} from "@/lib/whiteboard/sync-client";
 
 void _audioOwnerKey;
 
@@ -150,10 +154,22 @@ const IDB_CHECKPOINT_INTERVAL_MS = 30_000;
  * and broadcasts canonical scene deltas. The workspace component
  * mounts the sync client and passes it in.
  */
+/**
+ * `applyRemoteToCanvas` can return this so `ingestRemote` knows whether to
+ * diff the on-screen scene into the event log. Off-page peer edits skip.
+ */
+export type RemoteSceneIngestLogHint =
+  | { recordScene: ReadonlyArray<ExcalidrawLikeElement> }
+  | { record: "skip" };
+
 export type WhiteboardSyncClientLike = {
   /** Subscribe to scene snapshots from peer clients (the student). */
   onRemoteScene: (
-    cb: (peerId: string, elements: ReadonlyArray<ExcalidrawLikeElement>) => void
+    cb: (
+      peerId: string,
+      elements: ReadonlyArray<ExcalidrawLikeElement>,
+      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+    ) => void
   ) => () => void;
   /** Subscribe to connection-up notifications. */
   onConnect: (cb: () => void) => () => void;
@@ -206,8 +222,9 @@ export type UseWhiteboardRecorderOptions = {
    * log but the tutor never sees student strokes / shared images.
    */
   applyRemoteToCanvas?: (
-    elements: ReadonlyArray<ExcalidrawLikeElement>
-  ) => void | Promise<void>;
+    elements: ReadonlyArray<ExcalidrawLikeElement>,
+    details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+  ) => void | Promise<void | RemoteSceneIngestLogHint>;
   /**
    * Optional: attach follow + page data to throttled E2E sync (v2 wire).
    */
@@ -462,9 +479,10 @@ export function useWhiteboardRecorder(
   );
 
   const ingestRemote = useCallback(
-    (
+    async (
       peerId: string,
-      elements: ReadonlyArray<ExcalidrawLikeElement>
+      elements: ReadonlyArray<ExcalidrawLikeElement>,
+      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
     ) => {
       // A peer (often the student) can emit `[]` before they have the tutor
       // canvas — same issue as in `updateSceneMergingWithRemote` (reconcile
@@ -488,20 +506,38 @@ export function useWhiteboardRecorder(
         };
       });
       const paint = applyRemoteToCanvasRef.current;
+      let pending: ReadonlyArray<ExcalidrawLikeElement> | null = null;
       if (paint) {
-        void Promise.resolve(paint(stamped)).catch((err) => {
+        try {
+          const hint = (await Promise.resolve(
+            paint(
+              stamped,
+              details
+            ) as void | RemoteSceneIngestLogHint | Promise<void | RemoteSceneIngestLogHint>
+          )) as void | RemoteSceneIngestLogHint | undefined;
+          if (hint && "record" in hint && hint.record === "skip") {
+            return;
+          }
+          if (hint && "recordScene" in hint) {
+            pending = hint.recordScene;
+          } else {
+            pending = stamped;
+          }
+        } catch (err) {
           console.warn(
             `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} applyRemoteToCanvas failed:`,
             (err as Error)?.message ?? String(err)
           );
-        });
+          return;
+        }
+      } else {
+        pending = stamped;
       }
-      // Funnel through the same throttled diff so a flurry of remote
-      // strokes doesn't outpace local strokes in the log. Treat as a
-      // pending frame (same trailing-edge debounce).
-      pendingFrameRef.current = stamped;
-      if (diffTimerRef.current === null) {
-        diffTimerRef.current = setTimeout(flushPendingDiff, DIFF_INTERVAL_MS);
+      if (pending !== null) {
+        pendingFrameRef.current = pending;
+        if (diffTimerRef.current === null) {
+          diffTimerRef.current = setTimeout(flushPendingDiff, DIFF_INTERVAL_MS);
+        }
       }
     },
     [flushPendingDiff, whiteboardSessionId]
@@ -616,8 +652,8 @@ export function useWhiteboardRecorder(
       );
     });
 
-    const offRemote = client.onRemoteScene((peerId, elements) => {
-      ingestRemote(peerId, elements);
+    const offRemote = client.onRemoteScene((peerId, elements, d) => {
+      void ingestRemote(peerId, elements, d);
     });
 
     return () => {

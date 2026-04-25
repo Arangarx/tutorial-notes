@@ -79,7 +79,7 @@ import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote
 import { resolveWhiteboardAssetReadUrl } from "@/lib/whiteboard/resolve-asset-read-url";
 import type {
   WhiteboardWireBroadcastExtras,
-  WhiteboardWirePage,
+  WhiteboardWireRemoteDetails,
 } from "@/lib/whiteboard/sync-client";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 import {
@@ -286,14 +286,13 @@ export function WhiteboardWorkspaceClient({
   const applyRemoteToCanvas = useCallback(
     async (
       elements: ReadonlyArray<ExcalidrawLikeElement>,
-      details?: { page?: WhiteboardWirePage }
+      details?: Pick<WhiteboardWireRemoteDetails, "page" | "scenePageId">
     ): Promise<RemoteSceneIngestLogHint | void> => {
       const api = excalidrawAPIRef.current;
       if (!api) return;
-      // Student wire payloads should tag the board page. Legacy: single-
-      // canvas clients behave like page 1 so we do not smear p1 into the
-      // tutor’s currently open tab.
-      const targetId = details?.page?.activePageId ?? "p1";
+      // `scenePageId` is which page this `elements` snapshot belongs to (may
+      // lag the tutor’s visible tab when the wire diff is throttled).
+      const targetId = details?.scenePageId ?? details?.page?.activePageId ?? "p1";
       const curActive = activePageIdRef.current;
 
       const result = await hydrateRemoteImageFilesForScene(
@@ -493,6 +492,8 @@ export function WhiteboardWorkspaceClient({
         activePageId: activePageIdRef.current,
         pageList: pageList.map((p) => ({ id: p.id, title: p.title })),
       },
+      // Same ref as throttled flush — immediate broadcast (e.g. native image) stays consistent.
+      scenePageId: activePageIdRef.current,
     };
   }, [pageList, syncUrl]);
 
@@ -568,6 +569,7 @@ export function WhiteboardWorkspaceClient({
     recordingActive,
     sync,
     applyRemoteToCanvas,
+    getScenePageIdForBroadcast: () => activePageIdRef.current,
     getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
   });
 

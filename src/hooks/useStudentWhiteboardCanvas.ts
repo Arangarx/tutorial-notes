@@ -87,11 +87,13 @@ export function useStudentWhiteboardCanvas(
   }, [applyTutorFollow]);
 
   const getPageBroadcastExtras = useCallback((): WhiteboardWireBroadcastExtras => {
+    const id = activePageIdRef.current;
     return {
       page: {
-        activePageId: activePageIdRef.current,
+        activePageId: id,
         pageList: pageListRef.current.map((p) => ({ id: p.id, title: p.title })),
       },
+      scenePageId: id,
     };
   }, []);
 
@@ -102,26 +104,27 @@ export function useStudentWhiteboardCanvas(
         lastTutorFollowRef.current = details.follow;
       }
       const page = details?.page;
-      const target = page?.activePageId ?? "p1";
+      const followTarget = page?.activePageId ?? "p1";
+      const mergeTarget = details?.scenePageId ?? followTarget;
       if (page?.pageList && page.pageList.length > 0) {
         setPageList(
           page.pageList.map((p) => ({ id: p.id, title: p.title }))
         );
       }
       const previous = activePageIdRef.current;
-      if (previous !== target) {
+      if (previous !== followTarget) {
         if (excalidrawAPI) {
-          const cur = excalidrawAPI.getSceneElements() as ExcalidrawLikeElement[];
-          pageDataRef.current[previous] = cur;
+          if (pageDataRef.current[previous] === undefined) {
+            pageDataRef.current[previous] = excalidrawAPI.getSceneElements() as ExcalidrawLikeElement[];
+          }
         }
-        activePageIdRef.current = target;
-        setActivePageId(target);
+        activePageIdRef.current = followTarget;
+        setActivePageId(followTarget);
       }
       if (page) {
         onTutorPageMeta?.(page);
       }
       void (async () => {
-        const switchedPage = previous !== target;
         applyingRemoteRef.current = true;
         try {
           const result = await hydrateRemoteImageFilesForScene(
@@ -143,13 +146,10 @@ export function useStudentWhiteboardCanvas(
             }
           );
           onHydrateResult?.(result);
-          // If we just followed the tutor to another tab, `getSceneElements()`
-          // is still the *previous* page until we paint — never reconcile
-          // tutor's new tab against the old scene (it smears p1 + p2).
-          const sameTabAsBefore = !switchedPage;
-          const local: ExcalidrawLikeElement[] = sameTabAsBefore
+          const studentSeesMergePage = activePageIdRef.current === mergeTarget;
+          const local: ExcalidrawLikeElement[] = studentSeesMergePage
             ? (excalidrawAPI!.getSceneElements() as ExcalidrawLikeElement[])
-            : ((pageDataRef.current[target] as
+            : ((pageDataRef.current[mergeTarget] as
                 | ExcalidrawLikeElement[]
                 | undefined) ?? []);
           const appState = excalidrawAPI!.getAppState() as unknown;
@@ -159,8 +159,8 @@ export function useStudentWhiteboardCanvas(
             appState,
             { shouldDropRemoteElement }
           );
-          pageDataRef.current[target] = merged;
-          if (activePageIdRef.current === target) {
+          pageDataRef.current[mergeTarget] = merged;
+          if (activePageIdRef.current === mergeTarget) {
             excalidrawAPI!.updateScene({
               elements: merged as ReadonlyArray<unknown>,
             });

@@ -82,6 +82,18 @@ export type WhiteboardWirePage = {
 };
 
 /**
+ * Follow + page UI + which page the `elements` snapshot is for.
+ * `scenePageId` can differ from `page.activePageId` when the scene
+ * diff is throttled behind a tab switch — receivers must merge
+ * `elements` into `scenePageId`, not the tutor’s current tab alone.
+ */
+export type WhiteboardWireRemoteDetails = {
+  follow?: WhiteboardWireFollow;
+  page?: WhiteboardWirePage;
+  scenePageId?: string;
+};
+
+/**
  * v2: optional `follow` + `page` — backward compatible: old clients
  * only understand `elements` (treat v2 as v1 for scene).
  */
@@ -92,14 +104,17 @@ export type WhiteboardWireMessageV2 = {
   elements: ExcalidrawLikeElement[];
   follow?: WhiteboardWireFollow;
   page?: WhiteboardWirePage;
+  /** Page the `elements` array belongs to (may lag `page.activePageId`). */
+  scenePageId?: string;
 };
 
 export type AnyWhiteboardWireMessage = WhiteboardWireMessage | WhiteboardWireMessageV2;
 
-/** Extras the tutor can attach to each throttled `broadcastScene`. */
+/** Extras attached to each `broadcastScene` (throttled on the tutor). */
 export type WhiteboardWireBroadcastExtras = {
   follow?: WhiteboardWireFollow;
   page?: WhiteboardWirePage;
+  scenePageId?: string;
 };
 
 // -----------------------------------------------------------------
@@ -152,7 +167,7 @@ export type WhiteboardSyncClient = {
     cb: (
       peerId: string,
       elements: ReadonlyArray<ExcalidrawLikeElement>,
-      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+      details?: WhiteboardWireRemoteDetails
     ) => void
   ) => () => void;
   /** Subscribe to "I am now connected" notifications. */
@@ -348,7 +363,7 @@ export function createWhiteboardSyncClient(
   type RemoteSceneCb = (
     peerId: string,
     elements: ReadonlyArray<ExcalidrawLikeElement>,
-    details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+    details?: WhiteboardWireRemoteDetails
   ) => void;
   const remoteSceneSubs = new Set<RemoteSceneCb>();
   const connectSubs = new Set<() => void>();
@@ -513,10 +528,13 @@ export function createWhiteboardSyncClient(
         // if a future relay change starts echoing we don't want to
         // re-ingest our own strokes as remote peer strokes.
         if (msg.peerId === peerId) return;
-        const details: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage } = {};
+        const details: WhiteboardWireRemoteDetails = {};
         if (msg.v === 2) {
           if (msg.follow) details.follow = msg.follow;
           if (msg.page) details.page = msg.page;
+          if (typeof (msg as WhiteboardWireMessageV2).scenePageId === "string") {
+            details.scenePageId = (msg as WhiteboardWireMessageV2).scenePageId;
+          }
         }
         const has = Object.keys(details).length > 0;
         fan(
@@ -559,12 +577,14 @@ export function createWhiteboardSyncClient(
         role,
         elements: p.elements,
       };
-      const msg: AnyWhiteboardWireMessage = p.extras
+      const ext = p.extras;
+      const msg: AnyWhiteboardWireMessage = ext
         ? {
             v: 2,
             ...base,
-            ...(p.extras.follow ? { follow: p.extras.follow } : {}),
-            ...(p.extras.page ? { page: p.extras.page } : {}),
+            ...(ext.follow ? { follow: ext.follow } : {}),
+            ...(ext.page ? { page: ext.page } : {}),
+            ...(ext.scenePageId ? { scenePageId: ext.scenePageId } : {}),
           }
         : { v: 2, ...base };
       try {

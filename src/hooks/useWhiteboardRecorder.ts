@@ -105,8 +105,7 @@ import {
 import { consumeSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
 import type {
   WhiteboardWireBroadcastExtras,
-  WhiteboardWireFollow,
-  WhiteboardWirePage,
+  WhiteboardWireRemoteDetails,
 } from "@/lib/whiteboard/sync-client";
 
 void _audioOwnerKey;
@@ -168,7 +167,7 @@ export type WhiteboardSyncClientLike = {
     cb: (
       peerId: string,
       elements: ReadonlyArray<ExcalidrawLikeElement>,
-      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+      details?: WhiteboardWireRemoteDetails
     ) => void
   ) => () => void;
   /** Subscribe to connection-up notifications. */
@@ -223,8 +222,14 @@ export type UseWhiteboardRecorderOptions = {
    */
   applyRemoteToCanvas?: (
     elements: ReadonlyArray<ExcalidrawLikeElement>,
-    details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+    details?: WhiteboardWireRemoteDetails
   ) => void | Promise<void | RemoteSceneIngestLogHint>;
+  /**
+   * Page id the pending canvas frame belongs to. Must match the same moment as
+   * `onCanvasChange` — the diff flush reuses this so wire `scenePageId` is not
+   * recomputed at flush time (which can lag a fast tab switch).
+   */
+  getScenePageIdForBroadcast?: () => string;
   /**
    * Optional: attach follow + page data to throttled E2E sync (v2 wire).
    */
@@ -347,6 +352,10 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     getWireBroadcastExtrasRef.current = opts.getWireBroadcastExtras;
   }, [opts.getWireBroadcastExtras]);
+  const getScenePageIdForBroadcastRef = useRef(opts.getScenePageIdForBroadcast);
+  useEffect(() => {
+    getScenePageIdForBroadcastRef.current = opts.getScenePageIdForBroadcast;
+  }, [opts.getScenePageIdForBroadcast]);
   const recordingActiveRef = useRef(recordingActive);
 
   const localClientId = useMemo(
@@ -372,6 +381,8 @@ export function useWhiteboardRecorder(
     null
   );
   const diffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Bumped on every onCanvasChange — which board page the pending frame is for. */
+  const pendingScenePageIdRef = useRef<string>("p1");
 
   const [eventCount, setEventCount] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
@@ -441,8 +452,13 @@ export function useWhiteboardRecorder(
     // use Insert PDF/image before pressing Start; the student must still
     // receive the latest scene. Recording remains gated below.
     try {
-      const extras = getWireBroadcastExtrasRef.current?.() ?? undefined;
-      syncRef.current?.broadcastScene(frame, extras ?? undefined);
+      const baseExtras = getWireBroadcastExtrasRef.current?.() ?? undefined;
+      const scenePageId = pendingScenePageIdRef.current;
+      const extras: WhiteboardWireBroadcastExtras | undefined =
+        baseExtras != null
+          ? { ...baseExtras, scenePageId }
+          : { scenePageId };
+      syncRef.current?.broadcastScene(frame, extras);
     } catch (err) {
       console.warn(
         `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
@@ -470,6 +486,8 @@ export function useWhiteboardRecorder(
 
   const onCanvasChange = useCallback(
     (elements: ReadonlyArray<ExcalidrawLikeElement>) => {
+      pendingScenePageIdRef.current =
+        getScenePageIdForBroadcastRef.current?.() ?? "p1";
       pendingFrameRef.current = elements;
       if (diffTimerRef.current === null) {
         diffTimerRef.current = setTimeout(flushPendingDiff, DIFF_INTERVAL_MS);
@@ -482,7 +500,7 @@ export function useWhiteboardRecorder(
     async (
       peerId: string,
       elements: ReadonlyArray<ExcalidrawLikeElement>,
-      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+      details?: WhiteboardWireRemoteDetails
     ) => {
       // A peer (often the student) can emit `[]` before they have the tutor
       // canvas — same issue as in `updateSceneMergingWithRemote` (reconcile

@@ -90,10 +90,11 @@ import {
 } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 import type { RemoteSceneIngestLogHint } from "@/hooks/useWhiteboardRecorder";
 import { toExcalidraw } from "@/lib/whiteboard/excalidraw-adapter";
+import type { WhiteboardBoardDocumentV1 } from "@/lib/whiteboard/board-document-snapshot";
 import {
   clearSessionSceneDraft,
-  loadSessionSceneDraft,
-  saveSessionSceneDraft,
+  loadTutorSessionRecoveryDraft,
+  saveSessionBoardDocument,
 } from "@/lib/whiteboard/session-scene-draft";
 
 type Props = {
@@ -535,6 +536,25 @@ export function WhiteboardWorkspaceClient({
     return out;
   }, []);
 
+  /** IndexedDB checkpoint + sessionStorage: full multi-page snapshot. */
+  const buildBoardDocumentForCheckpoint =
+    useCallback((): WhiteboardBoardDocumentV1 | null => {
+      const perTab = getTutorDocumentPagesSnapshot();
+      if (Object.keys(perTab).length === 0) return null;
+      const pages: Record<string, ReadonlyArray<unknown>> = {};
+      for (const [id, els] of Object.entries(perTab)) {
+        pages[id] = (els as ExcalidrawLikeElement[]).map(
+          (e) => ({ ...e }) as ExcalidrawLikeElement
+        ) as unknown as ReadonlyArray<unknown>;
+      }
+      return {
+        v: 1,
+        pageList: pageListRef.current.map((p) => ({ id: p.id, title: p.title })),
+        activePageId: activePageIdRef.current,
+        pages,
+      };
+    }, [getTutorDocumentPagesSnapshot]);
+
   const getTutorLiveFollow = useCallback((): WhiteboardWireFollow => {
     const api = excalidrawAPIRef.current;
     if (!api) {
@@ -578,6 +598,7 @@ export function WhiteboardWorkspaceClient({
     getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
     /** v3 full-document path owns tutor → student live bytes; v2 from recorder is off. */
     includeLiveSyncBroadcast: !sync,
+    getBoardDocumentForCheckpoint: buildBoardDocumentForCheckpoint,
   });
   const { flushThrottledFrameNow } = recorder;
   tutorResyncOnNewRemotePeerRef.current = async () => {
@@ -992,10 +1013,60 @@ export function WhiteboardWorkspaceClient({
     [whiteboardSessionId]
   );
 
+  const applyBoardDocumentV1ToExcalidraw = useCallback(
+    async (doc: WhiteboardBoardDocumentV1) => {
+      const api = excalidrawAPIRef.current;
+      if (!api) return;
+      const { restoreElements } = await import("@excalidraw/excalidraw");
+      const list = doc.pageList.map((p) => ({ id: p.id, title: p.title }));
+      pageListRef.current = list;
+      setPageList(list);
+      activePageIdRef.current = doc.activePageId;
+      setActivePageId(doc.activePageId);
+      for (const [pid, raw] of Object.entries(doc.pages)) {
+        pageDataRef.current[pid] = (raw as ReadonlyArray<unknown>).map(
+          (e) => ({ ...(e as object) })
+        ) as ExcalidrawLikeElement[];
+      }
+      const activeEls = doc.pages[doc.activePageId] ?? [];
+      const rough = (activeEls as ExcalidrawLikeElement[]).map((e) => ({
+        ...e,
+      }));
+      const restored = restoreElements(rough as never, null, {
+        refreshDimensions: true,
+      });
+      let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
+      await hydrateTutorImageAssetsForElements(
+        api,
+        toPaint as ReadonlyArray<ExcalidrawLikeElement>
+      );
+      applyingRemoteToCanvasRef.current = true;
+      try {
+        api.updateScene({ elements: toPaint });
+      } finally {
+        applyingRemoteToCanvasRef.current = false;
+      }
+      if (sync && syncUrl) {
+        flushDocumentBroadcastNow();
+      }
+    },
+    [
+      flushDocumentBroadcastNow,
+      hydrateTutorImageAssetsForElements,
+      sync,
+      syncUrl,
+    ]
+  );
+
   const paintRecoveredSceneIntoExcalidraw = useCallback(
     async (result: ResumeResult) => {
       const api = excalidrawAPIRef.current;
       if (!api) return;
+      if (result.boardDocument?.v === 1) {
+        await applyBoardDocumentV1ToExcalidraw(result.boardDocument);
+        clearSessionSceneDraft(whiteboardSessionId);
+        return;
+      }
       const { restoreElements } = await import("@excalidraw/excalidraw");
       const rough = result.elements.map((el) => toExcalidraw(el));
       const restored = restoreElements(rough as never, null, {
@@ -1003,8 +1074,12 @@ export function WhiteboardWorkspaceClient({
       });
       let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
       if (toPaint.length === 0) {
-        const draft = loadSessionSceneDraft(whiteboardSessionId);
-        if (draft && draft.length > 0) toPaint = draft;
+        const recovery = loadTutorSessionRecoveryDraft(whiteboardSessionId);
+        if (recovery) {
+          await applyBoardDocumentV1ToExcalidraw(recovery);
+          clearSessionSceneDraft(whiteboardSessionId);
+          return;
+        }
       }
       // IndexedDB / event log carry `customData.assetUrl` for PDF + uploads,
       // but Excalidraw has no BinaryFiles after a full navigation — same as
@@ -1021,7 +1096,11 @@ export function WhiteboardWorkspaceClient({
       }
       clearSessionSceneDraft(whiteboardSessionId);
     },
-    [hydrateTutorImageAssetsForElements, whiteboardSessionId]
+    [
+      applyBoardDocumentV1ToExcalidraw,
+      hydrateTutorImageAssetsForElements,
+      whiteboardSessionId,
+    ]
   );
 
   useEffect(() => {
@@ -1042,27 +1121,21 @@ export function WhiteboardWorkspaceClient({
       return;
     }
 
-    const draft = loadSessionSceneDraft(whiteboardSessionId);
-    if (!draft) {
+    const recovery = loadTutorSessionRecoveryDraft(whiteboardSessionId);
+    if (!recovery) {
       hasHydratedSessionDraftRef.current = true;
       return;
     }
     void (async () => {
-      await hydrateTutorImageAssetsForElements(
-        excalidrawAPI,
-        draft as ReadonlyArray<ExcalidrawLikeElement>
-      );
-      applyingRemoteToCanvasRef.current = true;
       try {
-        excalidrawAPI.updateScene({ elements: draft });
+        await applyBoardDocumentV1ToExcalidraw(recovery);
       } finally {
-        applyingRemoteToCanvasRef.current = false;
+        hasHydratedSessionDraftRef.current = true;
       }
-      hasHydratedSessionDraftRef.current = true;
     })();
   }, [
+    applyBoardDocumentV1ToExcalidraw,
     excalidrawAPI,
-    hydrateTutorImageAssetsForElements,
     paintRecoveredSceneIntoExcalidraw,
     recorder.acknowledgePostGateAutoCanvas,
     recorder.checkpointMountResolved,
@@ -1101,7 +1174,10 @@ export function WhiteboardWorkspaceClient({
         sceneDraftTimerRef.current = null;
       }
       sceneDraftTimerRef.current = setTimeout(() => {
-        saveSessionSceneDraft(whiteboardSessionId, elements);
+        const doc = buildBoardDocumentForCheckpoint();
+        if (doc) {
+          saveSessionBoardDocument(whiteboardSessionId, doc);
+        }
         sceneDraftTimerRef.current = null;
       }, 800);
       // Cast through ExcalidrawLikeElement — the adapter only reads the
@@ -1153,6 +1229,7 @@ export function WhiteboardWorkspaceClient({
       }
     },
     [
+      buildBoardDocumentForCheckpoint,
       flushDocumentBroadcastNow,
       onLocalElementSnapshot,
       recorder,

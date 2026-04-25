@@ -108,6 +108,10 @@ import type {
   WhiteboardWireBroadcastExtras,
   WhiteboardWireRemoteDetails,
 } from "@/lib/whiteboard/sync-client";
+import {
+  isWhiteboardBoardDocumentV1,
+  type WhiteboardBoardDocumentV1,
+} from "@/lib/whiteboard/board-document-snapshot";
 
 void _audioOwnerKey;
 
@@ -203,8 +207,17 @@ export type WhiteboardSyncClientLike = {
  */
 export type ResumeResult = {
   log: WBEventLog;
-  /** The latest reconstructed scene at `log.durationMs`. */
+  /**
+   * WB elements for the **active** board page at recovery time, or a flat
+   * single-canvas reconstruction when `boardDocument` is absent (legacy
+   * checkpoints).
+   */
   elements: WBElement[];
+  /**
+   * When present (tutor multi-page), restore tabs + all `pages` in the
+   * workspace — the flat `elements` list alone is not enough.
+   */
+  boardDocument?: WhiteboardBoardDocumentV1;
 };
 
 export type UseWhiteboardRecorderOptions = {
@@ -251,6 +264,11 @@ export type UseWhiteboardRecorderOptions = {
    * `sync.broadcastScene` (v2).
    */
   includeLiveSyncBroadcast?: boolean;
+  /**
+   * Optional full board snapshot (all tabs) stored next to the event log
+   * in each IndexedDB checkpoint so "Resume" restores multiple pages.
+   */
+  getBoardDocumentForCheckpoint?: () => WhiteboardBoardDocumentV1 | null;
   /**
    * Local client id — broadcast on every `add` event so replay can
    * colour-tag strokes by author. Defaults to a random uuid.
@@ -339,6 +357,7 @@ export type ResumeAvailability = {
 
 type CheckpointPayload = {
   log: WBEventLog;
+  boardDocument?: WhiteboardBoardDocumentV1;
 };
 
 function makeRandomClientId(): string {
@@ -393,6 +412,12 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     getScenePageIdForBroadcastRef.current = opts.getScenePageIdForBroadcast;
   }, [opts.getScenePageIdForBroadcast]);
+  const getBoardDocumentForCheckpointRef = useRef(
+    opts.getBoardDocumentForCheckpoint
+  );
+  useEffect(() => {
+    getBoardDocumentForCheckpointRef.current = opts.getBoardDocumentForCheckpoint;
+  }, [opts.getBoardDocumentForCheckpoint]);
   const recordingActiveRef = useRef(recordingActive);
 
   const localClientId = useMemo(
@@ -442,6 +467,7 @@ export function useWhiteboardRecorder(
   const cachedResumeRef = useRef<{
     log: WBEventLog;
     sessionId: string;
+    boardDocument?: WhiteboardBoardDocumentV1;
   } | null>(null);
 
   /**
@@ -459,14 +485,25 @@ export function useWhiteboardRecorder(
       setDurationMs(cached.log.durationMs);
       cachedResumeRef.current = null;
 
+      const bd =
+        cached.boardDocument && isWhiteboardBoardDocumentV1(cached.boardDocument)
+          ? cached.boardDocument
+          : undefined;
+
       const { reconstructSceneAt } = await import("@/lib/whiteboard/event-log");
-      const sceneMap = reconstructSceneAt(cached.log, cached.log.durationMs);
-      const elements = Array.from(sceneMap.values());
+      let elements: WBElement[];
+      if (bd) {
+        const raw = (bd.pages[bd.activePageId] as ExcalidrawLikeElement[] | undefined) ?? [];
+        elements = canonicalizeScene(raw);
+      } else {
+        const sceneMap = reconstructSceneAt(cached.log, cached.log.durationMs);
+        elements = Array.from(sceneMap.values());
+      }
       prevElementsRef.current = elements;
       console.log(
-        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} applied checkpoint sessionId=${cached.sessionId} events=${cached.log.events.length}`
+        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} applied checkpoint sessionId=${cached.sessionId} events=${cached.log.events.length} boardPages=${bd ? bd.pageList.length : 1}`
       );
-      return { log: cached.log, elements };
+      return { log: cached.log, elements, boardDocument: bd };
     }, [whiteboardSessionId]);
 
   /** Push an event, refresh derived UI state. Single point of mutation. */
@@ -763,6 +800,8 @@ export function useWhiteboardRecorder(
     if (logRef.current.events.length === 0) return;
     setCheckpointStatus("saving");
     setCheckpointError(null);
+    const boardDocument =
+      getBoardDocumentForCheckpointRef.current?.() ?? undefined;
     const result: SaveCheckpointResult = await saveCheckpoint<CheckpointPayload>({
       kind: "whiteboard",
       ownerKey,
@@ -771,7 +810,10 @@ export function useWhiteboardRecorder(
       studentId,
       startedAt: startedAtIso,
       schemaVersion: WB_EVENT_LOG_SCHEMA_VERSION,
-      payload: { log: logRef.current },
+      payload: {
+        log: logRef.current,
+        ...(boardDocument ? { boardDocument } : {}),
+      },
     });
     if (result.ok) {
       setCheckpointStatus("saved");
@@ -832,6 +874,7 @@ export function useWhiteboardRecorder(
             cachedResumeRef.current = {
               log: exact.payload.log,
               sessionId: exact.sessionId,
+              boardDocument: exact.payload.boardDocument,
             };
             const applied = await applyResumeFromCachedCheckpoint();
             if (!cancelled && applied) {
@@ -842,6 +885,7 @@ export function useWhiteboardRecorder(
           cachedResumeRef.current = {
             log: exact.payload.log,
             sessionId: exact.sessionId,
+            boardDocument: exact.payload.boardDocument,
           };
           setResumePrompt({
             source: "this-session",
@@ -873,6 +917,7 @@ export function useWhiteboardRecorder(
           cachedResumeRef.current = {
             log: latest.payload.log,
             sessionId: latest.sessionId,
+            boardDocument: latest.payload.boardDocument,
           };
           setResumePrompt({
             source: "latest-for-owner",

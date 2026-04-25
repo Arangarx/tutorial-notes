@@ -63,6 +63,8 @@ export type ExcalidrawLikeElement = {
   fontFamily?: number;
   /** image elements: lookup key into Excalidraw's `BinaryFiles` table */
   fileId?: string | null;
+  /** image elements: Excalidraw expects `saved` after BinaryFiles are registered */
+  status?: string;
   /** customData carries our extension fields for non-native types (latex, desmos state) */
   customData?: {
     wbType?: WBElement["type"];
@@ -232,6 +234,14 @@ export function toExcalidraw(src: WBElement): ExcalidrawLikeElement {
   if (src.text !== undefined) out.text = src.text;
   if (src.fontSize !== undefined) out.fontSize = src.fontSize;
   if (typeof src.fontFamily === "number") out.fontFamily = src.fontFamily;
+
+  // Event log only stores `assetUrl` on WB image elements — not Excalidraw's
+  // `fileId`. Peers and resume hydrate via `addFiles` keyed by `fileId`, so
+  // replay / Load draft must synthesize a stable id (see hydrate-remote-files).
+  if (src.type === "image") {
+    out.fileId = `wba-${src.id}`;
+    out.status = "saved";
+  }
 
   return out;
 }

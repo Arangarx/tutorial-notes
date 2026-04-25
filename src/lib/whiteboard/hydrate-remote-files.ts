@@ -182,7 +182,19 @@ export async function hydrateRemoteImageFilesForScene(
   for (const raw of elements) {
     if (!raw || typeof raw !== "object") continue;
     const el = raw as ExcalidrawLikeElement;
-    if (el.type !== "image" || !el.fileId) continue;
+    if (el.type !== "image") continue;
+    // Reconstructed / replay elements often have `customData.assetUrl` but no
+    // `fileId` (WB log does not persist fileId). `toExcalidraw` now sets
+    // `wba-${id}`; this covers older checkpoints and anything that stripped it.
+    const urlEarly = el.customData?.assetUrl;
+    if (
+      (!el.fileId || typeof el.fileId !== "string") &&
+      typeof urlEarly === "string" &&
+      urlEarly.length >= 8
+    ) {
+      el.fileId = `wba-${el.id}`;
+    }
+    if (!el.fileId) continue;
     if (typeof el.fileId !== "string") continue;
     if (giveUp?.has(el.fileId)) continue;
     // After a multi-tab switch, Excalidraw often evicts unreferenced

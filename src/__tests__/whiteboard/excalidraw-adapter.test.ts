@@ -248,6 +248,24 @@ describe("excalidraw-adapter -- toExcalidraw round-trip", () => {
     const back = toCanonical(ex);
     expect(back).toEqual(wb);
   });
+
+  test("image elements get synthetic fileId + status for BinaryFiles / hydrate", () => {
+    const wb: WBElement = {
+      id: "img1",
+      type: "image",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      assetUrl: "https://blob/x.png",
+    };
+    const ex = toExcalidraw(wb);
+    expect(ex.type).toBe("image");
+    expect(ex.fileId).toBe("wba-img1");
+    expect(ex.status).toBe("saved");
+    const back = toCanonical(ex);
+    expect(back).toEqual(wb);
+  });
 });
 
 describe("excalidraw-adapter -- diffElement", () => {

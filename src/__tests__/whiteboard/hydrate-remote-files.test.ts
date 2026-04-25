@@ -122,4 +122,35 @@ describe("hydrateRemoteImageFilesForScene", () => {
     expect(global.fetch).toHaveBeenCalled();
     expect(addFiles).toHaveBeenCalledTimes(1);
   });
+
+  it("assigns synthetic fileId when image has assetUrl but no fileId (log replay shape)", async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/png" },
+      blob: () => Promise.resolve(new Blob([png], { type: "image/png" })),
+    } as unknown as Response);
+
+    const addFiles = jest.fn();
+    const api = { addFiles, updateScene: jest.fn() } as unknown as ExcalidrawApiLike;
+    const loaded = new Set<string>();
+    const el: ExcalidrawLikeElement = {
+      id: "el-z",
+      type: "image",
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      customData: { assetUrl: "https://example.com/nofileid.png" },
+    };
+
+    const r = await hydrateRemoteImageFilesForScene(api, [el], loaded, {
+      logContext: "tutor",
+    });
+
+    expect(el.fileId).toBe("wba-el-z");
+    expect(r.addedFileCount).toBe(1);
+    expect(addFiles).toHaveBeenCalledTimes(1);
+  });
 });

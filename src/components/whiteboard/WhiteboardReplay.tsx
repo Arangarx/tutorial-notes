@@ -299,16 +299,23 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
     [api, clientColorMap, loadState]
   );
 
-  // First paint after Excalidraw mount: render scene at t=0 and pan
-  // to fit content.
+  // First paint after Excalidraw mount. With **audio**, start at t=0 — the
+  // <audio> element will drive the clock on play. With **no audio**, the
+  // “final only” effect used to run before `excalidrawAPI` existed, so
+  // `applySceneAt(durationMs)` was a no-op; this effect then only applied
+  // t=0, which is often an empty pre-snapshot scene → blank canvas.
   const didInitialPaintRef = useRef(false);
   useEffect(() => {
     if (didInitialPaintRef.current) return;
     if (loadState.kind !== "ready" || !api) return;
     didInitialPaintRef.current = true;
-    applySceneAt(0);
-    // Defer scrollToContent a tick so Excalidraw has finished its
-    // own initial layout pass.
+    const noSessionAudio = !audioBlobUrl;
+    const initialT = noSessionAudio
+      ? loadState.log.durationMs
+      : 0;
+    lastBuiltAtMsRef.current = -1;
+    applySceneAt(initialT);
+    setAudioElapsedMs(initialT);
     const id = setTimeout(() => {
       try {
         api.scrollToContent?.(undefined, {
@@ -320,7 +327,7 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
       }
     }, 0);
     return () => clearTimeout(id);
-  }, [api, loadState, applySceneAt]);
+  }, [api, audioBlobUrl, loadState, applySceneAt]);
 
   // -----------------------------------------------------------------
   // 5. Audio-driven scene loop. We use rAF (not setInterval) so the
@@ -331,11 +338,8 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
   useEffect(() => {
     if (loadState.kind !== "ready") return;
     if (!audioBlobUrl) {
-      // No audio — render the final scene immediately (still needs
-      // applySceneAt to land after Excalidraw mounts).
-      const finalT = loadState.log.durationMs;
-      applySceneAt(finalT);
-      setAudioElapsedMs(finalT);
+      // Final scene is applied in the “first paint” effect once `api` exists;
+      // nothing to drive a play head without session audio.
       return;
     }
     const el = audioRef.current;
@@ -435,6 +439,16 @@ export default function WhiteboardReplay(props: WhiteboardReplayProps) {
             events · {formatDurationMs(log.durationMs)}
           </span>
         </h2>
+      )}
+
+      {!hasAudio && log.events.length > 0 && (
+        <p className="muted" style={{ margin: 0, fontSize: 13, maxWidth: 720 }}>
+          No session audio is attached, so there is no play/seek control. The
+          board below shows the <strong>final</strong> whiteboard at the end of
+          the log (t={formatDurationMs(log.durationMs)}). When we record
+          classroom audio, the bar above will provide play/pause and drive the
+          scene in sync.
+        </p>
       )}
 
       {hasAudio && (

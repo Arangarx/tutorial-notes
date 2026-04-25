@@ -37,6 +37,8 @@ import type { PdfPageRender } from "@/lib/whiteboard/pdf-render";
  */
 export type ExcalidrawApiLike = {
   getSceneElements: () => ReadonlyArray<unknown>;
+  /** Excalidraw `BinaryFiles` map (keyed by file id) — used to back-fill `assetUrl` for native image inserts. */
+  getFiles?: () => Readonly<Record<string, unknown>>;
   getAppState: () => {
     scrollX: number;
     scrollY: number;

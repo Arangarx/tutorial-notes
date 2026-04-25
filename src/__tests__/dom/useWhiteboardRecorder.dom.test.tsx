@@ -156,6 +156,35 @@ describe("useWhiteboardRecorder", () => {
     expect(result.current.eventCount).toBe(0);
   });
 
+  test("recordingActive=false still broadcasts to sync (live whiteboard while log is idle)", () => {
+    jest.useFakeTimers();
+    const bag: Bag = { now: 0 };
+    const broadcastScene = jest.fn();
+    const sync: WhiteboardSyncClientLike = {
+      isConnected: () => true,
+      onConnect: () => () => {},
+      onDisconnect: () => () => {},
+      onRemoteScene: () => () => {},
+      broadcastScene,
+    };
+    const { result } = renderHook(() =>
+      useWhiteboardRecorder(defaultProps(bag, { recordingActive: false, sync }))
+    );
+
+    const stroke = [makeRect("r1", 0, 0)];
+    bag.now = 100;
+    act(() => {
+      result.current.onCanvasChange(stroke);
+    });
+    act(() => {
+      jest.advanceTimersByTime(120);
+    });
+
+    expect(result.current.eventCount).toBe(0);
+    expect(broadcastScene).toHaveBeenCalledTimes(1);
+    expect(broadcastScene).toHaveBeenCalledWith(stroke);
+  });
+
   test("on→off transition emits a pause marker and flushes pending diff at the right t", () => {
     jest.useFakeTimers();
     const bag: Bag = { now: 0 };

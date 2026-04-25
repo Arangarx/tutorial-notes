@@ -18,13 +18,13 @@
  *      foreground-return — exactly the timing replay needs.
  *
  *   2. **recordingActive gate** (plan blocker #4 — pause race):
- *      while `recordingActive=false` (idle / ready / paused / uploading
- *      / done) we do NOT append scene-diff events to the log. The
- *      tutor can still draw on the canvas (e.g. setting up the board
- *      before Start) — those strokes just don't end up in the
- *      recording. On the false → true transition we emit a `snapshot`
- *      so the recording starts from the visible state, not a blank
- *      canvas.
+ *      while `recordingActive=false` we do NOT append scene-diff events
+ *      to the log. The tutor can still draw (and use Insert PDF/image)
+ *      before Start — those edits do not log until recording begins.
+ *      Live **sync** still broadcasts the latest scene on every flush so
+ *      the join link always reflects the canvas; only the event log is
+ *      gated. On the false → true transition we emit a `snapshot` so
+ *      the recording starts from the visible state, not a blank canvas.
  *
  *   3. **Diff via adapter** (plan blocker #3 — < 500 KB events):
  *      `Excalidraw.onChange` fires for every cursor move; we throttle
@@ -368,10 +368,21 @@ export function useWhiteboardRecorder(
     const frame = pendingFrameRef.current;
     pendingFrameRef.current = null;
     if (!frame) return;
+    // Live sync is independent of the event log. The tutor can draw and
+    // use Insert PDF/image before pressing Start; the student must still
+    // receive the latest scene. Recording remains gated below.
+    try {
+      syncRef.current?.broadcastScene(frame);
+    } catch (err) {
+      console.warn(
+        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
+        (err as Error)?.message ?? String(err)
+      );
+    }
     if (!recordingActiveRef.current) {
-      // Discard: we shouldn't be logging events when audio isn't
-      // capturing. The pre-recording canvas state is captured by the
-      // false→true snapshot below.
+      // No recording / no log events — the pre-recording canvas is
+      // captured on the first false→true snapshot when the tutor
+      // starts.
       return;
     }
     const next = canonicalizeScene(frame);
@@ -385,16 +396,6 @@ export function useWhiteboardRecorder(
       pushEvent(ev);
     }
     prevElementsRef.current = next;
-    // Broadcast to peers so the student sees the update. Sync-client
-    // throttles internally; we don't need to debounce here twice.
-    try {
-      syncRef.current?.broadcastScene(frame);
-    } catch (err) {
-      console.warn(
-        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
-        (err as Error)?.message ?? String(err)
-      );
-    }
   }, [localClientId, pushEvent, whiteboardSessionId]);
 
   const onCanvasChange = useCallback(

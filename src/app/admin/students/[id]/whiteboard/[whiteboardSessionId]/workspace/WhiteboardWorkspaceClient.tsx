@@ -38,6 +38,7 @@
  * banner state.
  */
 
+import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
 import { useExcalidrawThemeFromSystem } from "@/hooks/useExcalidrawThemeFromSystem";
@@ -67,6 +68,10 @@ import { DesmosInsertButton } from "@/components/whiteboard/DesmosInsertButton";
 import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
 import { ExcalidrawDynamic } from "@/components/whiteboard/ExcalidrawDynamic";
 import { type ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
+import {
+  ensureNativeImageAssetUrlsForSync,
+  type BinaryFileFromExcalidraw,
+} from "@/lib/whiteboard/ensure-native-image-asset-urls-for-sync";
 import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
@@ -235,6 +240,9 @@ export function WhiteboardWorkspaceClient({
   const loadedRemoteFileIdsForTutorRef = useRef(new Set<string>());
   const giveUpTutorFileIdsRef = useRef(new Set<string>());
   const warnDedupeTutorRef = useRef(new Set<string>());
+  /** Native Excalidraw image inserts: cache fileId → blob URL after upload for sync + student hydrate. */
+  const tutorNativeImageFileIdToAssetUrlRef = useRef(new Map<string, string>());
+  const tutorNativeImageUploadInFlightRef = useRef(new Set<string>());
 
   const [peerImageMaterialNotice, setPeerImageMaterialNotice] = useState<
     "none" | "load" | "missing"
@@ -613,13 +621,10 @@ export function WhiteboardWorkspaceClient({
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
       const link = `${origin}/w/${token}#k=${encryptionKey}`;
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(link);
-      } else {
-        // Fallback: surface the link in a prompt. Better than silent failure
-        // when the Clipboard API is missing (older Safari, some embedded views).
-        window.prompt("Copy this link for your student:", link);
-      }
+      // Clipboard API often fails after the `await issueJoinToken` above (user
+      // activation / document focus). `copyTextToClipboard` falls back to
+      // execCommand + prompt so we do not show a false error when copy works.
+      await copyTextToClipboard(link);
       setCopyState("copied");
       setTimeout(() => setCopyState("idle"), 3000);
     } catch (err) {
@@ -729,7 +734,11 @@ export function WhiteboardWorkspaceClient({
   // ---------------------------------------------------------------
 
   const handleExcalidrawChange = useCallback(
-    (elements: ReadonlyArray<unknown>) => {
+    (
+      elements: ReadonlyArray<unknown>,
+      _appState?: unknown,
+      files?: Readonly<Record<string, BinaryFileFromExcalidraw>>
+    ) => {
       if (applyingRemoteToCanvasRef.current) return;
       onLocalElementSnapshot(elements);
       if (sceneDraftTimerRef.current !== null) {
@@ -745,8 +754,43 @@ export function WhiteboardWorkspaceClient({
       // unknown[] so a future Excalidraw upgrade with a stricter type
       // doesn't break the call site.
       recorder.onCanvasChange(elements as ReadonlyArray<ExcalidrawLikeElement>);
+
+      // Excalidraw's own image tool / library / drop: elements carry
+      // fileId but no customData.assetUrl. Upload from local BinaryFiles
+      // so the student can hydrate (our Insert PDF/image path already
+      // sets assetUrl at insert time).
+      const api = excalidrawAPIRef.current;
+      if (api) {
+        void (async () => {
+          try {
+            const getFiles = (): Record<string, BinaryFileFromExcalidraw> => {
+              const raw = api.getFiles?.();
+              return raw && typeof raw === "object"
+                ? (raw as Record<string, BinaryFileFromExcalidraw>)
+                : {};
+            };
+            const patched = await ensureNativeImageAssetUrlsForSync({
+              elements,
+              files: files as Record<string, BinaryFileFromExcalidraw> | undefined,
+              getFiles,
+              whiteboardSessionId,
+              studentId,
+              fileIdToAssetUrl: tutorNativeImageFileIdToAssetUrlRef.current,
+              inFlight: tutorNativeImageUploadInFlightRef.current,
+            });
+            if (patched && excalidrawAPIRef.current) {
+              excalidrawAPIRef.current.updateScene({ elements: patched });
+            }
+          } catch (err) {
+            console.warn(
+              "[WhiteboardWorkspaceClient] native image asset URL back-fill failed:",
+              (err as Error)?.message ?? String(err)
+            );
+          }
+        })();
+      }
     },
-    [onLocalElementSnapshot, recorder, whiteboardSessionId]
+    [onLocalElementSnapshot, recorder, studentId, whiteboardSessionId]
   );
 
   // ---------------------------------------------------------------

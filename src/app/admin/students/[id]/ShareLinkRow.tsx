@@ -1,15 +1,19 @@
 "use client";
 
+import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
 import { useState } from "react";
 
 export function ShareLinkRow({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
 
-  function handleCopy() {
-    navigator.clipboard.writeText(url).then(() => {
+  async function handleCopy() {
+    try {
+      await copyTextToClipboard(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch {
+      // Prompt cancel or total failure — no toast here; parent is minimal.
+    }
   }
 
   return (

@@ -7,9 +7,13 @@ import {
   hydrateRemoteImageFilesForScene,
   type HydrateRemoteImageFilesResult,
 } from "@/lib/whiteboard/hydrate-remote-files";
-import type { WhiteboardSyncClient } from "@/lib/whiteboard/sync-client";
+import type {
+  WhiteboardSyncClient,
+  WhiteboardWirePage,
+} from "@/lib/whiteboard/sync-client";
 import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 import { useSyncTombstonedElementIds } from "@/hooks/useSyncTombstonedElementIds";
+import { resolveWhiteboardAssetReadUrl } from "@/lib/whiteboard/resolve-asset-read-url";
 
 /**
  * Wires the student Excalidraw instance to the encrypted sync client:
@@ -25,8 +29,17 @@ import { useSyncTombstonedElementIds } from "@/hooks/useSyncTombstonedElementIds
 export function useStudentWhiteboardCanvas(
   sync: WhiteboardSyncClient | null,
   excalidrawAPI: ExcalidrawApiLike | null,
-  onHydrateResult?: (result: HydrateRemoteImageFilesResult) => void
+  onHydrateResult?: (result: HydrateRemoteImageFilesResult) => void,
+  options?: {
+    joinToken: string;
+    /** false = let student pan/zoom independently (default: follow tutor). */
+    followTutorView?: boolean;
+    onTutorPageMeta?: (page: WhiteboardWirePage) => void;
+  }
 ) {
+  const joinToken = options?.joinToken ?? "";
+  const followTutorView = options?.followTutorView !== false;
+  const onTutorPageMeta = options?.onTutorPageMeta;
   const { onLocalElementSnapshot, shouldDropRemoteElement } =
     useSyncTombstonedElementIds();
   const applyingRemoteRef = useRef(false);
@@ -36,7 +49,7 @@ export function useStudentWhiteboardCanvas(
 
   useEffect(() => {
     if (!sync || !excalidrawAPI) return;
-    const off = sync.onRemoteScene((_peerId, elements) => {
+    const off = sync.onRemoteScene((peerId, elements, details) => {
       void (async () => {
         applyingRemoteRef.current = true;
         try {
@@ -48,12 +61,43 @@ export function useStudentWhiteboardCanvas(
               logContext: "student",
               giveUpFileIds: giveUpFileIdsRef.current,
               warnDedupe: warnDedupeRef.current,
+              resolveReadUrl:
+                joinToken.length > 0
+                  ? (u) =>
+                      resolveWhiteboardAssetReadUrl(u, {
+                        kind: "student",
+                        joinToken,
+                      })
+                  : undefined,
             }
           );
           onHydrateResult?.(result);
           await updateSceneMergingWithRemote(excalidrawAPI, elements, {
             shouldDropRemoteElement,
           });
+          if (details?.page) {
+            onTutorPageMeta?.(details.page);
+          }
+          if (details?.follow && followTutorView) {
+            const { scrollX, scrollY, zoom } = details.follow;
+            applyingRemoteRef.current = true;
+            try {
+              const prev = excalidrawAPI.getAppState() as Record<string, unknown>;
+              const api = excalidrawAPI as ExcalidrawApiLike & {
+                updateScene: (s: { appState?: unknown; elements?: unknown }) => void;
+              };
+              api.updateScene({
+                appState: {
+                  ...prev,
+                  scrollX,
+                  scrollY,
+                  zoom: { value: zoom },
+                },
+              });
+            } finally {
+              applyingRemoteRef.current = false;
+            }
+          }
         } catch (err) {
           console.warn(
             "[useStudentWhiteboardCanvas] remote scene apply failed:",
@@ -65,7 +109,15 @@ export function useStudentWhiteboardCanvas(
       })();
     });
     return off;
-  }, [onHydrateResult, shouldDropRemoteElement, sync, excalidrawAPI]);
+  }, [
+    onHydrateResult,
+    onTutorPageMeta,
+    followTutorView,
+    joinToken,
+    shouldDropRemoteElement,
+    sync,
+    excalidrawAPI,
+  ]);
 
   const onCanvasChange = useCallback(
     (elements: ReadonlyArray<unknown>) => {

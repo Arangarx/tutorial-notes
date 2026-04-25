@@ -73,6 +73,8 @@ import {
   type BinaryFileFromExcalidraw,
 } from "@/lib/whiteboard/ensure-native-image-asset-urls-for-sync";
 import { hydrateRemoteImageFilesForScene } from "@/lib/whiteboard/hydrate-remote-files";
+import { resolveWhiteboardAssetReadUrl } from "@/lib/whiteboard/resolve-asset-read-url";
+import type { WhiteboardWireBroadcastExtras } from "@/lib/whiteboard/sync-client";
 import { validateExcalidrawEmbeddable } from "@/lib/whiteboard/validate-embeddable";
 import { updateSceneMergingWithRemote } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 import { toExcalidraw } from "@/lib/whiteboard/excalidraw-adapter";
@@ -244,6 +246,19 @@ export function WhiteboardWorkspaceClient({
   const tutorNativeImageFileIdToAssetUrlRef = useRef(new Map<string, string>());
   const tutorNativeImageUploadInFlightRef = useRef(new Set<string>());
 
+  const [pageList, setPageList] = useState(() => [
+    { id: "p1", title: "Page 1" },
+  ]);
+  const [activePageId, setActivePageId] = useState("p1");
+  const activePageIdRef = useRef("p1");
+  useEffect(() => {
+    activePageIdRef.current = activePageId;
+  }, [activePageId]);
+  /** In-memory per-tab scene (Excalidraw only shows one at a time). */
+  const pageDataRef = useRef<Record<string, ReadonlyArray<ExcalidrawLikeElement>>>(
+    Object.create(null)
+  );
+
   const [peerImageMaterialNotice, setPeerImageMaterialNotice] = useState<
     "none" | "load" | "missing"
   >("none");
@@ -260,6 +275,11 @@ export function WhiteboardWorkspaceClient({
           logContext: "tutor",
           giveUpFileIds: giveUpTutorFileIdsRef.current,
           warnDedupe: warnDedupeTutorRef.current,
+          resolveReadUrl: (u) =>
+            resolveWhiteboardAssetReadUrl(u, {
+              kind: "tutor",
+              whiteboardSessionId,
+            }),
         }
       );
       if (result.fetchFailed.length > 0) {
@@ -278,7 +298,7 @@ export function WhiteboardWorkspaceClient({
         applyingRemoteToCanvasRef.current = false;
       }
     },
-    [shouldDropRemoteElement]
+    [shouldDropRemoteElement, whiteboardSessionId]
   );
 
   useEffect(() => {
@@ -401,6 +421,71 @@ export function WhiteboardWorkspaceClient({
 
   const getAudioMs = useAudioMsClock(recordingActive);
 
+  const getWireBroadcastExtras = useCallback(():
+    | WhiteboardWireBroadcastExtras
+    | null => {
+    if (!syncUrl) return null;
+    const api = excalidrawAPIRef.current;
+    if (!api) return null;
+    const st = api.getAppState() as {
+      scrollX: number;
+      scrollY: number;
+      zoom: { value: number };
+    };
+    return {
+      follow: {
+        scrollX: st.scrollX,
+        scrollY: st.scrollY,
+        zoom: st.zoom.value,
+      },
+      page: {
+        activePageId,
+        pageList: pageList.map((p) => ({ id: p.id, title: p.title })),
+      },
+    };
+  }, [activePageId, pageList, syncUrl]);
+
+  const selectTutorPage = useCallback(
+    (nextId: string) => {
+      if (nextId === activePageId) return;
+      const api = excalidrawAPIRef.current;
+      if (!api) {
+        setActivePageId(nextId);
+        return;
+      }
+      const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+      pageDataRef.current[activePageId] = current;
+      const next = (pageDataRef.current[nextId] as ReadonlyArray<ExcalidrawLikeElement> | undefined) ?? [];
+      applyingRemoteToCanvasRef.current = true;
+      try {
+        api.updateScene({ elements: next as ReadonlyArray<unknown> });
+      } finally {
+        applyingRemoteToCanvasRef.current = false;
+      }
+      setActivePageId(nextId);
+    },
+    [activePageId]
+  );
+
+  const addTutorPage = useCallback(() => {
+    const api = excalidrawAPIRef.current;
+    if (api) {
+      const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+      pageDataRef.current[activePageId] = current;
+    }
+    const n = pageList.length + 1;
+    const newId = `p${Date.now()}`;
+    setPageList((pl) => [...pl, { id: newId, title: `Page ${n}` }]);
+    pageDataRef.current[newId] = [];
+    applyingRemoteToCanvasRef.current = true;
+    try {
+      api?.updateScene({ elements: [] });
+    } finally {
+      applyingRemoteToCanvasRef.current = false;
+    }
+    setActivePageId(newId);
+  }, [activePageId, pageList.length]);
+
   const recorder = useWhiteboardRecorder({
     whiteboardSessionId,
     adminUserId,
@@ -410,6 +495,7 @@ export function WhiteboardWorkspaceClient({
     recordingActive,
     sync,
     applyRemoteToCanvas,
+    getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
   });
 
   // ---------------------------------------------------------------
@@ -740,6 +826,8 @@ export function WhiteboardWorkspaceClient({
       files?: Readonly<Record<string, BinaryFileFromExcalidraw>>
     ) => {
       if (applyingRemoteToCanvasRef.current) return;
+      const els = elements as ReadonlyArray<ExcalidrawLikeElement>;
+      pageDataRef.current[activePageId] = [...els];
       onLocalElementSnapshot(elements);
       if (sceneDraftTimerRef.current !== null) {
         clearTimeout(sceneDraftTimerRef.current);
@@ -790,7 +878,13 @@ export function WhiteboardWorkspaceClient({
         })();
       }
     },
-    [onLocalElementSnapshot, recorder, studentId, whiteboardSessionId]
+    [
+      onLocalElementSnapshot,
+      activePageId,
+      recorder,
+      studentId,
+      whiteboardSessionId,
+    ]
   );
 
   // ---------------------------------------------------------------
@@ -876,6 +970,47 @@ export function WhiteboardWorkspaceClient({
             testId="wb-timer"
           />
         </div>
+        {syncUrl && (
+          <div
+            className="row"
+            style={{
+              width: "100%",
+              flexBasis: "100%",
+              gap: 6,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+            data-testid="wb-tutor-page-strip"
+          >
+            <span className="muted" style={{ fontSize: 12 }}>
+              Pages
+            </span>
+            {pageList.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="btn"
+                onClick={() => void selectTutorPage(p.id)}
+                disabled={endingState === "ending" || p.id === activePageId}
+                style={
+                  p.id === activePageId
+                    ? { fontWeight: 700, borderWidth: 2, borderColor: "var(--border-strong, #999)" }
+                    : undefined
+                }
+              >
+                {p.title}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn"
+              onClick={addTutorPage}
+              disabled={endingState === "ending" || pageList.length >= 20}
+            >
+              + Page
+            </button>
+          </div>
+        )}
         <UndoRedoButtons disabled={endingState === "ending"} />
         <PdfImageUploadButton
           excalidrawAPI={excalidrawAPI}

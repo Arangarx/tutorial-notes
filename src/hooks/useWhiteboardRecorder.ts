@@ -103,6 +103,7 @@ import {
   type SaveCheckpointResult,
 } from "@/lib/whiteboard/checkpoint-store";
 import { consumeSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
+import type { WhiteboardWireBroadcastExtras } from "@/lib/whiteboard/sync-client";
 
 void _audioOwnerKey;
 
@@ -163,7 +164,10 @@ export type WhiteboardSyncClientLike = {
    * by the sync-client implementation — the recorder calls it on
    * every diff but that's fine.
    */
-  broadcastScene: (elements: ReadonlyArray<ExcalidrawLikeElement>) => void;
+  broadcastScene: (
+    elements: ReadonlyArray<ExcalidrawLikeElement>,
+    extras?: WhiteboardWireBroadcastExtras
+  ) => void;
   /** True when the WS handshake completed. */
   isConnected: () => boolean;
 };
@@ -204,6 +208,10 @@ export type UseWhiteboardRecorderOptions = {
   applyRemoteToCanvas?: (
     elements: ReadonlyArray<ExcalidrawLikeElement>
   ) => void | Promise<void>;
+  /**
+   * Optional: attach follow + page data to throttled E2E sync (v2 wire).
+   */
+  getWireBroadcastExtras?: () => WhiteboardWireBroadcastExtras | null;
   /**
    * Local client id — broadcast on every `add` event so replay can
    * colour-tag strokes by author. Defaults to a random uuid.
@@ -306,6 +314,10 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     applyRemoteToCanvasRef.current = opts.applyRemoteToCanvas;
   }, [opts.applyRemoteToCanvas]);
+  const getWireBroadcastExtrasRef = useRef(opts.getWireBroadcastExtras);
+  useEffect(() => {
+    getWireBroadcastExtrasRef.current = opts.getWireBroadcastExtras;
+  }, [opts.getWireBroadcastExtras]);
   const recordingActiveRef = useRef(recordingActive);
 
   const localClientId = useMemo(
@@ -372,7 +384,8 @@ export function useWhiteboardRecorder(
     // use Insert PDF/image before pressing Start; the student must still
     // receive the latest scene. Recording remains gated below.
     try {
-      syncRef.current?.broadcastScene(frame);
+      const extras = getWireBroadcastExtrasRef.current?.() ?? undefined;
+      syncRef.current?.broadcastScene(frame, extras ?? undefined);
     } catch (err) {
       console.warn(
         `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
@@ -413,6 +426,14 @@ export function useWhiteboardRecorder(
       peerId: string,
       elements: ReadonlyArray<ExcalidrawLikeElement>
     ) => {
+      // A peer (often the student) can emit `[]` before they have the tutor
+      // canvas — same issue as in `updateSceneMergingWithRemote` (reconcile
+      // against an empty or stale `getSceneElements`). Worse, `flushPendingDiff`
+      // would treat this as the latest `pendingFrame` and rebroadcast `[]`, so
+      // the sync client’s `lastBroadcastScene` and the room both go blank.
+      if (elements.length === 0) {
+        return;
+      }
       // Tag every element with the originating peerId so replay can
       // attribute strokes correctly. We mutate the customData field
       // because the canonicaliser reads it.

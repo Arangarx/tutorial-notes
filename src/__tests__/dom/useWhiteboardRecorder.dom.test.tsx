@@ -182,7 +182,7 @@ describe("useWhiteboardRecorder", () => {
 
     expect(result.current.eventCount).toBe(0);
     expect(broadcastScene).toHaveBeenCalledTimes(1);
-    expect(broadcastScene).toHaveBeenCalledWith(stroke);
+    expect(broadcastScene).toHaveBeenCalledWith(stroke, undefined);
   });
 
   test("on→off transition emits a pause marker and flushes pending diff at the right t", () => {

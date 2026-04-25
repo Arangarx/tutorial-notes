@@ -27,6 +27,18 @@ export type MergeRemoteSceneOptions = {
   shouldDropRemoteElement?: (elementId: string) => boolean;
 };
 
+function waitDoubleRaf(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    } else {
+      setTimeout(() => resolve(), 0);
+    }
+  });
+}
+
 /**
  * Dynamic import so the tutor/student first paint is not forced to
  * fully initialize `@excalidraw/excalidraw` before `next/dynamic` loads
@@ -46,9 +58,19 @@ export async function updateSceneMergingWithRemote(
         return !shouldDropRemoteElement(id);
       })
     : (remoteElements as ExcalidrawLikeElement[]);
+  // Let any pending local `updateScene` (e.g. IDB "Resume" restore) land in
+  // Excalidraw's scene store before we read it — same-tick `getSceneElements`
+  // is often still empty/stale, so `reconcile` with a late peer `[]` clobbers
+  // a freshly restored canvas (flash then blank).
+  await waitDoubleRaf();
   const local = excalidrawAPI.getSceneElements() as Parameters<
     typeof reconcileElements
   >[0];
+  // A joiner's first broadcast is often an empty scene before they receive
+  // the tutor. Reconciling that against a non-empty local wipes the restorer.
+  if (filteredRemote.length === 0 && local.length > 0) {
+    return;
+  }
   const appState = excalidrawAPI.getAppState() as Parameters<
     typeof reconcileElements
   >[2];

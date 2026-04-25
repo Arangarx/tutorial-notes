@@ -300,7 +300,7 @@ describe("sync-client lifecycle", () => {
     await flushMicrotasks(15);
 
     expect(remoteCb).toHaveBeenCalledTimes(1);
-    expect(remoteCb).toHaveBeenCalledWith("student-1", msg.elements);
+    expect(remoteCb).toHaveBeenCalledWith("student-1", msg.elements, undefined);
 
     client.disconnect();
   });

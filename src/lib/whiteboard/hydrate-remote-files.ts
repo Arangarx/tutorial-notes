@@ -61,12 +61,18 @@ type FetchImageFail = { ok: false; detail: string };
  * Fetches a URL with one retry: useful for cold CDN / transient 5xx / flaky Wi‑Fi.
  * Does not retry HTTP 404 (permanent) or 4xx other than 429 (optional: we retry 5xx only).
  */
-async function fetchImageBytes(url: string): Promise<FetchImageOk | FetchImageFail> {
+async function fetchImageBytes(
+  url: string,
+  sameOrigin: boolean
+): Promise<FetchImageOk | FetchImageFail> {
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
   let lastDetail = "Unknown error";
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch(url, { mode: "cors", credentials: "omit" });
+      const res = await fetch(url, {
+        mode: "cors",
+        credentials: sameOrigin ? "same-origin" : "omit",
+      });
       if (res.ok) {
         const blob = await res.blob();
         return {
@@ -112,6 +118,11 @@ export type HydrateRemoteImageFilesOptions = {
   /** "student" | "tutor" — prefixes `console.warn` for support. */
   logContext?: "student" | "tutor";
   /**
+   * Rewrite `customData.assetUrl` before `fetch` (e.g. private Vercel Blob
+   * → same-origin proxy). Defaults to pass-through.
+   */
+  resolveReadUrl?: (url: string) => string;
+  /**
    * When a fetch definitively failed, add the `fileId` here to avoid
    * hammering the same URL for the rest of the session.
    */
@@ -137,6 +148,7 @@ export async function hydrateRemoteImageFilesForScene(
   const logPrefix = options?.logContext
     ? `[hydrate-remote-files; ${options.logContext}]`
     : "[hydrate-remote-files]";
+  const resolveRead = options?.resolveReadUrl ?? ((u: string) => u);
   const giveUp = options?.giveUpFileIds;
   const warnDedupe = options?.warnDedupe;
   const missingSet = new Set<string>();
@@ -161,8 +173,8 @@ export async function hydrateRemoteImageFilesForScene(
     if (loadedFileIds.has(el.fileId)) continue;
     if (giveUp?.has(el.fileId)) continue;
 
-    const url = el.customData?.assetUrl;
-    if (typeof url !== "string" || url.length < 8) {
+    const rawUrl = el.customData?.assetUrl;
+    if (typeof rawUrl !== "string" || rawUrl.length < 8) {
       missingSet.add(el.fileId);
       const dedupeKey = `missing:${el.fileId}`;
       if (!warnDedupe || !warnDedupe.has(dedupeKey)) {
@@ -176,7 +188,10 @@ export async function hydrateRemoteImageFilesForScene(
       continue;
     }
 
-    const fetchResult = await fetchImageBytes(url);
+    const url = resolveRead(rawUrl);
+    const sameOrigin =
+      typeof window !== "undefined" && url.startsWith(window.location.origin);
+    const fetchResult = await fetchImageBytes(url, sameOrigin);
     if (!fetchResult.ok) {
       fetchFailed.push({ fileId: el.fileId, detail: fetchResult.detail });
       giveUp?.add(el.fileId);

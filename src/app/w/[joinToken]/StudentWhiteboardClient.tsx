@@ -183,10 +183,21 @@ export function StudentWhiteboardClient({
     []
   );
 
+  const [tutorPageLabel, setTutorPageLabel] = useState<string | null>(null);
+  const [independentView, setIndependentView] = useState(false);
+
   const { onCanvasChange } = useStudentWhiteboardCanvas(
     syncClient,
     excalidrawAPI,
-    onRemoteHydrateResult
+    onRemoteHydrateResult,
+    {
+      joinToken: joinToken || "",
+      followTutorView: !independentView,
+      onTutorPageMeta: (p) => {
+        const t = p.pageList.find((x) => x.id === p.activePageId)?.title;
+        setTutorPageLabel(t ? `Tutor: ${t}` : null);
+      },
+    }
   );
 
   if (keyMissing) {
@@ -283,6 +294,34 @@ export function StudentWhiteboardClient({
               ? `Session: ${formatSessionDuration(liveTimerMs)} (waiting)`
               : `Session: ${formatSessionDuration(liveTimerMs)}`}
           </div>
+        </div>
+        <div
+          style={{
+            width: "100%",
+            flexBasis: "100%",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+            fontSize: 13,
+            marginTop: 4,
+          }}
+        >
+          <label
+            style={{ display: "inline-flex", gap: 6, alignItems: "center", cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              checked={!independentView}
+              onChange={(e) => setIndependentView(!e.target.checked)}
+            />
+            Follow tutor’s view and page (on by default)
+          </label>
+          {tutorPageLabel && (
+            <span className="muted" style={{ fontSize: 12 }}>
+              {tutorPageLabel}
+            </span>
+          )}
         </div>
       </div>
 

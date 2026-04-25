@@ -67,6 +67,41 @@ export type WhiteboardWireMessage = {
   elements: ExcalidrawLikeElement[];
 };
 
+/** Tutor camera + zoom for peer “follow me” (wire v2). */
+export type WhiteboardWireFollow = {
+  scrollX: number;
+  scrollY: number;
+  /** Excalidraw stores zoom in appState as `{ value: number }` — we send the scalar. */
+  zoom: number;
+};
+
+/** Page tabs: tutor’s active list + which tab is on screen. */
+export type WhiteboardWirePage = {
+  activePageId: string;
+  pageList: { id: string; title: string }[];
+};
+
+/**
+ * v2: optional `follow` + `page` — backward compatible: old clients
+ * only understand `elements` (treat v2 as v1 for scene).
+ */
+export type WhiteboardWireMessageV2 = {
+  v: 2;
+  peerId: string;
+  role: "tutor" | "student";
+  elements: ExcalidrawLikeElement[];
+  follow?: WhiteboardWireFollow;
+  page?: WhiteboardWirePage;
+};
+
+export type AnyWhiteboardWireMessage = WhiteboardWireMessage | WhiteboardWireMessageV2;
+
+/** Extras the tutor can attach to each throttled `broadcastScene`. */
+export type WhiteboardWireBroadcastExtras = {
+  follow?: WhiteboardWireFollow;
+  page?: WhiteboardWirePage;
+};
+
 // -----------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------
@@ -114,7 +149,11 @@ export type WhiteboardSyncClient = {
   isConnected: () => boolean;
   /** Subscribe to peer scene updates. Returns an unsubscriber. */
   onRemoteScene: (
-    cb: (peerId: string, elements: ReadonlyArray<ExcalidrawLikeElement>) => void
+    cb: (
+      peerId: string,
+      elements: ReadonlyArray<ExcalidrawLikeElement>,
+      details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
+    ) => void
   ) => () => void;
   /** Subscribe to "I am now connected" notifications. */
   onConnect: (cb: () => void) => () => void;
@@ -136,7 +175,10 @@ export type WhiteboardSyncClient = {
    * Queue an outbound scene broadcast. Throttled internally —
    * callers can fire on every diff without measuring.
    */
-  broadcastScene: (elements: ReadonlyArray<ExcalidrawLikeElement>) => void;
+  broadcastScene: (
+    elements: ReadonlyArray<ExcalidrawLikeElement>,
+    extras?: WhiteboardWireBroadcastExtras
+  ) => void;
   /** Tear down the WS, drop subscriptions. Idempotent. */
   disconnect: () => void;
 };
@@ -197,7 +239,7 @@ async function importAesKey(rawKey: Uint8Array): Promise<CryptoKey> {
 
 async function encryptMessage(
   key: CryptoKey,
-  msg: WhiteboardWireMessage
+  msg: AnyWhiteboardWireMessage
 ): Promise<{ data: ArrayBuffer; iv: ArrayBuffer }> {
   // Allocate the IV inside an ArrayBuffer so the lib.dom typings line
   // up with `BufferSource` exactly (TS 5.7+ disambiguates SharedArrayBuffer).
@@ -222,11 +264,31 @@ function toArrayBuffer(input: ArrayBuffer | Uint8Array): ArrayBuffer {
   return out;
 }
 
+function validateWireMessage(parsed: unknown): AnyWhiteboardWireMessage {
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("[sync-client] decoded payload: not an object");
+  }
+  const v = (parsed as { v?: unknown }).v;
+  if (v !== 1 && v !== 2) {
+    throw new Error("[sync-client] decoded payload: bad v");
+  }
+  if (typeof (parsed as { peerId?: unknown }).peerId !== "string") {
+    throw new Error("[sync-client] decoded payload: bad peerId");
+  }
+  if (!Array.isArray((parsed as { elements?: unknown }).elements)) {
+    throw new Error("[sync-client] decoded payload: bad elements");
+  }
+  if (v === 2) {
+    return parsed as WhiteboardWireMessageV2;
+  }
+  return parsed as WhiteboardWireMessage;
+}
+
 async function decryptMessage(
   key: CryptoKey,
   data: ArrayBuffer | Uint8Array,
   iv: ArrayBuffer | Uint8Array
-): Promise<WhiteboardWireMessage> {
+): Promise<AnyWhiteboardWireMessage> {
   const ivBytes = toArrayBuffer(iv);
   const ctBytes = toArrayBuffer(data);
   const pt = await crypto.subtle.decrypt(
@@ -236,16 +298,7 @@ async function decryptMessage(
   );
   const json = new TextDecoder().decode(pt);
   const parsed = JSON.parse(json) as unknown;
-  if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    (parsed as { v?: unknown }).v !== 1 ||
-    typeof (parsed as { peerId?: unknown }).peerId !== "string" ||
-    !Array.isArray((parsed as { elements?: unknown }).elements)
-  ) {
-    throw new Error("[sync-client] decoded payload failed shape validation");
-  }
-  return parsed as WhiteboardWireMessage;
+  return validateWireMessage(parsed);
 }
 
 // -----------------------------------------------------------------
@@ -294,7 +347,8 @@ export function createWhiteboardSyncClient(
 
   type RemoteSceneCb = (
     peerId: string,
-    elements: ReadonlyArray<ExcalidrawLikeElement>
+    elements: ReadonlyArray<ExcalidrawLikeElement>,
+    details?: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage }
   ) => void;
   const remoteSceneSubs = new Set<RemoteSceneCb>();
   const connectSubs = new Set<() => void>();
@@ -326,12 +380,16 @@ export function createWhiteboardSyncClient(
   let socket: Socket | null = null;
   let aesKey: CryptoKey | null = null;
   let aesKeyError: string | null = null;
-  let pendingScene: ExcalidrawLikeElement[] | null = null;
+  type PendingPayload = {
+    elements: ExcalidrawLikeElement[];
+    extras?: WhiteboardWireBroadcastExtras;
+  };
+  let pendingPayload: PendingPayload | null = null;
   // Cache the most recent scene we broadcast so that when a new
   // peer joins after the tutor has been drawing for a while, we can
   // immediately re-broadcast the current state. Without this the
   // student would see a blank canvas until the tutor's next stroke.
-  let lastBroadcastScene: ExcalidrawLikeElement[] | null = null;
+  let lastBroadcastPayload: PendingPayload | null = null;
   let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
   // Serialise outbound encrypts so two rapid changes don't race a
   // GCM IV reuse situation (different IV per call so safe, but we
@@ -381,8 +439,8 @@ export function createWhiteboardSyncClient(
     // If we already have a scene to share (reconnect mid-session),
     // re-emit it so the relay propagates and any peer that stayed
     // connected picks it up immediately.
-    if (lastBroadcastScene && aesKey) {
-      void encryptAndEmit(lastBroadcastScene);
+    if (lastBroadcastPayload && aesKey) {
+      void encryptAndEmit(lastBroadcastPayload);
     }
   });
 
@@ -408,8 +466,8 @@ export function createWhiteboardSyncClient(
     log.log(`new-user ${peerSocketId} — re-emitting current scene`);
     // Send our current scene so the new joiner doesn't see a blank
     // canvas. Cheap; runs once per join.
-    if (lastBroadcastScene && aesKey) {
-      void encryptAndEmit(lastBroadcastScene);
+    if (lastBroadcastPayload && aesKey) {
+      void encryptAndEmit(lastBroadcastPayload);
     }
   });
 
@@ -455,7 +513,18 @@ export function createWhiteboardSyncClient(
         // if a future relay change starts echoing we don't want to
         // re-ingest our own strokes as remote peer strokes.
         if (msg.peerId === peerId) return;
-        fan(remoteSceneSubs, msg.peerId, msg.elements);
+        const details: { follow?: WhiteboardWireFollow; page?: WhiteboardWirePage } = {};
+        if (msg.v === 2) {
+          if (msg.follow) details.follow = msg.follow;
+          if (msg.page) details.page = msg.page;
+        }
+        const has = Object.keys(details).length > 0;
+        fan(
+          remoteSceneSubs,
+          msg.peerId,
+          msg.elements,
+          has ? details : undefined
+        );
       } catch (err) {
         log.warn(
           "decrypt/parse failed:",
@@ -471,22 +540,33 @@ export function createWhiteboardSyncClient(
 
   function flushBroadcast() {
     broadcastTimer = null;
-    const scene = pendingScene;
-    pendingScene = null;
-    if (!scene || !aesKey || !socket) return;
-    void encryptAndEmit(scene);
+    const payload = pendingPayload;
+    pendingPayload = null;
+    if (!payload || !aesKey || !socket) return;
+    void encryptAndEmit(payload);
   }
 
-  function encryptAndEmit(scene: ExcalidrawLikeElement[]): Promise<void> {
-    lastBroadcastScene = scene;
+  function encryptAndEmit(p: PendingPayload): Promise<void> {
+    const full: PendingPayload = {
+      elements: p.elements,
+      extras: p.extras,
+    };
+    lastBroadcastPayload = full;
     const job = (async () => {
       if (!aesKey || !socket) return;
-      const msg: WhiteboardWireMessage = {
-        v: 1,
+      const base = {
         peerId,
         role,
-        elements: scene,
+        elements: p.elements,
       };
+      const msg: AnyWhiteboardWireMessage = p.extras
+        ? {
+            v: 2,
+            ...base,
+            ...(p.extras.follow ? { follow: p.extras.follow } : {}),
+            ...(p.extras.page ? { page: p.extras.page } : {}),
+          }
+        : { v: 2, ...base };
       try {
         const { data, iv } = await encryptMessage(aesKey, msg);
         socket.emit("server-broadcast", roomId, data, iv);
@@ -501,10 +581,16 @@ export function createWhiteboardSyncClient(
     return job;
   }
 
-  function broadcastScene(elements: ReadonlyArray<ExcalidrawLikeElement>) {
+  function broadcastScene(
+    elements: ReadonlyArray<ExcalidrawLikeElement>,
+    extras?: WhiteboardWireBroadcastExtras
+  ) {
     if (disposed) return;
     if (aesKeyError) return; // inert mode
-    pendingScene = elements.slice();
+    pendingPayload = {
+      elements: elements.slice() as ExcalidrawLikeElement[],
+      extras,
+    };
     if (broadcastTimer === null) {
       broadcastTimer = setTimeout(flushBroadcast, broadcastIntervalMs);
     }

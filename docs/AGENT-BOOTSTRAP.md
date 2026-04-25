@@ -16,7 +16,25 @@
 
 ---
 
-## 2) Authoritative in-repo references
+## 2) Sibling repo — `whiteboard-sync` (live relay; **separate git**)
+
+Live whiteboard collaboration **does not** run on Vercel. The app’s `sync-client` talks to a long-running **Socket.IO** relay (upstream: `excalidraw-room`). That server is **this** repo — not `tutoring-notes`:
+
+| | |
+|--|--|
+| **Path (next to tutoring-notes)** | `.../agenticPipeline/pipeline-projects/whiteboard-sync` |
+| **Remote (typical)** | `https://github.com/Arangarx/whiteboard-sync.git` |
+| **Purpose** | Dockerfile + Fly.io deploy of pinned `excalidraw-room`; CORS, certs, `fly deploy` — see its **`README.md`**. |
+| **Connects to the app via** | **`WHITEBOARD_SYNC_URL`** in `tutoring-notes` (e.g. `wss://…`) — the Next app never embeds the relay; it only needs the public WebSocket base URL. |
+| **When to open this repo** | Changing relay version, CORS, Fly app name, or debugging “live sync won’t connect” (tail `fly logs`, compare to client in `src/lib/whiteboard/sync-client.ts`). |
+
+**Parallel chats:** a session that only reads `tutoring-notes` docs will not see this folder unless you **paste this section** or point the agent at `whiteboard-sync/README.md`. That is a documentation gap, not proof another thread “forgot” the relay — there was nothing in the last bootstrap that named it.
+
+**Cost / deploy notes** (Fly, DNS, CORS list): `docs/WHITEBOARD-STATUS.md` — *“Sync host deploy notes”* in `tutoring-notes`.
+
+---
+
+## 3) Authoritative in-repo references
 
 - **Backlog of record (open work, pilot notes, audit items):** `docs/BACKLOG.md`
 - **Whiteboard phase-1 handoff (guardrails, blockers, status narrative):** `docs/WHITEBOARD-STATUS.md`
@@ -24,13 +42,13 @@
 
 ---
 
-## 3) Not in git on every machine (local-only)
+## 4) Not in git on every machine (local-only)
 
 **Untracked / not pushed (as of 2026-04-24):** `docs/eval/`, `scripts/build-b3b4-transcript-doc.mjs` — do not assume they exist on another clone until someone adds and commits them. Also reflected under **Operational follow-ups** in `docs/BACKLOG.md`.
 
 ---
 
-## 4) Whiteboard — quick code map (post–wire v2)
+## 5) Whiteboard — quick code map (post–wire v2)
 
 | Concern | Where to look |
 |--------|----------------|
@@ -46,13 +64,13 @@
 
 ---
 
-## 5) Process
+## 6) Process
 
 - **Cross-session / parallel chat:** same branch + pull first; do not treat `agenticPipeline` root as the app’s `git` remote.
 - **Day-to-day tickets** are fine; if **BACKLOG** and a ticket disagree, **BACKLOG wins** for “what is still open for this app” (per BACKLOG’s own rules).
 
 ---
 
-## 6) One-line mission (from product docs)
+## 7) One-line mission (from product docs)
 
 Solo- and small-practice **tutors** first; **multi-tenant** scoping is mandatory on every admin/API path. Pilot feedback in BACKLOG (Sarah) is the main prioritization input until broader usage exists.

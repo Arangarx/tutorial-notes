@@ -1,15 +1,11 @@
 "use client";
 
 /**
- * Whiteboard "Insert PDF or image" toolbar button.
+ * Whiteboard "Insert PDF" toolbar button (worksheets / multi-page docs).
  *
- * One button covers both flows because Sarah's mental model (per the
- * plan questionnaire) is "I want to put my worksheet on the board" —
- * she doesn't sort PDF vs PNG vs JPG. The component looks at the file
- * extension and routes to the right path:
- *
- *   - `application/pdf` -> renderPdfFileToPngs() -> insertPdfPagesOnCanvas()
- *   - any whitelisted image mime -> insertImageOnCanvas()
+ * Raster and SVG images use Excalidraw’s built-in insert (same live-sync
+ * path as our PDF pipeline after upload). This button only handles PDF
+ * → per-page PNG tiles + Blob upload so we don’t duplicate image UX.
  *
  * The dialog surfaces:
  *   - The 30-page / 25 MB / iOS warning copy BEFORE the file picker
@@ -27,7 +23,6 @@ import { useCallback, useRef, useState } from "react";
 import { ModalPortal } from "@/components/ModalPortal";
 import {
   ExcalidrawApiLike,
-  insertImageOnCanvas,
   insertPdfPagesOnCanvas,
 } from "@/lib/whiteboard/insert-asset";
 import {
@@ -64,15 +59,7 @@ type DialogState =
   | { kind: "error"; message: string };
 
 const PDF_MIME = "application/pdf";
-const ACCEPT_ATTR = [
-  PDF_MIME,
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "image/gif",
-  "image/webp",
-  "image/svg+xml",
-].join(",");
+const ACCEPT_ATTR = PDF_MIME;
 
 function fmtBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -115,83 +102,69 @@ export function PdfImageUploadButton({
       reset();
 
       const isPdf = file.type === PDF_MIME || file.name.toLowerCase().endsWith(".pdf");
-      if (isPdf) {
-        setState({ kind: "loading", message: "Reading PDF…" });
-        const result = await renderPdfFileToPngs(file, {
-          cancellation: cancellationRef.current,
-          onProgress: (p: PdfRenderProgress) => {
-            if (cancellationRef.current.aborted) return;
-            if (p.phase === "loading") {
-              setState({ kind: "loading", message: "Reading PDF…" });
-            } else if (p.phase === "rendering") {
-              setState({
-                kind: "rendering",
-                pageIndex: p.pageIndex ?? 0,
-                totalPages: p.totalPages ?? 0,
-              });
-            }
-          },
-        });
-        if (!result.ok) {
-          setState({ kind: "error", message: result.message });
-          return;
-        }
+      if (!isPdf) {
         setState({
-          kind: "uploading",
-          uploaded: 0,
-          total: result.pages.length,
+          kind: "error",
+          message:
+            "This chooser is for PDF worksheets only. Use Excalidraw’s image tool in the left toolbar to add a PNG, JPEG, or SVG — it uses the same sync path once uploaded.",
         });
-        const insertResult = await insertPdfPagesOnCanvas({
-          excalidrawAPI,
-          whiteboardSessionId,
-          studentId,
-          pages: result.pages,
-          filename: file.name,
-          onProgress: (uploaded, total) => {
-            if (cancellationRef.current.aborted) return;
-            setState({ kind: "uploading", uploaded, total });
-          },
-        });
-        if (!insertResult.ok) {
-          setState({ kind: "error", message: insertResult.reason });
-          return;
-        }
-        const truncatedSuffix = result.truncated
-          ? ` (first ${result.pages.length} of ${result.totalPagesInPdf} pages)`
-          : "";
-        setState({
-          kind: "success",
-          message: `Inserted ${insertResult.pagesInserted} page${insertResult.pagesInserted === 1 ? "" : "s"}${truncatedSuffix}.`,
-        });
-        // Close the dialog after a short pause so the success copy is
-        // visible but doesn't block the canvas indefinitely.
-        setTimeout(() => {
-          setState((current) =>
-            current.kind === "success" ? { kind: "closed" } : current
-          );
-        }, 1800);
         return;
       }
 
-      // Image branch
-      setState({ kind: "loading", message: "Inserting image…" });
-      const insertResult = await insertImageOnCanvas({
+      setState({ kind: "loading", message: "Reading PDF…" });
+      const result = await renderPdfFileToPngs(file, {
+        cancellation: cancellationRef.current,
+        onProgress: (p: PdfRenderProgress) => {
+          if (cancellationRef.current.aborted) return;
+          if (p.phase === "loading") {
+            setState({ kind: "loading", message: "Reading PDF…" });
+          } else if (p.phase === "rendering") {
+            setState({
+              kind: "rendering",
+              pageIndex: p.pageIndex ?? 0,
+              totalPages: p.totalPages ?? 0,
+            });
+          }
+        },
+      });
+      if (!result.ok) {
+        setState({ kind: "error", message: result.message });
+        return;
+      }
+      setState({
+        kind: "uploading",
+        uploaded: 0,
+        total: result.pages.length,
+      });
+      const insertResult = await insertPdfPagesOnCanvas({
         excalidrawAPI,
         whiteboardSessionId,
         studentId,
-        file,
-        altText: file.name,
+        pages: result.pages,
+        filename: file.name,
+        onProgress: (uploaded, total) => {
+          if (cancellationRef.current.aborted) return;
+          setState({ kind: "uploading", uploaded, total });
+        },
       });
       if (!insertResult.ok) {
         setState({ kind: "error", message: insertResult.reason });
         return;
       }
-      setState({ kind: "success", message: "Image inserted." });
+      const truncatedSuffix = result.truncated
+        ? ` (first ${result.pages.length} of ${result.totalPagesInPdf} pages)`
+        : "";
+      setState({
+        kind: "success",
+        message: `Inserted ${insertResult.pagesInserted} page${insertResult.pagesInserted === 1 ? "" : "s"}${truncatedSuffix}.`,
+      });
+      // Close the dialog after a short pause so the success copy is
+      // visible but doesn't block the canvas indefinitely.
       setTimeout(() => {
         setState((current) =>
           current.kind === "success" ? { kind: "closed" } : current
         );
-      }, 1500);
+      }, 1800);
     },
     [excalidrawAPI, reset, studentId, whiteboardSessionId]
   );
@@ -204,9 +177,9 @@ export function PdfImageUploadButton({
         onClick={() => setState({ kind: "open" })}
         disabled={disabled || !excalidrawAPI}
         data-testid="wb-insert-asset-btn"
-        title="Insert PDF or image"
+        title="Insert PDF worksheet"
       >
-        Insert PDF / image
+        Insert PDF
       </button>
 
       {state.kind !== "closed" && (
@@ -244,17 +217,18 @@ export function PdfImageUploadButton({
             data-testid="wb-insert-dialog"
           >
             <h3 id="wb-insert-title" style={{ marginTop: 0 }}>
-              Insert PDF or image
+              Insert PDF
             </h3>
             <p className="muted" style={{ fontSize: 14, margin: 0 }}>
               PDFs are rendered as one image per page (up to{" "}
-              <strong>{PDF_MAX_PAGES} pages</strong>) and tiled
-              vertically on the canvas. Images are placed at the
-              center of the current view.
+              <strong>{PDF_MAX_PAGES} pages</strong>) and stacked vertically
+              on the <strong>current board page</strong>. For single images, use
+              Excalidraw’s built-in image tool (left toolbar) — live sync is the
+              same after upload.
             </p>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>
               Maximum file size: <strong>{fmtBytes(PDF_MAX_BYTES)}</strong>.
-              Supported types: PDF, PNG, JPG, GIF, WebP, SVG.
+              File type: <strong>PDF</strong> only in this dialog.
             </p>
 
             {showIOSWarning && (

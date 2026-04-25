@@ -10,10 +10,8 @@ import { useStudentWhiteboardCanvas } from "@/hooks/useStudentWhiteboardCanvas";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 
 jest.mock("@/lib/whiteboard/apply-reconciled-remote-scene", () => ({
-  updateSceneMergingWithRemote: jest.fn(
-    async (api: ExcalidrawApiLike, elements: ReadonlyArray<ExcalidrawLikeElement>) => {
-      api.updateScene({ elements: elements as never });
-    }
+  mergeScenesReconciled: jest.fn(
+    async (_local: unknown, remote: ReadonlyArray<ExcalidrawLikeElement>) => remote
   ),
 }));
 import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter";
@@ -50,6 +48,7 @@ describe("useStudentWhiteboardCanvas", () => {
     const api = {
       updateScene,
       addFiles: jest.fn(),
+      getSceneElements: () => [] as ExcalidrawLikeElement[],
       getAppState: () => ({ scrollX: 0, scrollY: 0, zoom: { value: 1 } }),
     } as unknown as ExcalidrawApiLike;
     const { result } = renderHook(() => useStudentWhiteboardCanvas(sync, api));

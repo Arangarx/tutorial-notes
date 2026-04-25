@@ -7,10 +7,7 @@ import {
   hydrateRemoteImageFilesForScene,
   type HydrateRemoteImageFilesResult,
 } from "@/lib/whiteboard/hydrate-remote-files";
-import {
-  mergeScenesReconciled,
-  updateSceneMergingWithRemote,
-} from "@/lib/whiteboard/apply-reconciled-remote-scene";
+import { mergeScenesReconciled } from "@/lib/whiteboard/apply-reconciled-remote-scene";
 import type {
   WhiteboardSyncClient,
   WhiteboardWireFollow,
@@ -124,6 +121,7 @@ export function useStudentWhiteboardCanvas(
         onTutorPageMeta?.(page);
       }
       void (async () => {
+        const switchedPage = previous !== target;
         applyingRemoteRef.current = true;
         try {
           const result = await hydrateRemoteImageFilesForScene(
@@ -145,27 +143,27 @@ export function useStudentWhiteboardCanvas(
             }
           );
           onHydrateResult?.(result);
+          // If we just followed the tutor to another tab, `getSceneElements()`
+          // is still the *previous* page until we paint — never reconcile
+          // tutor's new tab against the old scene (it smears p1 + p2).
+          const sameTabAsBefore = !switchedPage;
+          const local: ExcalidrawLikeElement[] = sameTabAsBefore
+            ? (excalidrawAPI!.getSceneElements() as ExcalidrawLikeElement[])
+            : ((pageDataRef.current[target] as
+                | ExcalidrawLikeElement[]
+                | undefined) ?? []);
+          const appState = excalidrawAPI!.getAppState() as unknown;
+          const merged = await mergeScenesReconciled(
+            local,
+            elements,
+            appState,
+            { shouldDropRemoteElement }
+          );
+          pageDataRef.current[target] = merged;
           if (activePageIdRef.current === target) {
-            await updateSceneMergingWithRemote(
-              excalidrawAPI!,
-              elements,
-              { shouldDropRemoteElement }
-            );
-            pageDataRef.current[target] = excalidrawAPI!
-              .getSceneElements() as ExcalidrawLikeElement[];
-          } else {
-            const appState = excalidrawAPI!.getAppState() as unknown;
-            const local =
-              (pageDataRef.current[target] as
-                | ReadonlyArray<ExcalidrawLikeElement>
-                | undefined) ?? [];
-            const merged = await mergeScenesReconciled(
-              local,
-              elements,
-              appState,
-              { shouldDropRemoteElement }
-            );
-            pageDataRef.current[target] = merged;
+            excalidrawAPI!.updateScene({
+              elements: merged as ReadonlyArray<unknown>,
+            });
           }
           if (details?.follow && followTutorView) {
             applyTutorFollow(details.follow);

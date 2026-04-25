@@ -429,6 +429,43 @@ describe("sync-client lifecycle", () => {
     client.disconnect();
   });
 
+  test("onRemoteScene registers after first client-broadcast still receives last scene (replay)", async () => {
+    const { factory, sockets } = fakeIoFactory();
+    const k = generateEncryptionKeyBase64Url();
+    const client = createWhiteboardSyncClient({
+      url: "wss://test",
+      roomId: "room-xyz",
+      encryptionKeyBase64Url: k,
+      role: "student",
+      _ioFactory: factory,
+    });
+
+    await realTick();
+    await flushMicrotasks(10);
+
+    const aes = await _testing.importAesKey(_testing.decodeBase64Url(k));
+    const msg: WhiteboardWireMessage = {
+      v: 1,
+      peerId: "tutor-1",
+      role: "tutor",
+      elements: sampleScene("before-sub"),
+    };
+    const { data, iv } = await _testing.encryptMessage(aes, msg);
+
+    sockets[0]!.inject("client-broadcast", data, iv);
+    await realTick(10);
+    await flushMicrotasks(15);
+
+    const remoteCb = jest.fn();
+    client.onRemoteScene(remoteCb);
+    await flushMicrotasks(15);
+
+    expect(remoteCb).toHaveBeenCalledTimes(1);
+    expect(remoteCb).toHaveBeenCalledWith("tutor-1", msg.elements, undefined);
+
+    client.disconnect();
+  });
+
   test("relay echo of own peerId is suppressed", async () => {
     const { factory, sockets } = fakeIoFactory();
     const k = generateEncryptionKeyBase64Url();

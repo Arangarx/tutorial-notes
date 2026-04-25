@@ -449,6 +449,27 @@ export function createWhiteboardSyncClient(
   const disconnectSubs = new Set<() => void>();
   const peerCountSubs = new Set<(count: number) => void>();
 
+  /**
+   * Ingest can race AES key import (async IIFE). Dropping a packet here
+   * loses the tutor's new-user re-broadcast — student shows Connected but
+   * blank until the next stroke. Queue until the key is ready.
+   */
+  type QueuedClientBroadcast = { data: ArrayBuffer; iv: ArrayBuffer };
+  const MAX_PENDING_CLIENT_BROADCASTS = 20;
+  const pendingClientBroadcasts: QueuedClientBroadcast[] = [];
+
+  /**
+   * The relay may deliver a full scene before React subscribes to
+   * onRemoteScene (useEffect after paint). Cache the latest decrypted
+   * remote message so a late subscriber still receives a snapshot once.
+   */
+  type LastRemoteSceneSnapshot = {
+    peerId: string;
+    elements: ReadonlyArray<ExcalidrawLikeElement>;
+    details?: WhiteboardWireRemoteDetails;
+  };
+  let lastRemoteScene: LastRemoteSceneSnapshot | null = null;
+
   function fan<T extends (...args: never[]) => void>(
     set: Set<T>,
     ...args: Parameters<T>
@@ -506,12 +527,62 @@ export function createWhiteboardSyncClient(
   // mode where we never send/receive but the recorder still works.)
   // ---------------------------------------------------------------
 
+  function handleDecryptedWireMessage(msg: AnyWhiteboardWireMessage): void {
+    if (msg.peerId === peerId) return;
+    if (msg.v === 3) {
+      const m = msg as WhiteboardWireMessageV3;
+      const details: WhiteboardWireRemoteDetails = {
+        follow: m.follow,
+        page: m.page,
+        document: { rev: m.rev, pages: m.pages },
+      };
+      lastRemoteScene = { peerId: m.peerId, elements: [], details };
+      fan(remoteSceneSubs, m.peerId, [], details);
+      return;
+    }
+    const details: WhiteboardWireRemoteDetails = {};
+    if (msg.v === 2) {
+      if (msg.follow) details.follow = msg.follow;
+      if (msg.page) details.page = msg.page;
+      if (typeof (msg as WhiteboardWireMessageV2).scenePageId === "string") {
+        details.scenePageId = (msg as WhiteboardWireMessageV2).scenePageId;
+      }
+    }
+    const has = Object.keys(details).length > 0;
+    lastRemoteScene = {
+      peerId: msg.peerId,
+      elements: msg.elements,
+      details: has ? details : undefined,
+    };
+    fan(
+      remoteSceneSubs,
+      msg.peerId,
+      msg.elements,
+      has ? details : undefined
+    );
+  }
+
   void (async () => {
     try {
       const raw = decodeBase64Url(encryptionKeyBase64Url);
       aesKey = await importAesKey(raw);
+      const queued = pendingClientBroadcasts.splice(0, pendingClientBroadcasts.length);
+      for (const q of queued) {
+        if (disposed) return;
+        if (!aesKey) break;
+        try {
+          const msg = await decryptMessage(aesKey, q.data, q.iv);
+          handleDecryptedWireMessage(msg);
+        } catch (err) {
+          log.warn(
+            "decrypt/parse failed (queued client-broadcast):",
+            (err as Error)?.message ?? String(err)
+          );
+        }
+      }
     } catch (err) {
       aesKeyError = (err as Error)?.message ?? String(err);
+      pendingClientBroadcasts.length = 0;
       log.error(
         "AES key import failed — sync will be inert:",
         aesKeyError
@@ -622,41 +693,23 @@ export function createWhiteboardSyncClient(
     "client-broadcast",
     async (data: ArrayBuffer | Uint8Array, iv: ArrayBuffer | Uint8Array) => {
       if (disposed) return;
+      if (aesKeyError) return;
       if (!aesKey) {
-        log.warn("client-broadcast received but AES key unavailable; dropping");
+        if (pendingClientBroadcasts.length >= MAX_PENDING_CLIENT_BROADCASTS) {
+          pendingClientBroadcasts.shift();
+          log.warn(
+            "pending client-broadcast queue overflow; dropped oldest frame"
+          );
+        }
+        pendingClientBroadcasts.push({
+          data: toArrayBuffer(data),
+          iv: toArrayBuffer(iv),
+        });
         return;
       }
       try {
         const msg = await decryptMessage(aesKey, data, iv);
-        // Drop our own echoes — the relay shouldn't echo back, but
-        // if a future relay change starts echoing we don't want to
-        // re-ingest our own strokes as remote peer strokes.
-        if (msg.peerId === peerId) return;
-        if (msg.v === 3) {
-          const m = msg as WhiteboardWireMessageV3;
-          const details: WhiteboardWireRemoteDetails = {
-            follow: m.follow,
-            page: m.page,
-            document: { rev: m.rev, pages: m.pages },
-          };
-          fan(remoteSceneSubs, msg.peerId, [], details);
-          return;
-        }
-        const details: WhiteboardWireRemoteDetails = {};
-        if (msg.v === 2) {
-          if (msg.follow) details.follow = msg.follow;
-          if (msg.page) details.page = msg.page;
-          if (typeof (msg as WhiteboardWireMessageV2).scenePageId === "string") {
-            details.scenePageId = (msg as WhiteboardWireMessageV2).scenePageId;
-          }
-        }
-        const has = Object.keys(details).length > 0;
-        fan(
-          remoteSceneSubs,
-          msg.peerId,
-          msg.elements,
-          has ? details : undefined
-        );
+        handleDecryptedWireMessage(msg);
       } catch (err) {
         log.warn(
           "decrypt/parse failed:",
@@ -790,6 +843,20 @@ export function createWhiteboardSyncClient(
     isConnected: () => connected,
     onRemoteScene: (cb) => {
       remoteSceneSubs.add(cb);
+      const snap = lastRemoteScene;
+      if (snap) {
+        queueMicrotask(() => {
+          if (!remoteSceneSubs.has(cb)) return;
+          try {
+            (cb as RemoteSceneCb)(snap.peerId, snap.elements, snap.details);
+          } catch (err) {
+            log.warn(
+              "subscriber threw (replay):",
+              (err as Error)?.message ?? String(err)
+            );
+          }
+        });
+      }
       return () => {
         remoteSceneSubs.delete(cb);
       };
@@ -822,6 +889,8 @@ export function createWhiteboardSyncClient(
         clearTimeout(broadcastTimer);
         broadcastTimer = null;
       }
+      pendingClientBroadcasts.length = 0;
+      lastRemoteScene = null;
       remoteSceneSubs.clear();
       connectSubs.clear();
       disconnectSubs.clear();

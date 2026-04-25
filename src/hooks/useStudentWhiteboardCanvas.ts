@@ -13,6 +13,7 @@ import type {
   WhiteboardWireFollow,
   WhiteboardWirePage,
   WhiteboardWireBroadcastExtras,
+  WhiteboardWireRemoteDetails,
 } from "@/lib/whiteboard/sync-client";
 import { useSyncTombstonedElementIds } from "@/hooks/useSyncTombstonedElementIds";
 import { resolveWhiteboardAssetReadUrl } from "@/lib/whiteboard/resolve-asset-read-url";
@@ -64,6 +65,26 @@ export function useStudentWhiteboardCanvas(
   const [tutorStreamReady, setTutorStreamReady] = useState(false);
   const prevOtherPeersForRevResetRef = useRef(-1);
 
+  /** Live canvas — may be null for several hundred ms while Excalidraw loads. */
+  const excalidrawApiRef = useRef<ExcalidrawApiLike | null>(null);
+  useEffect(() => {
+    excalidrawApiRef.current = excalidrawAPI;
+  }, [excalidrawAPI]);
+
+  /**
+   * Tutor `new-user` can re-broadcast before we subscribe if the listener
+   * was gated on `excalidrawAPI`. Buffer the latest wire payload and apply
+   * once the canvas API exists.
+   */
+  const pendingV3Ref = useRef<{
+    rev: number;
+    details: WhiteboardWireRemoteDetails;
+  } | null>(null);
+  const pendingV2Ref = useRef<{
+    elements: ReadonlyArray<ExcalidrawLikeElement>;
+    details?: WhiteboardWireRemoteDetails;
+  } | null>(null);
+
   const applyTutorFollow = useCallback(
     (f: WhiteboardWireFollow) => {
       if (!excalidrawAPI) return;
@@ -105,6 +126,209 @@ export function useStudentWhiteboardCanvas(
     };
   }, []);
 
+  const runV3Apply = useCallback(
+    async (api: ExcalidrawApiLike, details: WhiteboardWireRemoteDetails) => {
+      const docV3 = details.document;
+      const page = details.page;
+      if (!docV3 || !page) return;
+
+      if (details.follow) {
+        lastTutorFollowRef.current = details.follow;
+      }
+      if (page.pageList && page.pageList.length > 0) {
+        setPageList(page.pageList.map((p) => ({ id: p.id, title: p.title })));
+      }
+      const followTarget = page.activePageId;
+      const previous = activePageIdRef.current;
+      if (previous !== followTarget) {
+        if (pageDataRef.current[previous] === undefined) {
+          pageDataRef.current[previous] = api.getSceneElements() as ExcalidrawLikeElement[];
+        }
+        activePageIdRef.current = followTarget;
+        setActivePageId(followTarget);
+      }
+      onTutorPageMeta?.(page);
+
+      applyingRemoteRef.current = true;
+      try {
+        const appState = api.getAppState() as unknown;
+        const pageIds = page.pageList.map((p) => p.id);
+        for (const pageId of pageIds) {
+          const base = (docV3.pages[pageId] ?? []) as ReadonlyArray<ExcalidrawLikeElement>;
+          const remoteCopy = base.map((e) => ({ ...e }) as ExcalidrawLikeElement);
+          const hydrate = await hydrateRemoteImageFilesForScene(
+            api,
+            remoteCopy,
+            loadedRemoteFileIdsRef.current,
+            {
+              logContext: "student",
+              giveUpFileIds: giveUpFileIdsRef.current,
+              warnDedupe: warnDedupeRef.current,
+              resolveReadUrl:
+                joinToken.length > 0
+                  ? (u) =>
+                      resolveWhiteboardAssetReadUrl(u, {
+                        kind: "student",
+                        joinToken,
+                      })
+                  : undefined,
+            }
+          );
+          onHydrateResult?.(hydrate);
+          const local: ExcalidrawLikeElement[] =
+            (pageDataRef.current[pageId] as ExcalidrawLikeElement[] | undefined) ?? [];
+          const merged = await mergeScenesReconciled(
+            local,
+            remoteCopy,
+            appState,
+            { shouldDropRemoteElement }
+          );
+          pageDataRef.current[pageId] = merged;
+        }
+        const act = activePageIdRef.current;
+        const toShow = pageDataRef.current[act];
+        if (toShow) {
+          api.updateScene({ elements: toShow as ReadonlyArray<unknown> });
+        }
+        if (details.follow && followTutorView) {
+          const prevState = api.getAppState() as Record<string, unknown>;
+          const a = api as ExcalidrawApiLike & {
+            updateScene: (s: { appState?: unknown; elements?: unknown }) => void;
+          };
+          a.updateScene({
+            appState: {
+              ...prevState,
+              scrollX: details.follow!.scrollX,
+              scrollY: details.follow!.scrollY,
+              zoom: { value: details.follow!.zoom },
+            },
+          });
+        }
+        setTutorStreamReady(true);
+      } catch (err) {
+        console.warn(
+          "[useStudentWhiteboardCanvas] v3 document apply failed:",
+          (err as Error)?.message ?? String(err)
+        );
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    },
+    [
+      followTutorView,
+      joinToken,
+      onHydrateResult,
+      onTutorPageMeta,
+      shouldDropRemoteElement,
+    ]
+  );
+
+  const runV2Apply = useCallback(
+    async (
+      api: ExcalidrawApiLike,
+      elements: ReadonlyArray<ExcalidrawLikeElement>,
+      details?: WhiteboardWireRemoteDetails
+    ) => {
+      if (details?.follow) {
+        lastTutorFollowRef.current = details.follow;
+      }
+      const page = details?.page;
+      const followTarget = page?.activePageId ?? "p1";
+      const mergeTarget = details?.scenePageId ?? followTarget;
+      if (page?.pageList && page.pageList.length > 0) {
+        setPageList(page.pageList.map((p) => ({ id: p.id, title: p.title })));
+      }
+      const previous = activePageIdRef.current;
+      if (previous !== followTarget) {
+        if (pageDataRef.current[previous] === undefined) {
+          pageDataRef.current[previous] = api.getSceneElements() as ExcalidrawLikeElement[];
+        }
+        activePageIdRef.current = followTarget;
+        setActivePageId(followTarget);
+      }
+      if (page) {
+        onTutorPageMeta?.(page);
+      }
+      applyingRemoteRef.current = true;
+      try {
+        const result = await hydrateRemoteImageFilesForScene(
+          api,
+          elements,
+          loadedRemoteFileIdsRef.current,
+          {
+            logContext: "student",
+            giveUpFileIds: giveUpFileIdsRef.current,
+            warnDedupe: warnDedupeRef.current,
+            resolveReadUrl:
+              joinToken.length > 0
+                ? (u) =>
+                    resolveWhiteboardAssetReadUrl(u, {
+                      kind: "student",
+                      joinToken,
+                    })
+                : undefined,
+          }
+        );
+        onHydrateResult?.(result);
+        const studentSeesMergePage = activePageIdRef.current === mergeTarget;
+        const local: ExcalidrawLikeElement[] = studentSeesMergePage
+          ? (api.getSceneElements() as ExcalidrawLikeElement[])
+          : ((pageDataRef.current[mergeTarget] as
+              | ExcalidrawLikeElement[]
+              | undefined) ?? []);
+        const appState = api.getAppState() as unknown;
+        const merged = await mergeScenesReconciled(
+          local,
+          elements,
+          appState,
+          { shouldDropRemoteElement }
+        );
+        pageDataRef.current[mergeTarget] = merged;
+        if (activePageIdRef.current === mergeTarget) {
+          api.updateScene({ elements: merged as ReadonlyArray<unknown> });
+        }
+        if (details?.follow && followTutorView) {
+          const prevState = api.getAppState() as Record<string, unknown>;
+          const a = api as ExcalidrawApiLike & {
+            updateScene: (s: { appState?: unknown; elements?: unknown }) => void;
+          };
+          a.updateScene({
+            appState: {
+              ...prevState,
+              scrollX: details.follow.scrollX,
+              scrollY: details.follow.scrollY,
+              zoom: { value: details.follow.zoom },
+            },
+          });
+        }
+        setTutorStreamReady(true);
+      } catch (err) {
+        console.warn(
+          "[useStudentWhiteboardCanvas] remote scene apply failed:",
+          (err as Error)?.message ?? String(err)
+        );
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    },
+    [followTutorView, joinToken, onHydrateResult, onTutorPageMeta, shouldDropRemoteElement]
+  );
+
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+    const p3 = pendingV3Ref.current;
+    if (p3) {
+      pendingV3Ref.current = null;
+      lastTutorV3RevRef.current = p3.rev;
+      void runV3Apply(excalidrawAPI, p3.details);
+    }
+    const p2 = pendingV2Ref.current;
+    if (p2) {
+      pendingV2Ref.current = null;
+      void runV2Apply(excalidrawAPI, p2.elements, p2.details);
+    }
+  }, [excalidrawAPI, runV3Apply, runV2Apply]);
+
   useEffect(() => {
     if (!sync) return;
     if (
@@ -131,7 +355,7 @@ export function useStudentWhiteboardCanvas(
   }, [sync]);
 
   useEffect(() => {
-    if (!sync || !excalidrawAPI) return;
+    if (!sync) return;
     const off = sync.onRemoteScene((peerId, elements, details) => {
       const docV3 = details?.document;
       if (docV3) {
@@ -142,176 +366,40 @@ export function useStudentWhiteboardCanvas(
         }
         if (r < last) {
           if (last - r <= 2) {
-            return; // out-of-order lower rev in the same live session
+            return;
           }
+        }
+        const apiNow = excalidrawApiRef.current;
+        if (!apiNow) {
+          const prevB = pendingV3Ref.current;
+          if (prevB) {
+            if (r === prevB.rev) return;
+            if (r < prevB.rev && prevB.rev - r <= 2) {
+              return;
+            }
+          }
+          pendingV3Ref.current = { rev: r, details: details! };
+          return;
         }
         lastTutorV3RevRef.current = r;
-        if (details?.follow) {
-          lastTutorFollowRef.current = details.follow;
-        }
-        const page = details?.page;
-        if (!page) return;
-        if (page.pageList && page.pageList.length > 0) {
-          setPageList(page.pageList.map((p) => ({ id: p.id, title: p.title })));
-        }
-        const followTarget = page.activePageId;
-        const previous = activePageIdRef.current;
-        if (previous !== followTarget) {
-          if (pageDataRef.current[previous] === undefined) {
-            pageDataRef.current[previous] = excalidrawAPI.getSceneElements() as ExcalidrawLikeElement[];
-          }
-          activePageIdRef.current = followTarget;
-          setActivePageId(followTarget);
-        }
-        onTutorPageMeta?.(page);
-        void (async () => {
-          applyingRemoteRef.current = true;
-          try {
-            const api = excalidrawAPI;
-            const appState = api.getAppState() as unknown;
-            const pageIds = page.pageList.map((p) => p.id);
-            for (const pageId of pageIds) {
-              const base = (docV3.pages[pageId] ?? []) as ReadonlyArray<ExcalidrawLikeElement>;
-              const remoteCopy = base.map((e) => ({ ...e }) as ExcalidrawLikeElement);
-              const hydrate = await hydrateRemoteImageFilesForScene(
-                api,
-                remoteCopy,
-                loadedRemoteFileIdsRef.current,
-                {
-                  logContext: "student",
-                  giveUpFileIds: giveUpFileIdsRef.current,
-                  warnDedupe: warnDedupeRef.current,
-                  resolveReadUrl:
-                    joinToken.length > 0
-                      ? (u) =>
-                          resolveWhiteboardAssetReadUrl(u, {
-                            kind: "student",
-                            joinToken,
-                          })
-                      : undefined,
-                }
-              );
-              onHydrateResult?.(hydrate);
-              const local: ExcalidrawLikeElement[] =
-                (pageDataRef.current[pageId] as ExcalidrawLikeElement[] | undefined) ?? [];
-              const merged = await mergeScenesReconciled(
-                local,
-                remoteCopy,
-                appState,
-                { shouldDropRemoteElement }
-              );
-              pageDataRef.current[pageId] = merged;
-            }
-            const act = activePageIdRef.current;
-            const toShow = pageDataRef.current[act];
-            if (toShow) {
-              api.updateScene({ elements: toShow as ReadonlyArray<unknown> });
-            }
-            if (details?.follow && followTutorView) {
-              applyTutorFollow(details.follow);
-            }
-            setTutorStreamReady(true);
-          } catch (err) {
-            console.warn(
-              "[useStudentWhiteboardCanvas] v3 document apply failed:",
-              (err as Error)?.message ?? String(err)
-            );
-          } finally {
-            applyingRemoteRef.current = false;
-          }
-        })();
+        void runV3Apply(apiNow, details!);
         return;
       }
-      if (details?.follow) {
-        lastTutorFollowRef.current = details.follow;
+      if (!excalidrawApiRef.current) {
+        pendingV2Ref.current = {
+          elements: elements as ExcalidrawLikeElement[],
+          details,
+        };
+        return;
       }
-      const page = details?.page;
-      const followTarget = page?.activePageId ?? "p1";
-      const mergeTarget = details?.scenePageId ?? followTarget;
-      if (page?.pageList && page.pageList.length > 0) {
-        setPageList(
-          page.pageList.map((p) => ({ id: p.id, title: p.title }))
-        );
-      }
-      const previous = activePageIdRef.current;
-      if (previous !== followTarget) {
-        if (excalidrawAPI) {
-          if (pageDataRef.current[previous] === undefined) {
-            pageDataRef.current[previous] = excalidrawAPI.getSceneElements() as ExcalidrawLikeElement[];
-          }
-        }
-        activePageIdRef.current = followTarget;
-        setActivePageId(followTarget);
-      }
-      if (page) {
-        onTutorPageMeta?.(page);
-      }
-      void (async () => {
-        applyingRemoteRef.current = true;
-        try {
-          const result = await hydrateRemoteImageFilesForScene(
-            excalidrawAPI!,
-            elements,
-            loadedRemoteFileIdsRef.current,
-            {
-              logContext: "student",
-              giveUpFileIds: giveUpFileIdsRef.current,
-              warnDedupe: warnDedupeRef.current,
-              resolveReadUrl:
-                joinToken.length > 0
-                  ? (u) =>
-                      resolveWhiteboardAssetReadUrl(u, {
-                        kind: "student",
-                        joinToken,
-                      })
-                  : undefined,
-            }
-          );
-          onHydrateResult?.(result);
-          const studentSeesMergePage = activePageIdRef.current === mergeTarget;
-          const local: ExcalidrawLikeElement[] = studentSeesMergePage
-            ? (excalidrawAPI!.getSceneElements() as ExcalidrawLikeElement[])
-            : ((pageDataRef.current[mergeTarget] as
-                | ExcalidrawLikeElement[]
-                | undefined) ?? []);
-          const appState = excalidrawAPI!.getAppState() as unknown;
-          const merged = await mergeScenesReconciled(
-            local,
-            elements,
-            appState,
-            { shouldDropRemoteElement }
-          );
-          pageDataRef.current[mergeTarget] = merged;
-          if (activePageIdRef.current === mergeTarget) {
-            excalidrawAPI!.updateScene({
-              elements: merged as ReadonlyArray<unknown>,
-            });
-          }
-          if (details?.follow && followTutorView) {
-            applyTutorFollow(details.follow);
-          }
-          setTutorStreamReady(true);
-        } catch (err) {
-          console.warn(
-            "[useStudentWhiteboardCanvas] remote scene apply failed:",
-            (err as Error)?.message ?? String(err)
-          );
-        } finally {
-          applyingRemoteRef.current = false;
-        }
-      })();
+      void runV2Apply(
+        excalidrawApiRef.current,
+        elements as ReadonlyArray<ExcalidrawLikeElement>,
+        details
+      );
     });
     return off;
-  }, [
-    onHydrateResult,
-    onTutorPageMeta,
-    followTutorView,
-    applyTutorFollow,
-    joinToken,
-    shouldDropRemoteElement,
-    sync,
-    excalidrawAPI,
-  ]);
+  }, [runV2Apply, runV3Apply, sync]);
 
   const onCanvasChange = useCallback(
     (

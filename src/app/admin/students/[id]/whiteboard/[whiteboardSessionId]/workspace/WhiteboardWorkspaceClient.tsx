@@ -54,7 +54,10 @@ import {
   computeDisplayActiveMs,
 } from "@/lib/whiteboard/active-time";
 import { deriveRecordingPresence } from "@/lib/whiteboard/recording-presence";
-import { useWhiteboardRecorder } from "@/hooks/useWhiteboardRecorder";
+import {
+  useWhiteboardRecorder,
+  type ResumeResult,
+} from "@/hooks/useWhiteboardRecorder";
 import { uploadWhiteboardEvents } from "@/lib/whiteboard/upload";
 import {
   endWhiteboardSession,
@@ -764,13 +767,55 @@ export function WhiteboardWorkspaceClient({
   }, [recorder, router, studentId, whiteboardSessionId]);
 
   // ---------------------------------------------------------------
-  // Restore a per-tab Excalidraw draft after refresh (strokes while
-  // "waiting for student" were never in the event log / IDB).
+  // After refresh: (1) auto-paint after stale-room "Resume session" when
+  // the hook applied an IndexedDB snapshot to memory, (2) else restore
+  // per-tab sessionStorage (strokes while "waiting for student"). Waits
+  // for `checkpointMountResolved` so (1) wins over a stale session draft.
   // ---------------------------------------------------------------
+
+  const paintRecoveredSceneIntoExcalidraw = useCallback(
+    async (result: ResumeResult) => {
+      const api = excalidrawAPIRef.current;
+      if (!api) return;
+      const { restoreElements } = await import("@excalidraw/excalidraw");
+      const rough = result.elements.map((el) => toExcalidraw(el));
+      const restored = restoreElements(rough as never, null, {
+        refreshDimensions: true,
+      });
+      applyingRemoteToCanvasRef.current = true;
+      try {
+        let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
+        if (toPaint.length === 0) {
+          const draft = loadSessionSceneDraft(whiteboardSessionId);
+          if (draft && draft.length > 0) toPaint = draft;
+        }
+        api.updateScene({ elements: toPaint });
+      } finally {
+        applyingRemoteToCanvasRef.current = false;
+      }
+      clearSessionSceneDraft(whiteboardSessionId);
+    },
+    [whiteboardSessionId]
+  );
 
   useEffect(() => {
     if (!excalidrawAPI) return;
+    if (!recorder.checkpointMountResolved) return;
     if (hasHydratedSessionDraftRef.current) return;
+
+    if (recorder.postGateAutoCanvas) {
+      hasHydratedSessionDraftRef.current = true;
+      const payload = recorder.postGateAutoCanvas;
+      void (async () => {
+        try {
+          await paintRecoveredSceneIntoExcalidraw(payload);
+        } finally {
+          recorder.acknowledgePostGateAutoCanvas();
+        }
+      })();
+      return;
+    }
+
     const draft = loadSessionSceneDraft(whiteboardSessionId);
     if (!draft) {
       hasHydratedSessionDraftRef.current = true;
@@ -783,7 +828,14 @@ export function WhiteboardWorkspaceClient({
       applyingRemoteToCanvasRef.current = false;
     }
     hasHydratedSessionDraftRef.current = true;
-  }, [excalidrawAPI, whiteboardSessionId]);
+  }, [
+    excalidrawAPI,
+    paintRecoveredSceneIntoExcalidraw,
+    recorder.acknowledgePostGateAutoCanvas,
+    recorder.checkpointMountResolved,
+    recorder.postGateAutoCanvas,
+    whiteboardSessionId,
+  ]);
 
   // ---------------------------------------------------------------
   // IndexedDB checkpoint "Resume" — the hook recovers the log, but the
@@ -792,28 +844,9 @@ export function WhiteboardWorkspaceClient({
 
   const handleAcceptCheckpointResume = useCallback(async () => {
     const result = await recorder.acceptResume();
-    const api = excalidrawAPIRef.current;
-    if (!result || !api) return;
-    // Raw `toExcalidraw` is missing many required Excalidraw fields; replay
-    // also relies on `restoreElements` in practice for valid scene paint.
-    const { restoreElements } = await import("@excalidraw/excalidraw");
-    const rough = result.elements.map((el) => toExcalidraw(el));
-    const restored = restoreElements(rough as never, null, {
-      refreshDimensions: true,
-    });
-    applyingRemoteToCanvasRef.current = true;
-    try {
-      let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
-      if (toPaint.length === 0) {
-        const draft = loadSessionSceneDraft(whiteboardSessionId);
-        if (draft && draft.length > 0) toPaint = draft;
-      }
-      api.updateScene({ elements: toPaint });
-    } finally {
-      applyingRemoteToCanvasRef.current = false;
-    }
-    clearSessionSceneDraft(whiteboardSessionId);
-  }, [recorder, whiteboardSessionId]);
+    if (!result) return;
+    await paintRecoveredSceneIntoExcalidraw(result);
+  }, [recorder, paintRecoveredSceneIntoExcalidraw]);
 
   // ---------------------------------------------------------------
   // Excalidraw onChange wiring

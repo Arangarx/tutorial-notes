@@ -258,6 +258,18 @@ export type UseWhiteboardRecorderReturn = {
    * "Resume previous session" for a session that already finalized.
    */
   markPersisted: () => Promise<void>;
+  /**
+   * True after the initial IndexedDB / resume scan on mount completes.
+   * Defer `sessionStorage` scene draft until then so an auto-resume from
+   * the stale-room gate does not lose to a draft load.
+   */
+  checkpointMountResolved: boolean;
+  /**
+   * When the tutor dismissed `WorkspaceResumeGate` and a same-session IDB
+   * checkpoint exists — same `ResumeResult` as "Load draft into board".
+   */
+  postGateAutoCanvas: ResumeResult | null;
+  acknowledgePostGateAutoCanvas: () => void;
 };
 
 export type ResumeAvailability = {
@@ -357,12 +369,40 @@ export function useWhiteboardRecorder(
   const [resumePrompt, setResumePrompt] = useState<ResumeAvailability | null>(
     null
   );
+  const [checkpointMountResolved, setCheckpointMountResolved] = useState(false);
+  const [postGateAutoCanvas, setPostGateAutoCanvas] =
+    useState<ResumeResult | null>(null);
 
   // Cache the resumable checkpoint so acceptResume doesn't need a second IDB read.
   const cachedResumeRef = useRef<{
     log: WBEventLog;
     sessionId: string;
   } | null>(null);
+
+  /**
+   * Loads `cachedResumeRef` into `logRef` / `prevElementsRef` and returns the
+   * same shape as `acceptResume`. Used by the manual "Load draft" control and
+   * the stale-room "Resume session" auto-path (the latter skips a second
+   * browser dialog but must still materialise the canvas).
+   */
+  const applyResumeFromCachedCheckpoint =
+    useCallback(async (): Promise<ResumeResult | null> => {
+      const cached = cachedResumeRef.current;
+      if (!cached) return null;
+      logRef.current = cached.log;
+      setEventCount(cached.log.events.length);
+      setDurationMs(cached.log.durationMs);
+      cachedResumeRef.current = null;
+
+      const { reconstructSceneAt } = await import("@/lib/whiteboard/event-log");
+      const sceneMap = reconstructSceneAt(cached.log, cached.log.durationMs);
+      const elements = Array.from(sceneMap.values());
+      prevElementsRef.current = elements;
+      console.log(
+        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} applied checkpoint sessionId=${cached.sessionId} events=${cached.log.events.length}`
+      );
+      return { log: cached.log, elements };
+    }, [whiteboardSessionId]);
 
   /** Push an event, refresh derived UI state. Single point of mutation. */
   const pushEvent = useCallback((ev: WBEvent) => {
@@ -640,98 +680,100 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Try the exact session id first (workspace re-mount on the
-      // same session url) — that's the highest-fidelity recovery.
-      const exact = await findCheckpoint<CheckpointPayload>(
-        "whiteboard",
-        ownerKey
-      );
-      if (cancelled) return;
-      if (exact) {
-        // Server may have ended this session from another tab / the
-        // student-page list; IndexedDB still holds a local checkpoint
-        // until we clear it or the user Discards.
-        const serverEnded = await fetchSessionEndedOnServer(exact.sessionId);
+      try {
+        // Try the exact session id first (workspace re-mount on the
+        // same session url) — that's the highest-fidelity recovery.
+        const exact = await findCheckpoint<CheckpointPayload>(
+          "whiteboard",
+          ownerKey
+        );
         if (cancelled) return;
-        if (serverEnded) {
-          await clearCheckpoint("whiteboard", ownerKey);
+        if (exact) {
+          // Server may have ended this session from another tab / the
+          // student-page list; IndexedDB still holds a local checkpoint
+          // until we clear it or the user Discards.
+          const serverEnded = await fetchSessionEndedOnServer(exact.sessionId);
+          if (cancelled) return;
+          if (serverEnded) {
+            await clearCheckpoint("whiteboard", ownerKey);
+            return;
+          }
+          // User already confirmed the stale room gate; skip a second
+          // "browser draft" dialog — but we MUST still load the in-memory
+          // log and hand the canvas to the workspace, or the board is blank.
+          if (consumeSkipIndexedDbResumeAfterGate(whiteboardSessionId)) {
+            cachedResumeRef.current = {
+              log: exact.payload.log,
+              sessionId: exact.sessionId,
+            };
+            const applied = await applyResumeFromCachedCheckpoint();
+            if (!cancelled && applied) {
+              setPostGateAutoCanvas(applied);
+            }
+            return;
+          }
+          cachedResumeRef.current = {
+            log: exact.payload.log,
+            sessionId: exact.sessionId,
+          };
+          setResumePrompt({
+            source: "this-session",
+            startedAt: exact.startedAt,
+            durationMs: exact.payload.log.durationMs,
+            sessionId: exact.sessionId,
+          });
           return;
         }
-        // User already confirmed the stale room gate; skip a second
-        // IndexedDB prompt for this session on the same page load.
-        if (consumeSkipIndexedDbResumeAfterGate(whiteboardSessionId)) {
-          return;
-        }
-        cachedResumeRef.current = {
-          log: exact.payload.log,
-          sessionId: exact.sessionId,
-        };
-        setResumePrompt({
-          source: "this-session",
-          startedAt: exact.startedAt,
-          durationMs: exact.payload.log.durationMs,
-          sessionId: exact.sessionId,
-        });
-        return;
-      }
-      // Fallback — a brand-new session url for a tutor + student
-      // who has an unfinalised checkpoint elsewhere. The workspace
-      // can decide whether to surface this (it's a softer prompt).
-      const latest = await findLatestCheckpointForOwner<CheckpointPayload>(
-        "whiteboard",
-        adminUserId,
-        studentId
-      );
-      if (cancelled) return;
-      if (latest) {
-        const serverEnded = await fetchSessionEndedOnServer(latest.sessionId);
+        // Fallback — a brand-new session url for a tutor + student
+        // who has an unfinalised checkpoint elsewhere. The workspace
+        // can decide whether to surface this (it's a softer prompt).
+        const latest = await findLatestCheckpointForOwner<CheckpointPayload>(
+          "whiteboard",
+          adminUserId,
+          studentId
+        );
         if (cancelled) return;
-        if (serverEnded) {
-          await clearCheckpoint(
-            "whiteboard",
-            whiteboardOwnerKey(adminUserId, studentId, latest.sessionId)
-          );
-          return;
+        if (latest) {
+          const serverEnded = await fetchSessionEndedOnServer(latest.sessionId);
+          if (cancelled) return;
+          if (serverEnded) {
+            await clearCheckpoint(
+              "whiteboard",
+              whiteboardOwnerKey(adminUserId, studentId, latest.sessionId)
+            );
+            return;
+          }
+          cachedResumeRef.current = {
+            log: latest.payload.log,
+            sessionId: latest.sessionId,
+          };
+          setResumePrompt({
+            source: "latest-for-owner",
+            startedAt: latest.startedAt,
+            durationMs: latest.payload.log.durationMs,
+            sessionId: latest.sessionId,
+          });
         }
-        cachedResumeRef.current = {
-          log: latest.payload.log,
-          sessionId: latest.sessionId,
-        };
-        setResumePrompt({
-          source: "latest-for-owner",
-          startedAt: latest.startedAt,
-          durationMs: latest.payload.log.durationMs,
-          sessionId: latest.sessionId,
-        });
+      } finally {
+        if (!cancelled) {
+          setCheckpointMountResolved(true);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [adminUserId, ownerKey, studentId]);
+  }, [adminUserId, ownerKey, studentId, applyResumeFromCachedCheckpoint, whiteboardSessionId]);
 
   const acceptResume = useCallback(async (): Promise<ResumeResult | null> => {
-    const cached = cachedResumeRef.current;
-    if (!cached) return null;
-    logRef.current = cached.log;
-    setEventCount(cached.log.events.length);
-    setDurationMs(cached.log.durationMs);
+    if (!cachedResumeRef.current) return null;
     setResumePrompt(null);
-    cachedResumeRef.current = null;
+    return applyResumeFromCachedCheckpoint();
+  }, [applyResumeFromCachedCheckpoint]);
 
-    // Reconstruct prevElementsRef from the recovered log so the next
-    // diff is computed against the right baseline. We import lazily
-    // to avoid a circular ref between this hook and the event-log
-    // reconstruct helper at module init.
-    const { reconstructSceneAt } = await import("@/lib/whiteboard/event-log");
-    const sceneMap = reconstructSceneAt(cached.log, cached.log.durationMs);
-    const elements = Array.from(sceneMap.values());
-    prevElementsRef.current = elements;
-    console.log(
-      `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} resumed from checkpoint sessionId=${cached.sessionId} events=${cached.log.events.length}`
-    );
-    return { log: cached.log, elements };
-  }, [whiteboardSessionId]);
+  const acknowledgePostGateAutoCanvas = useCallback(() => {
+    setPostGateAutoCanvas(null);
+  }, []);
 
   const declineResume = useCallback(async () => {
     const cached = cachedResumeRef.current;
@@ -798,5 +840,8 @@ export function useWhiteboardRecorder(
     declineResume,
     buildFinalEventsJson,
     markPersisted,
+    checkpointMountResolved,
+    postGateAutoCanvas,
+    acknowledgePostGateAutoCanvas,
   };
 }

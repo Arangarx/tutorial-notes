@@ -6,7 +6,7 @@
 
 This doc is the canonical handoff between sessions. The Cursor plan can
 expire; this doc survives. Update it whenever you finish a sub-section or
-pause mid-flight.
+pause mid-flight. For **git root, branch, and parallel-chat process**, also read **`docs/AGENT-BOOTSTRAP.md`**.
 
 ---
 

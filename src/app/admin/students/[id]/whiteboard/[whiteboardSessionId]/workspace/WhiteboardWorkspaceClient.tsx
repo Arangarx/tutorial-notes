@@ -478,44 +478,51 @@ export function WhiteboardWorkspaceClient({
         zoom: st.zoom.value,
       },
       page: {
-        activePageId,
+        // Ref — not React state — so rapid tab switches don’t lag one frame
+        // behind the canvas (state updates async; ref updates in selectTutorPage).
+        activePageId: activePageIdRef.current,
         pageList: pageList.map((p) => ({ id: p.id, title: p.title })),
       },
     };
-  }, [activePageId, pageList, syncUrl]);
+  }, [pageList, syncUrl]);
 
-  const selectTutorPage = useCallback(
-    (nextId: string) => {
-      if (nextId === activePageId) return;
-      const api = excalidrawAPIRef.current;
-      if (!api) {
-        setActivePageId(nextId);
-        return;
-      }
-      const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
-      pageDataRef.current[activePageId] = current;
-      const next = (pageDataRef.current[nextId] as ReadonlyArray<ExcalidrawLikeElement> | undefined) ?? [];
-      applyingRemoteToCanvasRef.current = true;
-      try {
-        api.updateScene({ elements: next as ReadonlyArray<unknown> });
-      } finally {
-        applyingRemoteToCanvasRef.current = false;
-      }
+  const selectTutorPage = useCallback((nextId: string) => {
+    if (nextId === activePageIdRef.current) return;
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      activePageIdRef.current = nextId;
       setActivePageId(nextId);
-    },
-    [activePageId]
-  );
+      return;
+    }
+    const from = activePageIdRef.current;
+    const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
+    pageDataRef.current[from] = current;
+    const next =
+      (pageDataRef.current[nextId] as
+        | ReadonlyArray<ExcalidrawLikeElement>
+        | undefined) ?? [];
+    activePageIdRef.current = nextId;
+    applyingRemoteToCanvasRef.current = true;
+    try {
+      api.updateScene({ elements: next as ReadonlyArray<unknown> });
+    } finally {
+      applyingRemoteToCanvasRef.current = false;
+    }
+    setActivePageId(nextId);
+  }, []);
 
   const addTutorPage = useCallback(() => {
     const api = excalidrawAPIRef.current;
     if (api) {
+      const from = activePageIdRef.current;
       const current = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
-      pageDataRef.current[activePageId] = current;
+      pageDataRef.current[from] = current;
     }
     const n = pageList.length + 1;
     const newId = `p${Date.now()}`;
     setPageList((pl) => [...pl, { id: newId, title: `Page ${n}` }]);
     pageDataRef.current[newId] = [];
+    activePageIdRef.current = newId;
     applyingRemoteToCanvasRef.current = true;
     try {
       api?.updateScene({ elements: [] });
@@ -523,7 +530,7 @@ export function WhiteboardWorkspaceClient({
       applyingRemoteToCanvasRef.current = false;
     }
     setActivePageId(newId);
-  }, [activePageId, pageList.length]);
+  }, [pageList.length]);
 
   const recorder = useWhiteboardRecorder({
     whiteboardSessionId,
@@ -896,7 +903,7 @@ export function WhiteboardWorkspaceClient({
     ) => {
       if (applyingRemoteToCanvasRef.current) return;
       const els = elements as ReadonlyArray<ExcalidrawLikeElement>;
-      pageDataRef.current[activePageId] = [...els];
+      pageDataRef.current[activePageIdRef.current] = [...els];
       onLocalElementSnapshot(elements);
       if (sceneDraftTimerRef.current !== null) {
         clearTimeout(sceneDraftTimerRef.current);
@@ -957,15 +964,7 @@ export function WhiteboardWorkspaceClient({
         })();
       }
     },
-    [
-      onLocalElementSnapshot,
-      activePageId,
-      recorder,
-      studentId,
-      whiteboardSessionId,
-      getWireBroadcastExtras,
-      syncUrl,
-    ]
+    [onLocalElementSnapshot, recorder, studentId, whiteboardSessionId, getWireBroadcastExtras, syncUrl]
   );
 
   // ---------------------------------------------------------------

@@ -249,7 +249,7 @@ describe("<WhiteboardReplay />", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("wb-replay-empty")).not.toBeInTheDocument();
     });
-    expect(screen.getByTestId("wb-replay")).toBeInTheDocument();
+    expect(await screen.findByTestId("wb-replay")).toBeInTheDocument();
   });
 
   it("missing schemaVersion in JSON surfaces a clean schema error", async () => {

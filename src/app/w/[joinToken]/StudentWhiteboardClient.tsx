@@ -177,6 +177,8 @@ export function StudentWhiteboardClient({
     "none" | "load" | "missing"
   >("none");
   const [dismissedMaterialNotice, setDismissedMaterialNotice] = useState(false);
+  const [dismissedBoardWaitNotice, setDismissedBoardWaitNotice] = useState(false);
+  const [boardWaitElapsed, setBoardWaitElapsed] = useState(false);
 
   const studentNativeImageFileIdToAssetUrlRef = useRef(new Map<string, string>());
   const studentNativeImageUploadInFlightRef = useRef(new Set<string>());
@@ -204,6 +206,7 @@ export function StudentWhiteboardClient({
     getPageBroadcastExtras,
     pageList,
     activePageId: studentActivePageId,
+    tutorStreamReady,
   } = useStudentWhiteboardCanvas(
     syncClient,
     excalidrawAPI,
@@ -213,6 +216,19 @@ export function StudentWhiteboardClient({
       followTutorView: !independentView,
     }
   );
+
+  useEffect(() => {
+    if (!connected || otherPeerCount < 1) {
+      setBoardWaitElapsed(false);
+      return;
+    }
+    if (tutorStreamReady) {
+      setBoardWaitElapsed(false);
+      return;
+    }
+    const t = window.setTimeout(() => setBoardWaitElapsed(true), 8000);
+    return () => clearTimeout(t);
+  }, [connected, otherPeerCount, tutorStreamReady]);
 
   const handleExcalidrawChange = useCallback(
     (
@@ -451,6 +467,48 @@ export function StudentWhiteboardClient({
         </div>
       </div>
 
+      {boardWaitElapsed && !dismissedBoardWaitNotice && (
+        <div
+          role="status"
+          className="card"
+          data-testid="student-board-sync-wait-banner"
+          style={{
+            marginTop: 10,
+            padding: "10px 14px",
+            background: "rgba(59, 130, 246, 0.08)",
+            border: "1px solid rgba(59, 130, 246, 0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 13, maxWidth: 720 }}>
+            The board is still empty after several seconds. That usually means
+            the live link didn&apos;t resync (for example, after a refresh). Try
+            reload — or ask your tutor to draw or switch a page, which
+            re-sends the full board.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => window.location.reload()}
+            >
+              Reload this page
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setDismissedBoardWaitNotice(true)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {materialNotice !== "none" && !dismissedMaterialNotice && (
         <div
           role="status"
@@ -531,7 +589,9 @@ export function StudentWhiteboardClient({
               setExcalidrawAPI(like);
             }}
             theme={excalidrawTheme}
-            UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+            UIOptions={{
+              canvasActions: { saveToActiveFile: false, loadScene: false },
+            }}
             validateEmbeddable={validateExcalidrawEmbeddable}
           />
         </div>

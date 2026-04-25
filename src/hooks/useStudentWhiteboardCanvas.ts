@@ -55,8 +55,14 @@ export function useStudentWhiteboardCanvas(
   const pageDataRef = useRef<Record<string, ReadonlyArray<ExcalidrawLikeElement>>>(
     Object.create(null)
   );
-  /** Drop stale reordered v3 document packets. */
+  /**
+   * Monotonic tutor `rev` (same socket session). We reset to 0 on our reconnect
+   * and when the tutor re-appears in the room so a tutor page reload
+   * (rev counter restarts) is not mis-read as a stale, dropped packet.
+   */
   const lastTutorV3RevRef = useRef(0);
+  const [tutorStreamReady, setTutorStreamReady] = useState(false);
+  const prevOtherPeersForRevResetRef = useRef(-1);
 
   const applyTutorFollow = useCallback(
     (f: WhiteboardWireFollow) => {
@@ -100,14 +106,46 @@ export function useStudentWhiteboardCanvas(
   }, []);
 
   useEffect(() => {
+    if (!sync) return;
+    if (
+      typeof sync.onConnect !== "function" ||
+      typeof sync.onPeerCountChange !== "function"
+    ) {
+      return;
+    }
+    lastTutorV3RevRef.current = 0;
+    const offConnect = sync.onConnect(() => {
+      lastTutorV3RevRef.current = 0;
+    });
+    const offPeer = sync.onPeerCountChange((n) => {
+      const was = prevOtherPeersForRevResetRef.current;
+      if (n >= 1 && was <= 0) {
+        lastTutorV3RevRef.current = 0;
+      }
+      prevOtherPeersForRevResetRef.current = n;
+    });
+    return () => {
+      offConnect();
+      offPeer();
+    };
+  }, [sync]);
+
+  useEffect(() => {
     if (!sync || !excalidrawAPI) return;
     const off = sync.onRemoteScene((peerId, elements, details) => {
       const docV3 = details?.document;
       if (docV3) {
-        if (docV3.rev <= lastTutorV3RevRef.current) {
+        const r = docV3.rev;
+        const last = lastTutorV3RevRef.current;
+        if (r === last) {
           return;
         }
-        lastTutorV3RevRef.current = docV3.rev;
+        if (r < last) {
+          if (last - r <= 2) {
+            return; // out-of-order lower rev in the same live session
+          }
+        }
+        lastTutorV3RevRef.current = r;
         if (details?.follow) {
           lastTutorFollowRef.current = details.follow;
         }
@@ -172,6 +210,7 @@ export function useStudentWhiteboardCanvas(
             if (details?.follow && followTutorView) {
               applyTutorFollow(details.follow);
             }
+            setTutorStreamReady(true);
           } catch (err) {
             console.warn(
               "[useStudentWhiteboardCanvas] v3 document apply failed:",
@@ -251,6 +290,7 @@ export function useStudentWhiteboardCanvas(
           if (details?.follow && followTutorView) {
             applyTutorFollow(details.follow);
           }
+          setTutorStreamReady(true);
         } catch (err) {
           console.warn(
             "[useStudentWhiteboardCanvas] remote scene apply failed:",
@@ -304,5 +344,7 @@ export function useStudentWhiteboardCanvas(
     getPageBroadcastExtras,
     pageList,
     activePageId,
+    /** At least one tutor v2 or v3 scene was applied; false until first packet. */
+    tutorStreamReady,
   };
 }

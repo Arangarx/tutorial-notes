@@ -528,7 +528,17 @@ export function WhiteboardWorkspaceClient({
     const out: Record<string, ReadonlyArray<ExcalidrawLikeElement>> = {};
     for (const p of pageListRef.current) {
       if (p.id === cur && api) {
-        out[p.id] = api.getSceneElements() as ExcalidrawLikeElement[];
+        // `pageDataRef` is updated from onChange; when it is defined, trust it
+        // so we don’t read `getSceneElements()` one frame after a tab switch
+        // and accidentally ship the previous tab’s pixels into the new tab.
+        const cached = pageDataRef.current[p.id] as
+          | ExcalidrawLikeElement[]
+          | undefined;
+        if (cached !== undefined) {
+          out[p.id] = cached;
+        } else {
+          out[p.id] = api.getSceneElements() as ExcalidrawLikeElement[];
+        }
       } else {
         out[p.id] = pageDataRef.current[p.id] ?? [];
       }
@@ -1530,7 +1540,9 @@ export function WhiteboardWorkspaceClient({
               setExcalidrawAPI(like);
             }}
             theme={excalidrawTheme}
-            UIOptions={{ canvasActions: { saveToActiveFile: false } }}
+            UIOptions={{
+              canvasActions: { saveToActiveFile: false, loadScene: false },
+            }}
             // Allow Desmos hosts in the embed-allowlist. The CSP
             // `frame-src` directive in `next.config.ts` is the real
             // safety boundary — this just stops Excalidraw from showing

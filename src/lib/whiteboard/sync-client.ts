@@ -157,6 +157,14 @@ export type WhiteboardSyncClientOptions = {
     warn: (msg: string, ...rest: unknown[]) => void;
     error: (msg: string, ...rest: unknown[]) => void;
   };
+  /**
+   * Tutor only: a second peer (usually the student) just joined. Use this to
+   * drain the on-canvas throttled `broadcastScene` queue and re-snapshot the
+   * *visible* page so the welcome packet matches `activePageId` and is not
+   * still held at 50ms throttle — otherwise a reload/new tab can be blank
+   * until the next stroke.
+   */
+  onNewRemotePeer?: () => void | Promise<void>;
 };
 
 export type WhiteboardSyncClient = {
@@ -344,6 +352,7 @@ export function createWhiteboardSyncClient(
     broadcastIntervalMs = DEFAULT_BROADCAST_INTERVAL_MS,
     _ioFactory,
     _logger,
+    onNewRemotePeer,
   } = opts;
   const peerId = opts.peerId ?? makeRandomPeerId();
 
@@ -481,9 +490,23 @@ export function createWhiteboardSyncClient(
     log.log(`new-user ${peerSocketId} — re-emitting current scene`);
     // Send our current scene so the new joiner doesn't see a blank
     // canvas. Cheap; runs once per join.
-    if (lastBroadcastPayload && aesKey) {
-      void encryptAndEmit(lastBroadcastPayload);
-    }
+    void (async () => {
+      if (role === "tutor" && onNewRemotePeer) {
+        try {
+          await onNewRemotePeer();
+        } catch (err) {
+          log.warn(
+            "onNewRemotePeer failed:",
+            (err as Error)?.message ?? String(err)
+          );
+        }
+      }
+      if (disposed) return;
+      const flushed = tryFlushPendingBroadcastNow();
+      if (!flushed && lastBroadcastPayload && aesKey) {
+        void encryptAndEmit(lastBroadcastPayload);
+      }
+    })();
   });
 
   socket.on("room-user-change", (members: unknown) => {
@@ -556,12 +579,24 @@ export function createWhiteboardSyncClient(
   // Outbound: throttle → encrypt → emit
   // ---------------------------------------------------------------
 
-  function flushBroadcast() {
-    broadcastTimer = null;
+  /**
+   * Clears the trailing-edge throttle and sends any queued `broadcastScene`
+   * immediately. Returns true if a packet was (async) sent.
+   */
+  function tryFlushPendingBroadcastNow(): boolean {
+    if (broadcastTimer !== null) {
+      clearTimeout(broadcastTimer);
+      broadcastTimer = null;
+    }
     const payload = pendingPayload;
     pendingPayload = null;
-    if (!payload || !aesKey || !socket) return;
+    if (!payload || !aesKey || !socket) return false;
     void encryptAndEmit(payload);
+    return true;
+  }
+
+  function flushBroadcast() {
+    void tryFlushPendingBroadcastNow();
   }
 
   function encryptAndEmit(p: PendingPayload): Promise<void> {

@@ -182,7 +182,78 @@ describe("useWhiteboardRecorder", () => {
 
     expect(result.current.eventCount).toBe(0);
     expect(broadcastScene).toHaveBeenCalledTimes(1);
-    expect(broadcastScene).toHaveBeenCalledWith(stroke, undefined);
+    expect(broadcastScene).toHaveBeenCalledWith(stroke, { scenePageId: "p1" });
+  });
+
+  /**
+   * Confirms the workspace `selectTutorPage` contract: call
+   * `flushThrottledFrameNow()` while the leaving tab is still the active ref,
+   * then move `activePageId` and `broadcastScenePageSnapshot` for the
+   * destination. Prevents p1 pixels from being tagged with `scenePageId: p2`
+   * and gives peers a coherent (p1) → (p2) sequence.
+   */
+  test("fast tab switch: leaving-tab flush then destination snapshot (correct scenePageId + page meta)", () => {
+    jest.useFakeTimers();
+    const bag: Bag = { now: 0 };
+    const activePage = { current: "p1" as string };
+    const pl = [
+      { id: "p1", title: "Page 1" },
+      { id: "p2", title: "Page 2" },
+    ];
+    const broadcastScene = jest.fn();
+    const sync: WhiteboardSyncClientLike = {
+      isConnected: () => true,
+      onConnect: () => () => {},
+      onDisconnect: () => () => {},
+      onRemoteScene: () => () => {},
+      broadcastScene,
+    };
+
+    const { result } = renderHook(() =>
+      useWhiteboardRecorder(
+        defaultProps(bag, {
+          recordingActive: false,
+          sync,
+          getScenePageIdForBroadcast: () => activePage.current,
+          getWireBroadcastExtras: () => ({
+            follow: { scrollX: 0, scrollY: 0, zoom: 1 },
+            page: { activePageId: activePage.current, pageList: pl },
+            scenePageId: activePage.current,
+          }),
+        })
+      )
+    );
+
+    const p1Stroke = [makeRect("r1", 5, 5)];
+    act(() => {
+      result.current.onCanvasChange(p1Stroke);
+    });
+    // Same as selectTutorPage: drain throttle for the tab we are still on.
+    act(() => {
+      result.current.flushThrottledFrameNow();
+    });
+    expect(broadcastScene).toHaveBeenCalledTimes(1);
+    const first = broadcastScene.mock.calls[0]!;
+    const firstExtras = first[1] as
+      | { scenePageId?: string; page?: { activePageId: string } }
+      | undefined;
+    expect(first[0]).toEqual(p1Stroke);
+    expect(firstExtras?.scenePageId).toBe("p1");
+    expect(firstExtras?.page?.activePageId).toBe("p1");
+
+    activePage.current = "p2";
+    const p2Empty: ExcalidrawLikeElement[] = [];
+    act(() => {
+      result.current.broadcastScenePageSnapshot({ elements: p2Empty, scenePageId: "p2" });
+    });
+    expect(broadcastScene).toHaveBeenCalledTimes(2);
+    const second = broadcastScene.mock.calls[1]!;
+    const secondExtras = second[1] as
+      | { scenePageId?: string; page?: { activePageId: string } }
+      | undefined;
+    expect(second[0]).toEqual(p2Empty);
+    expect(secondExtras?.scenePageId).toBe("p2");
+    expect(secondExtras?.page?.activePageId).toBe("p2");
   });
 
   test("on→off transition emits a pause marker and flushes pending diff at the right t", () => {

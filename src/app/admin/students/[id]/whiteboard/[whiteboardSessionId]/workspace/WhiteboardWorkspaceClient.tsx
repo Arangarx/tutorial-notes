@@ -265,10 +265,29 @@ export function WhiteboardWorkspaceClient({
   /** Native Excalidraw image inserts: cache fileId → blob URL after upload for sync + student hydrate. */
   const tutorNativeImageFileIdToAssetUrlRef = useRef(new Map<string, string>());
   const tutorNativeImageUploadInFlightRef = useRef(new Set<string>());
+  /**
+   * Populated every render after `useWhiteboardRecorder` returns — used by
+   * `onNewRemotePeer` on the sync client so a student reload/new tab gets a
+   * non-stale, visible-tab scene (see sync-client `new-user` handler).
+   */
+  const tutorResyncOnNewRemotePeerRef = useRef<() => void | Promise<void>>(
+    () => undefined
+  );
 
   const [pageList, setPageList] = useState(() => [
     { id: "p1", title: "Page 1" },
   ]);
+  /**
+   * Same rows as `pageList`, updated synchronously before any wire
+   * `getWireBroadcastExtras` call. React state lags by one frame — using it in
+   * extras after "Add page" used to send `activePageId` for the new tab but a
+   * one-tab `pageList`, and a trailing p1 flush could re-follow the student
+   * to page 1 after they had already switched to the new tab.
+   */
+  const pageListRef = useRef(pageList);
+  useEffect(() => {
+    pageListRef.current = pageList;
+  }, [pageList]);
   const [activePageId, setActivePageId] = useState("p1");
   const activePageIdRef = useRef("p1");
   useEffect(() => {
@@ -356,6 +375,9 @@ export function WhiteboardWorkspaceClient({
       roomId: whiteboardSessionId,
       encryptionKeyBase64Url: encryptionKey,
       role: "tutor",
+      onNewRemotePeer: () => {
+        void tutorResyncOnNewRemotePeerRef.current();
+      },
     });
     syncClientRef.current = client;
     setSyncReady(true);
@@ -490,12 +512,12 @@ export function WhiteboardWorkspaceClient({
         // Ref — not React state — so rapid tab switches don’t lag one frame
         // behind the canvas (state updates async; ref updates in selectTutorPage).
         activePageId: activePageIdRef.current,
-        pageList: pageList.map((p) => ({ id: p.id, title: p.title })),
+        pageList: pageListRef.current.map((p) => ({ id: p.id, title: p.title })),
       },
       // Same ref as throttled flush — immediate broadcast (e.g. native image) stays consistent.
       scenePageId: activePageIdRef.current,
     };
-  }, [pageList, syncUrl]);
+  }, [syncUrl]);
 
   const recorder = useWhiteboardRecorder({
     whiteboardSessionId,
@@ -510,6 +532,16 @@ export function WhiteboardWorkspaceClient({
     getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
   });
   const { flushThrottledFrameNow, broadcastScenePageSnapshot } = recorder;
+  tutorResyncOnNewRemotePeerRef.current = async () => {
+    flushThrottledFrameNow();
+    const api = excalidrawAPIRef.current;
+    if (!api) return;
+    const id = activePageIdRef.current;
+    const elements =
+      (pageDataRef.current[id] as ExcalidrawLikeElement[] | undefined) ??
+      (api.getSceneElements() as ExcalidrawLikeElement[]);
+    broadcastScenePageSnapshot({ elements, scenePageId: id });
+  };
 
   const selectTutorPage = useCallback(
     async (nextId: string) => {
@@ -587,12 +619,18 @@ export function WhiteboardWorkspaceClient({
         pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
       }
     }
-    flushThrottledFrameNow();
     const n = pageList.length + 1;
     const newId = `p${Date.now()}`;
-    setPageList((pl) => [...pl, { id: newId, title: `Page ${n}` }]);
+    const nextList = [...pageList, { id: newId, title: `Page ${n}` }];
+    pageListRef.current = nextList;
+    setPageList(nextList);
     pageDataRef.current[newId] = [];
     activePageIdRef.current = newId;
+    // Drain the throttled p1 frame *after* the visible tab is the new page, so
+    // extras read activePageId = newId but scenePageId = p1. The student merges
+    // into the p1 tab without re-following to page 1 if this packet arrives
+    // after the new-tab broadcast (out-of-order network).
+    flushThrottledFrameNow();
     if (api) {
       pageSwitchProgrammaticRef.current += 1;
       try {
@@ -608,7 +646,7 @@ export function WhiteboardWorkspaceClient({
       broadcastScenePageSnapshot({ elements: [], scenePageId: newId });
     }
     setActivePageId(newId);
-  }, [broadcastScenePageSnapshot, flushThrottledFrameNow, pageList.length]);
+  }, [broadcastScenePageSnapshot, flushThrottledFrameNow, pageList]);
 
   // ---------------------------------------------------------------
   // Live timer — Wyzant-style "both connected" billable clock

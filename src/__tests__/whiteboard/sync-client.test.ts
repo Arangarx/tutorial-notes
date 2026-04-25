@@ -269,6 +269,38 @@ describe("sync-client lifecycle", () => {
     client.disconnect();
   });
 
+  test("new-user flushes a pending throttled broadcast once (no stale empty cache)", async () => {
+    const { factory, sockets } = fakeIoFactory();
+    const k = generateEncryptionKeyBase64Url();
+    const client = createWhiteboardSyncClient({
+      url: "wss://test",
+      roomId: "room-xyz",
+      encryptionKeyBase64Url: k,
+      role: "tutor",
+      broadcastIntervalMs: 50,
+      _ioFactory: factory,
+    });
+
+    await realTick();
+    await flushMicrotasks(10);
+
+    const sock = sockets[0]!;
+    client.broadcastScene(sampleScene("pending"));
+    expect(
+      sock.emitted.filter((e) => e.event === "server-broadcast").length
+    ).toBe(0);
+
+    sock.inject("new-user", "fake-peer-sid");
+    await realTick(10);
+    await flushMicrotasks(10);
+
+    expect(
+      sock.emitted.filter((e) => e.event === "server-broadcast").length
+    ).toBe(1);
+
+    client.disconnect();
+  });
+
   test("client-broadcast inbound delivers decrypted scene to onRemoteScene", async () => {
     const { factory, sockets } = fakeIoFactory();
     const k = generateEncryptionKeyBase64Url();

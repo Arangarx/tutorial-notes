@@ -236,6 +236,49 @@ describe("sync-client lifecycle", () => {
     client.disconnect();
   });
 
+  test("flushPendingBroadcast sends the first scene before a second broadcastScene replaces the queue", async () => {
+    const { factory, sockets } = fakeIoFactory();
+    const k = generateEncryptionKeyBase64Url();
+    const client = createWhiteboardSyncClient({
+      url: "wss://test",
+      roomId: "room-xyz",
+      encryptionKeyBase64Url: k,
+      role: "tutor",
+      broadcastIntervalMs: 50,
+      _ioFactory: factory,
+    });
+
+    await realTick();
+    await flushMicrotasks(10);
+
+    const sock = sockets[0]!;
+    const a = sampleScene("first");
+    const b = sampleScene("second");
+    client.broadcastScene(a);
+    expect(
+      sock.emitted.filter((e) => e.event === "server-broadcast").length
+    ).toBe(0);
+
+    const flushed1 = client.flushPendingBroadcast();
+    expect(flushed1).toBe(true);
+    await realTick(10);
+    await flushMicrotasks(10);
+    expect(
+      sock.emitted.filter((e) => e.event === "server-broadcast").length
+    ).toBe(1);
+
+    client.broadcastScene(b);
+    const flushed2 = client.flushPendingBroadcast();
+    expect(flushed2).toBe(true);
+    await realTick(10);
+    await flushMicrotasks(10);
+    expect(
+      sock.emitted.filter((e) => e.event === "server-broadcast").length
+    ).toBe(2);
+
+    client.disconnect();
+  });
+
   test("new-user triggers re-emit of last scene (no blank canvas for late joiner)", async () => {
     const { factory, sockets } = fakeIoFactory();
     const k = generateEncryptionKeyBase64Url();

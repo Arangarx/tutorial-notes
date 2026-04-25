@@ -202,6 +202,13 @@ export type WhiteboardSyncClient = {
     elements: ReadonlyArray<ExcalidrawLikeElement>,
     extras?: WhiteboardWireBroadcastExtras
   ) => void;
+  /**
+   * Send any queued `broadcastScene` immediately instead of waiting for the
+   * trailing-edge timer. Call between two logical sends (e.g. last frame of
+   * page A then snapshot of page B) so the second `broadcastScene` does not
+   * replace the first in the single-slot queue.
+   */
+  flushPendingBroadcast: () => boolean;
   /** Tear down the WS, drop subscriptions. Idempotent. */
   disconnect: () => void;
 };
@@ -682,6 +689,7 @@ export function createWhiteboardSyncClient(
       };
     },
     broadcastScene,
+    flushPendingBroadcast: tryFlushPendingBroadcastNow,
     disconnect: () => {
       if (disposed) return;
       disposed = true;

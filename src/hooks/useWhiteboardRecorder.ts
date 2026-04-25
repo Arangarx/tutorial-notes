@@ -183,6 +183,11 @@ export type WhiteboardSyncClientLike = {
     elements: ReadonlyArray<ExcalidrawLikeElement>,
     extras?: WhiteboardWireBroadcastExtras
   ) => void;
+  /**
+   * Must match `WhiteboardSyncClient.flushPendingBroadcast` when present —
+   * prevents back-to-back `broadcastScene` from dropping the first packet.
+   */
+  flushPendingBroadcast?: () => boolean;
   /** True when the WS handshake completed. */
   isConnected: () => boolean;
 };

@@ -534,6 +534,7 @@ export function WhiteboardWorkspaceClient({
   const { flushThrottledFrameNow, broadcastScenePageSnapshot } = recorder;
   tutorResyncOnNewRemotePeerRef.current = async () => {
     flushThrottledFrameNow();
+    syncClientRef.current?.flushPendingBroadcast();
     const api = excalidrawAPIRef.current;
     if (!api) return;
     const id = activePageIdRef.current;
@@ -541,6 +542,7 @@ export function WhiteboardWorkspaceClient({
       (pageDataRef.current[id] as ExcalidrawLikeElement[] | undefined) ??
       (api.getSceneElements() as ExcalidrawLikeElement[]);
     broadcastScenePageSnapshot({ elements, scenePageId: id });
+    syncClientRef.current?.flushPendingBroadcast();
   };
 
   const selectTutorPage = useCallback(
@@ -556,6 +558,7 @@ export function WhiteboardWorkspaceClient({
       // `activePageIdRef` — otherwise a flush after the switch can label page-1
       // pixels with `scenePageId` p2 and peers paint the wrong tab.
       flushThrottledFrameNow();
+      syncClientRef.current?.flushPendingBroadcast();
       const from = activePageIdRef.current;
       // `getSceneElements()` can still reflect the *previous* tab for a frame when
       // the user flips pages faster than Excalidraw flushes. onChange is keyed by
@@ -567,12 +570,14 @@ export function WhiteboardWorkspaceClient({
         (pageDataRef.current[nextId] as
           | ReadonlyArray<ExcalidrawLikeElement>
           | undefined) ?? [];
-      activePageIdRef.current = nextId;
       // PDF / uploaded images: Excalidraw drops unreferenced `fileId` binaries
       // when the scene is replaced by another tab — re-fetch from `assetUrl`
       // before `updateScene` so we don’t show empty image frames.
       pageSwitchProgrammaticRef.current += 1;
       try {
+        // Bump active only after the programmatic guard: otherwise a trailing
+        // onChange can stamp the old tab’s pixels into `pageDataRef[nextId]`.
+        activePageIdRef.current = nextId;
         const hydrateRes = await hydrateRemoteImageFilesForScene(
           api,
           next,
@@ -607,14 +612,15 @@ export function WhiteboardWorkspaceClient({
         elements: next,
         scenePageId: nextId,
       });
+      syncClientRef.current?.flushPendingBroadcast();
     },
     [broadcastScenePageSnapshot, flushThrottledFrameNow, whiteboardSessionId]
   );
 
   const addTutorPage = useCallback(() => {
     const api = excalidrawAPIRef.current;
+    const from = activePageIdRef.current;
     if (api) {
-      const from = activePageIdRef.current;
       if (pageDataRef.current[from] === undefined) {
         pageDataRef.current[from] = api.getSceneElements() as ReadonlyArray<ExcalidrawLikeElement>;
       }
@@ -625,15 +631,16 @@ export function WhiteboardWorkspaceClient({
     pageListRef.current = nextList;
     setPageList(nextList);
     pageDataRef.current[newId] = [];
-    activePageIdRef.current = newId;
-    // Drain the throttled p1 frame *after* the visible tab is the new page, so
-    // extras read activePageId = newId but scenePageId = p1. The student merges
-    // into the p1 tab without re-following to page 1 if this packet arrives
-    // after the new-tab broadcast (out-of-order network).
+    // Still on `from`: drain the last throttled frame for the leaving page, then
+    // push it on the wire before the new-tab `broadcastScene` (sync uses a
+    // single pending slot — a second `broadcastScene` would otherwise replace
+    // the first).
     flushThrottledFrameNow();
+    syncClientRef.current?.flushPendingBroadcast();
     if (api) {
       pageSwitchProgrammaticRef.current += 1;
       try {
+        activePageIdRef.current = newId;
         api.updateScene({ elements: [] });
       } finally {
         setTimeout(() => {
@@ -644,6 +651,9 @@ export function WhiteboardWorkspaceClient({
         }, 0);
       }
       broadcastScenePageSnapshot({ elements: [], scenePageId: newId });
+      syncClientRef.current?.flushPendingBroadcast();
+    } else {
+      activePageIdRef.current = newId;
     }
     setActivePageId(newId);
   }, [broadcastScenePageSnapshot, flushThrottledFrameNow, pageList]);

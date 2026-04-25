@@ -5,6 +5,18 @@ Not in priority order within sections — that comes when items move to a sprint
 
 **Authoritative for tutoring-notes:** Known open work for this app should appear in this file (or be explicitly ✅ **Shipped** here with any follow-ups cross-linked). If it is not here, assume it was never captured — add it. Day-to-day tickets/PRs can still exist; this document is the backlog of record when they disagree.
 
+## Whiteboard — implementation / design queue
+
+Action items not yet built; design where noted. (Live status: `docs/WHITEBOARD-STATUS.md`.)
+
+| Item | Type | Notes |
+|------|------|--------|
+| **PDF workbook in Board pages** | Design + build | On insert: new **section** in the pages strip titled like the PDF file; **one board page (or row) per PDF page**, correct order; default **zoom to fit** that page; **optional:** lock/clamp pan and zoom to PDF edges (with optional user zoom). Touches `pageList` / wire `page` metadata, tutor + student, insert path. |
+| **Whiteboard session audio** | Build | `WhiteboardWorkspaceClient` does not yet mount the audio recorder; recording is strokes-only. Wire mic capture, persist `SessionRecording` / proxy as existing audio flow; replay already has `<audio>`. |
+| **Replay: time scrub / play without audio** | Build | `WhiteboardReplay` when `audioBlobUrl` is null: UI to scrub or play `t` off the event log (ms), not only final frame. |
+| **Event log + replay: multi-page** | Build | Per–board–page diffs in `WBEventLog` and replay, not only the tutor’s active tab at a given `t` (intersects PDF workbook and long sessions). |
+| **Student: follow vs independent view** | Product + verify | Modes: live follow, one-shot match, independent — confirm shipped behavior matches pilot copy; close gaps. |
+
 ## Pilot — Sarah (iPhone Safari, ~Apr 2026)
 
 Reported via Discord after testing **Record → Transcribe** on phone. Treat as **highest priority** until reproduced or ruled out.

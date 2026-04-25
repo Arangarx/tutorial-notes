@@ -379,6 +379,8 @@ to know when to revisit.
 
 ## Follow-ups (NOT in Phase 1, tracked here so they don't get lost)
 
+- **Backlog of record (whiteboard + cross-cutting):** `docs/BACKLOG.md` section **“Whiteboard — implementation / design queue”** (PDF workbook, session audio, replay scrub, multi-page log, student follow UX). Add there first; keep this file’s follow-ups to Phase-1-adjacent crumbs.
+
 - **Multi-monitor DPR change manual smoke** (blocker #12) — verify
   Excalidraw handles a window drag between displays cleanly. Document
   expected behavior; not a blocker for ship.

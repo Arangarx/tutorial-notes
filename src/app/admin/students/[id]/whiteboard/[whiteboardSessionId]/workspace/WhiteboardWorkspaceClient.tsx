@@ -512,7 +512,7 @@ export function WhiteboardWorkspaceClient({
   const { flushThrottledFrameNow, broadcastScenePageSnapshot } = recorder;
 
   const selectTutorPage = useCallback(
-    (nextId: string) => {
+    async (nextId: string) => {
       if (nextId === activePageIdRef.current) return;
       const api = excalidrawAPIRef.current;
       if (!api) {
@@ -536,8 +536,31 @@ export function WhiteboardWorkspaceClient({
           | ReadonlyArray<ExcalidrawLikeElement>
           | undefined) ?? [];
       activePageIdRef.current = nextId;
+      // PDF / uploaded images: Excalidraw drops unreferenced `fileId` binaries
+      // when the scene is replaced by another tab — re-fetch from `assetUrl`
+      // before `updateScene` so we don’t show empty image frames.
       pageSwitchProgrammaticRef.current += 1;
       try {
+        const hydrateRes = await hydrateRemoteImageFilesForScene(
+          api,
+          next,
+          loadedRemoteFileIdsForTutorRef.current,
+          {
+            logContext: "tutor",
+            giveUpFileIds: giveUpTutorFileIdsRef.current,
+            warnDedupe: warnDedupeTutorRef.current,
+            resolveReadUrl: (u) =>
+              resolveWhiteboardAssetReadUrl(u, {
+                kind: "tutor",
+                whiteboardSessionId,
+              }),
+          }
+        );
+        if (hydrateRes.fetchFailed.length > 0) {
+          setPeerImageMaterialNotice("load");
+        } else if (hydrateRes.missingAssetUrlFileIds.length > 0) {
+          setPeerImageMaterialNotice((prev) => (prev === "load" ? "load" : "missing"));
+        }
         api.updateScene({ elements: next as ReadonlyArray<unknown> });
       } finally {
         setTimeout(() => {
@@ -553,7 +576,7 @@ export function WhiteboardWorkspaceClient({
         scenePageId: nextId,
       });
     },
-    [broadcastScenePageSnapshot, flushThrottledFrameNow]
+    [broadcastScenePageSnapshot, flushThrottledFrameNow, whiteboardSessionId]
   );
 
   const addTutorPage = useCallback(() => {

@@ -86,4 +86,40 @@ describe("hydrateRemoteImageFilesForScene", () => {
       ])
     );
   });
+
+  it("re-fetches when loadedFileIds has fileId but Excalidraw no longer has the binary (tab switch eviction)", async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/png" },
+      blob: () => Promise.resolve(new Blob([png], { type: "image/png" })),
+    } as unknown as Response);
+
+    const addFiles = jest.fn();
+    const api = {
+      addFiles,
+      updateScene: jest.fn(),
+      getFiles: () => ({}),
+    } as unknown as ExcalidrawApiLike;
+    const loaded = new Set<string>(["fid-revive"]);
+    const el: ExcalidrawLikeElement = {
+      id: "e1",
+      type: "image",
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      fileId: "fid-revive",
+      customData: { assetUrl: "https://example.com/revive.png" },
+    };
+
+    const r = await hydrateRemoteImageFilesForScene(api, [el], loaded, {
+      logContext: "tutor",
+    });
+
+    expect(r.addedFileCount).toBe(1);
+    expect(global.fetch).toHaveBeenCalled();
+    expect(addFiles).toHaveBeenCalledTimes(1);
+  });
 });

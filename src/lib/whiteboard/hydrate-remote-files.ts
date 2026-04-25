@@ -4,6 +4,10 @@
  * `updateScene` image elements (which only carry a `fileId` pointer)
  * render on peer clients.
  *
+ * A `fileId` is only skipped when `excalidrawAPI.getFiles()` still holds
+ * that id — not when it appears in `loadedFileIds` from an earlier pass,
+ * because Excalidraw can evict binaries after a multi–board-page scene swap.
+ *
  * Safeguards: one automatic retry (network/5xx), session-scoped give-up
  * for persistent failures, and structured result + `console.warn` for
  * pilot debugging.
@@ -114,6 +118,16 @@ export type HydrateRemoteImageFilesResult = {
   fetchFailed: Array<{ fileId: string; detail: string }>;
 };
 
+function hasImageBinaryInExcalidrawStore(
+  excalidrawAPI: ExcalidrawApiLike,
+  fileId: string
+): boolean {
+  const raw = excalidrawAPI.getFiles?.();
+  if (!raw || typeof raw !== "object") return false;
+  const entry = (raw as Record<string, unknown>)[fileId];
+  return entry != null && typeof entry === "object";
+}
+
 export type HydrateRemoteImageFilesOptions = {
   /** "student" | "tutor" — prefixes `console.warn` for support. */
   logContext?: "student" | "tutor";
@@ -170,8 +184,14 @@ export async function hydrateRemoteImageFilesForScene(
     const el = raw as ExcalidrawLikeElement;
     if (el.type !== "image" || !el.fileId) continue;
     if (typeof el.fileId !== "string") continue;
-    if (loadedFileIds.has(el.fileId)) continue;
     if (giveUp?.has(el.fileId)) continue;
+    // After a multi-tab switch, Excalidraw often evicts unreferenced
+    // `fileId` binaries even though we still have `customData.assetUrl`.
+    // `loadedFileIds` alone would skip re-hydration and leave image placeholders.
+    if (hasImageBinaryInExcalidrawStore(excalidrawAPI, el.fileId)) {
+      loadedFileIds.add(el.fileId);
+      continue;
+    }
 
     const rawUrl = el.customData?.assetUrl;
     if (typeof rawUrl !== "string" || rawUrl.length < 8) {

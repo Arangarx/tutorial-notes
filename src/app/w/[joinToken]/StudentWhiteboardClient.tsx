@@ -6,7 +6,7 @@
  * so the student can draw with the tutor in real time.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowScrollToTopOnMount } from "@/hooks/useWindowScrollToTopOnMount";
 import { useExcalidrawThemeFromSystem } from "@/hooks/useExcalidrawThemeFromSystem";
 import { useParams } from "next/navigation";
@@ -24,9 +24,15 @@ import { useStudentWhiteboardCanvas } from "@/hooks/useStudentWhiteboardCanvas";
 import { UndoRedoButtons } from "@/components/whiteboard/UndoRedoButtons";
 import type { ExcalidrawApiLike } from "@/lib/whiteboard/insert-asset";
 import type { HydrateRemoteImageFilesResult } from "@/lib/whiteboard/hydrate-remote-files";
+import { ensureNativeImageAssetUrlsForSync } from "@/lib/whiteboard/ensure-native-image-asset-urls-for-sync";
+import type { BinaryFileFromExcalidraw } from "@/lib/whiteboard/ensure-native-image-asset-urls-for-sync";
+import type { ExcalidrawLikeElement } from "@/lib/whiteboard/excalidraw-adapter";
 
 type Props = {
   whiteboardSessionId: string;
+  /** For namespaced Vercel Blob paths + native image upload (paste/drop). */
+  studentId: string;
+  joinToken: string;
   syncUrl: string;
   tutorName: string;
 };
@@ -54,12 +60,15 @@ function readKeyFromHash(): string | null {
 
 export function StudentWhiteboardClient({
   whiteboardSessionId,
+  studentId,
+  joinToken: joinTokenFromServer,
   syncUrl,
   tutorName,
 }: Props) {
   const params = useParams<{ joinToken: string }>();
   const joinToken =
     typeof params?.joinToken === "string" ? params.joinToken : "";
+  const pathJoinToken = joinToken || joinTokenFromServer;
 
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
   const [keyMissing, setKeyMissing] = useState(false);
@@ -70,6 +79,7 @@ export function StudentWhiteboardClient({
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawApiLike | null>(
     null
   );
+  const excalidrawAPIRef = useRef<ExcalidrawApiLike | null>(null);
   const [otherPeerCount, setOtherPeerCount] = useState(0);
   const [serverActiveMs, setServerActiveMs] = useState(0);
   const [serverLastActiveAtMs, setServerLastActiveAtMs] = useState<
@@ -120,11 +130,11 @@ export function StudentWhiteboardClient({
   }, []);
 
   useEffect(() => {
-    if (!joinToken) return;
+    if (!pathJoinToken) return;
     const refresh = async () => {
       try {
         const res = await fetch(
-          `/api/whiteboard/${encodeURIComponent(whiteboardSessionId)}/join-timer?token=${encodeURIComponent(joinToken)}`,
+          `/api/whiteboard/${encodeURIComponent(whiteboardSessionId)}/join-timer?token=${encodeURIComponent(pathJoinToken)}`,
           { cache: "no-store" }
         );
         if (!res.ok) return;
@@ -146,7 +156,7 @@ export function StudentWhiteboardClient({
     const POLL_MS = 10_000;
     const t = setInterval(() => void refresh(), POLL_MS);
     return () => clearInterval(t);
-  }, [joinToken, whiteboardSessionId]);
+  }, [pathJoinToken, whiteboardSessionId]);
 
   const liveTimerMs = useMemo(
     () =>
@@ -168,6 +178,9 @@ export function StudentWhiteboardClient({
   >("none");
   const [dismissedMaterialNotice, setDismissedMaterialNotice] = useState(false);
 
+  const studentNativeImageFileIdToAssetUrlRef = useRef(new Map<string, string>());
+  const studentNativeImageUploadInFlightRef = useRef(new Set<string>());
+
   const onRemoteHydrateResult = useCallback(
     (result: HydrateRemoteImageFilesResult) => {
       if (result.fetchFailed.length > 0) {
@@ -186,18 +199,68 @@ export function StudentWhiteboardClient({
   const [tutorPageLabel, setTutorPageLabel] = useState<string | null>(null);
   const [independentView, setIndependentView] = useState(false);
 
-  const { onCanvasChange } = useStudentWhiteboardCanvas(
+  const { onCanvasChange: studentSyncOnCanvas } = useStudentWhiteboardCanvas(
     syncClient,
     excalidrawAPI,
     onRemoteHydrateResult,
     {
-      joinToken: joinToken || "",
+      joinToken: pathJoinToken,
       followTutorView: !independentView,
       onTutorPageMeta: (p) => {
         const t = p.pageList.find((x) => x.id === p.activePageId)?.title;
         setTutorPageLabel(t ? `Tutor: ${t}` : null);
       },
     }
+  );
+
+  const handleExcalidrawChange = useCallback(
+    (
+      elements: ReadonlyArray<unknown>,
+      _appState?: unknown,
+      files?: Readonly<Record<string, unknown>>
+    ) => {
+      studentSyncOnCanvas(elements, _appState, files);
+      if (!pathJoinToken) return;
+      void (async () => {
+        try {
+          const api = excalidrawAPIRef.current;
+          if (!api) return;
+          const getFiles = (): Record<string, BinaryFileFromExcalidraw> => {
+            const raw = api.getFiles?.();
+            return raw && typeof raw === "object"
+              ? (raw as Record<string, BinaryFileFromExcalidraw>)
+              : {};
+          };
+          const patched = await ensureNativeImageAssetUrlsForSync({
+            elements,
+            files: files as
+              | Record<string, BinaryFileFromExcalidraw>
+              | undefined,
+            getFiles,
+            whiteboardSessionId,
+            studentId,
+            joinToken: pathJoinToken,
+            fileIdToAssetUrl: studentNativeImageFileIdToAssetUrlRef.current,
+            inFlight: studentNativeImageUploadInFlightRef.current,
+          });
+          if (patched) {
+            const live = excalidrawAPIRef.current;
+            if (live) {
+              live.updateScene({ elements: patched });
+              syncClient?.broadcastScene(
+                patched as ReadonlyArray<ExcalidrawLikeElement>
+              );
+            }
+          }
+        } catch (err) {
+          console.warn(
+            "[StudentWhiteboardClient] native image asset back-fill failed:",
+            (err as Error)?.message ?? String(err)
+          );
+        }
+      })();
+    },
+    [studentSyncOnCanvas, whiteboardSessionId, studentId, pathJoinToken, syncClient]
   );
 
   if (keyMissing) {
@@ -398,9 +461,11 @@ export function StudentWhiteboardClient({
         >
           <ExcalidrawDynamic
             style={{ width: "100%", height: "100%" }}
-            onChange={onCanvasChange}
+            onChange={handleExcalidrawChange}
             excalidrawAPI={(api: unknown) => {
-              setExcalidrawAPI(api as ExcalidrawApiLike);
+              const like = api as ExcalidrawApiLike;
+              excalidrawAPIRef.current = like;
+              setExcalidrawAPI(like);
             }}
             theme={excalidrawTheme}
             UIOptions={{ canvasActions: { saveToActiveFile: false } }}

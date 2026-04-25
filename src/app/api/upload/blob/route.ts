@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { BLOB_MAX_BYTES } from "@/lib/audio-constants";
 import { assertOwnsStudent } from "@/lib/student-scope";
-import { assertOwnsWhiteboardSession } from "@/lib/whiteboard-scope";
+import {
+  assertJoinTokenAllowsWhiteboardAssetUpload,
+  assertOwnsWhiteboardSession,
+} from "@/lib/whiteboard-scope";
 import { createActionCorrelationId } from "@/lib/action-correlation";
 
 /**
@@ -57,6 +60,12 @@ type ClientUploadPayload = {
   kind?: UploadKind;
   studentId?: string;
   whiteboardSessionId?: string;
+  /**
+   * When set (with kind `whiteboard-asset` only), authorizes a browser that is
+   * *not* logged in as a tutor — the student join page — to upload the bytes
+   * for pasted/dropped images. Must match a live `WhiteboardJoinToken`.
+   */
+  joinToken?: string;
   /** Optional asset slot (e.g. "pdf-page-3", "equation"); used only for log lines. */
   assetTag?: string;
 };
@@ -147,7 +156,9 @@ export async function POST(request: Request): Promise<Response> {
           };
         }
 
-        // All whiteboard-* kinds gate on the same WhiteboardSession ownership.
+        // All whiteboard-* kinds are scoped to a `WhiteboardSession` row. Tutor
+        // (cookie session) uses `assertOwnsWhiteboardSession`. Student joiners
+        // send `joinToken` for `whiteboard-asset` only.
         const whiteboardSessionId = payload?.whiteboardSessionId;
         if (!whiteboardSessionId || typeof whiteboardSessionId !== "string") {
           console.warn(
@@ -155,10 +166,31 @@ export async function POST(request: Request): Promise<Response> {
           );
           throw new Error("Missing whiteboardSessionId in clientPayload.");
         }
-        const session = await assertOwnsWhiteboardSession(whiteboardSessionId);
-        console.log(
-          `[uploadBlob.route] rid=${rid} kind=${kind} wbsid=${whiteboardSessionId} studentId=${session.studentId} assetTag=${payload?.assetTag ?? "-"} pathname=${pathname}`
-        );
+        let studentIdForToken: string;
+        if (
+          kind === "whiteboard-asset" &&
+          payload?.joinToken &&
+          typeof payload.joinToken === "string"
+        ) {
+          const { studentId } = await assertJoinTokenAllowsWhiteboardAssetUpload(
+            payload.joinToken,
+            whiteboardSessionId,
+            pathname
+          );
+          studentIdForToken = studentId;
+          console.log(
+            `[uploadBlob.route] rid=${rid} kind=${kind} wbsid=${whiteboardSessionId} studentId=${studentIdForToken} joinToken=1 assetTag=${payload?.assetTag ?? "-"} pathname=${pathname}`
+          );
+        } else {
+          if (payload?.joinToken) {
+            throw new Error("joinToken is only valid for whiteboard-asset uploads.");
+          }
+          const session = await assertOwnsWhiteboardSession(whiteboardSessionId);
+          studentIdForToken = session.studentId;
+          console.log(
+            `[uploadBlob.route] rid=${rid} kind=${kind} wbsid=${whiteboardSessionId} studentId=${studentIdForToken} assetTag=${payload?.assetTag ?? "-"} pathname=${pathname}`
+          );
+        }
         return {
           allowedContentTypes: policy.allowed,
           maximumSizeInBytes: policy.maxBytes,
@@ -166,7 +198,7 @@ export async function POST(request: Request): Promise<Response> {
           tokenPayload: JSON.stringify({
             kind,
             whiteboardSessionId,
-            studentId: session.studentId,
+            studentId: studentIdForToken,
             assetTag: payload?.assetTag,
             rid,
           }),

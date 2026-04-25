@@ -89,6 +89,8 @@ export type EnsureNativeImageAssetUrlsArgs = {
   getFiles: () => Record<string, BinaryFileFromExcalidraw>;
   whiteboardSessionId: string;
   studentId: string;
+  /** Student `/w/[token]` page: pass the path token so Blob upload can authorize without a tutor session. */
+  joinToken?: string;
   /** Completed uploads: fileId → public asset URL (mutated by this module). */
   fileIdToAssetUrl: Map<string, string>;
   /** Uploads in flight (mutated). */
@@ -109,6 +111,7 @@ export async function ensureNativeImageAssetUrlsForSync(
     getFiles,
     whiteboardSessionId,
     studentId,
+    joinToken,
     fileIdToAssetUrl,
     inFlight,
   } = args;
@@ -167,6 +170,7 @@ export async function ensureNativeImageAssetUrlsForSync(
         filename: `excalidraw-image-${fileId.slice(0, 10)}.${ext}`,
         contentType: mime || parsed.mime || "image/png",
         assetTag: "native-image",
+        ...(joinToken ? { joinToken } : {}),
       });
       if (!upload.ok) {
         console.warn(

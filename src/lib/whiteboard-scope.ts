@@ -63,3 +63,50 @@ export async function assertOwnsWhiteboardSession(
     endedAt: session.endedAt,
   };
 }
+
+/**
+ * Validates a `WhiteboardJoinToken` for *client-direct* Vercel Blob
+ * `whiteboard-asset` uploads from the anonymous `/w/[joinToken]` page.
+ * Pathname must be under our namespaced `whiteboard-sessions/{studentId}/{sessionId}/…`
+ * pattern (same as tutor uploads) so a stolen token can’t target another tenant.
+ */
+export async function assertJoinTokenAllowsWhiteboardAssetUpload(
+  joinToken: string,
+  whiteboardSessionId: string,
+  pathname: string
+): Promise<{ studentId: string }> {
+  const now = new Date();
+  const row = await withDbRetry(
+    () =>
+      db.whiteboardJoinToken.findUnique({
+        where: { token: joinToken },
+        select: {
+          whiteboardSessionId: true,
+          expiresAt: true,
+          revokedAt: true,
+          whiteboardSession: {
+            select: { id: true, studentId: true, endedAt: true },
+          },
+        },
+      }),
+    { label: "assertJoinTokenAllowsWhiteboardAssetUpload" }
+  );
+  if (!row?.whiteboardSession) {
+    throw new Error("Invalid or expired join link.");
+  }
+  if (row.whiteboardSessionId !== whiteboardSessionId) {
+    throw new Error("Session mismatch for this upload.");
+  }
+  if (row.revokedAt || row.expiresAt.getTime() <= now.getTime()) {
+    throw new Error("This join link is no longer valid.");
+  }
+  if (row.whiteboardSession.endedAt) {
+    throw new Error("This whiteboard session has ended.");
+  }
+  const { studentId } = row.whiteboardSession;
+  const expected = `whiteboard-sessions/${studentId}/${whiteboardSessionId}/`;
+  if (!pathname.startsWith(expected)) {
+    throw new Error("Invalid upload path for this session.");
+  }
+  return { studentId: row.whiteboardSession.studentId };
+}

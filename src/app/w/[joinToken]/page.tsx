@@ -57,6 +57,7 @@ export default async function StudentWhiteboardPage({
       whiteboardSession: {
         select: {
           id: true,
+          studentId: true,
           endedAt: true,
           adminUser: {
             select: { displayName: true, email: true },
@@ -115,6 +116,8 @@ export default async function StudentWhiteboardPage({
   return (
     <StudentWhiteboardClient
       whiteboardSessionId={tokenRow.whiteboardSession.id}
+      studentId={tokenRow.whiteboardSession.studentId}
+      joinToken={joinToken}
       syncUrl={env.WHITEBOARD_SYNC_URL}
       tutorName={tutorName}
     />

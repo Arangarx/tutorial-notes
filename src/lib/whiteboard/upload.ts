@@ -22,7 +22,7 @@ async function uploadGeneric(
   pathname: string,
   blob: Blob,
   contentType: string,
-  clientPayload: Record<string, unknown>
+  clientPayload: Record<string, unknown> & { joinToken?: string }
 ): Promise<WhiteboardUploadResult> {
   try {
     const { upload } = await import("@vercel/blob/client");
@@ -109,6 +109,11 @@ export async function uploadWhiteboardAsset(args: {
   filename: string;
   contentType: string;
   assetTag?: string;
+  /**
+   * Student join page: authenticate the Vercel Blob token via the same
+   * `WhiteboardJoinToken` the student used to open `/w/...` (no tutor cookie).
+   */
+  joinToken?: string;
 }): Promise<WhiteboardUploadResult> {
   const {
     whiteboardSessionId,
@@ -117,11 +122,13 @@ export async function uploadWhiteboardAsset(args: {
     filename,
     contentType,
     assetTag,
+    joinToken,
   } = args;
   const pathname = `whiteboard-sessions/${studentId}/${whiteboardSessionId}/assets/${Date.now()}-${safeName(filename)}`;
   return uploadGeneric(pathname, blob, contentType, {
     kind: "whiteboard-asset",
     whiteboardSessionId,
     assetTag,
+    ...(joinToken ? { joinToken } : {}),
   });
 }

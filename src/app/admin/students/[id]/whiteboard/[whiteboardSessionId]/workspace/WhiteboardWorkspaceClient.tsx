@@ -868,6 +868,16 @@ export function WhiteboardWorkspaceClient({
             });
             if (patched && excalidrawAPIRef.current) {
               excalidrawAPIRef.current.updateScene({ elements: patched });
+              // Push pixels to peers as soon as `customData.assetUrl` exists —
+              // the throttled recorder broadcast may still be one frame behind.
+              const client = syncClientRef.current;
+              if (client && syncUrl) {
+                const extras = getWireBroadcastExtras();
+                client.broadcastScene(
+                  patched as ReadonlyArray<ExcalidrawLikeElement>,
+                  extras ?? undefined
+                );
+              }
             }
           } catch (err) {
             console.warn(
@@ -884,6 +894,8 @@ export function WhiteboardWorkspaceClient({
       recorder,
       studentId,
       whiteboardSessionId,
+      getWireBroadcastExtras,
+      syncUrl,
     ]
   );
 

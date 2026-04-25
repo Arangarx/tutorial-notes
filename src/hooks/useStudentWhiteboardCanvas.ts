@@ -120,7 +120,11 @@ export function useStudentWhiteboardCanvas(
   ]);
 
   const onCanvasChange = useCallback(
-    (elements: ReadonlyArray<unknown>) => {
+    (
+      elements: ReadonlyArray<unknown>,
+      _appState?: unknown,
+      _files?: Readonly<Record<string, unknown>>
+    ) => {
       if (applyingRemoteRef.current) return;
       onLocalElementSnapshot(elements);
       if (!sync) return;

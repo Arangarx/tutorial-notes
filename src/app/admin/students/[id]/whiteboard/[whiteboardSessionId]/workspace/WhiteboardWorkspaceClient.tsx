@@ -882,6 +882,37 @@ export function WhiteboardWorkspaceClient({
   // for `checkpointMountResolved` so (1) wins over a stale session draft.
   // ---------------------------------------------------------------
 
+  const hydrateTutorImageAssetsForElements = useCallback(
+    async (
+      api: ExcalidrawApiLike,
+      elements: ReadonlyArray<ExcalidrawLikeElement>
+    ) => {
+      const hydrateRes = await hydrateRemoteImageFilesForScene(
+        api,
+        elements,
+        loadedRemoteFileIdsForTutorRef.current,
+        {
+          logContext: "tutor",
+          giveUpFileIds: giveUpTutorFileIdsRef.current,
+          warnDedupe: warnDedupeTutorRef.current,
+          resolveReadUrl: (u) =>
+            resolveWhiteboardAssetReadUrl(u, {
+              kind: "tutor",
+              whiteboardSessionId,
+            }),
+        }
+      );
+      if (hydrateRes.fetchFailed.length > 0) {
+        setPeerImageMaterialNotice("load");
+      } else if (hydrateRes.missingAssetUrlFileIds.length > 0) {
+        setPeerImageMaterialNotice((prev) =>
+          prev === "load" ? "load" : "missing"
+        );
+      }
+    },
+    [whiteboardSessionId]
+  );
+
   const paintRecoveredSceneIntoExcalidraw = useCallback(
     async (result: ResumeResult) => {
       const api = excalidrawAPIRef.current;
@@ -891,20 +922,27 @@ export function WhiteboardWorkspaceClient({
       const restored = restoreElements(rough as never, null, {
         refreshDimensions: true,
       });
+      let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
+      if (toPaint.length === 0) {
+        const draft = loadSessionSceneDraft(whiteboardSessionId);
+        if (draft && draft.length > 0) toPaint = draft;
+      }
+      // IndexedDB / event log carry `customData.assetUrl` for PDF + uploads,
+      // but Excalidraw has no BinaryFiles after a full navigation — same as
+      // multi–board-page eviction; fetch from Blob before we paint.
+      await hydrateTutorImageAssetsForElements(
+        api,
+        toPaint as ReadonlyArray<ExcalidrawLikeElement>
+      );
       applyingRemoteToCanvasRef.current = true;
       try {
-        let toPaint: ReadonlyArray<unknown> = restored as ReadonlyArray<unknown>;
-        if (toPaint.length === 0) {
-          const draft = loadSessionSceneDraft(whiteboardSessionId);
-          if (draft && draft.length > 0) toPaint = draft;
-        }
         api.updateScene({ elements: toPaint });
       } finally {
         applyingRemoteToCanvasRef.current = false;
       }
       clearSessionSceneDraft(whiteboardSessionId);
     },
-    [whiteboardSessionId]
+    [hydrateTutorImageAssetsForElements, whiteboardSessionId]
   );
 
   useEffect(() => {
@@ -930,15 +968,22 @@ export function WhiteboardWorkspaceClient({
       hasHydratedSessionDraftRef.current = true;
       return;
     }
-    applyingRemoteToCanvasRef.current = true;
-    try {
-      excalidrawAPI.updateScene({ elements: draft });
-    } finally {
-      applyingRemoteToCanvasRef.current = false;
-    }
-    hasHydratedSessionDraftRef.current = true;
+    void (async () => {
+      await hydrateTutorImageAssetsForElements(
+        excalidrawAPI,
+        draft as ReadonlyArray<ExcalidrawLikeElement>
+      );
+      applyingRemoteToCanvasRef.current = true;
+      try {
+        excalidrawAPI.updateScene({ elements: draft });
+      } finally {
+        applyingRemoteToCanvasRef.current = false;
+      }
+      hasHydratedSessionDraftRef.current = true;
+    })();
   }, [
     excalidrawAPI,
+    hydrateTutorImageAssetsForElements,
     paintRecoveredSceneIntoExcalidraw,
     recorder.acknowledgePostGateAutoCanvas,
     recorder.checkpointMountResolved,

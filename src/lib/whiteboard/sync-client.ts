@@ -87,10 +87,17 @@ export type WhiteboardWirePage = {
  * diff is throttled behind a tab switch — receivers must merge
  * `elements` into `scenePageId`, not the tutor’s current tab alone.
  */
+export type WhiteboardDocumentWireV3 = {
+  rev: number;
+  pages: Readonly<Record<string, ReadonlyArray<ExcalidrawLikeElement>>>;
+};
+
 export type WhiteboardWireRemoteDetails = {
   follow?: WhiteboardWireFollow;
   page?: WhiteboardWirePage;
   scenePageId?: string;
+  /** v3: apply this instead of the single `elements` array. */
+  document?: WhiteboardDocumentWireV3;
 };
 
 /**
@@ -108,7 +115,29 @@ export type WhiteboardWireMessageV2 = {
   scenePageId?: string;
 };
 
-export type AnyWhiteboardWireMessage = WhiteboardWireMessage | WhiteboardWireMessageV2;
+/**
+ * v3: one authoritative **multi-page document** per message. The tutor (and
+ * optionally other peers) sends the full per-tab `pages` map with a
+ * monotonic `rev` so clients can drop stale reordered packets. This replaces
+ * the v2 pattern of a single `elements[]` + `scenePageId` (fragile for
+ * multi-tab, single-slot throttling, and out-of-order follow vs merge).
+ */
+export type WhiteboardWireMessageV3 = {
+  v: 3;
+  peerId: string;
+  role: "tutor" | "student";
+  /** Increments on every v3 document send from that peer. */
+  rev: number;
+  /** All board tabs → scene elements (ids are tab ids, e.g. p1, p2). */
+  pages: Record<string, ExcalidrawLikeElement[]>;
+  page: WhiteboardWirePage;
+  follow?: WhiteboardWireFollow;
+};
+
+export type AnyWhiteboardWireMessage =
+  | WhiteboardWireMessage
+  | WhiteboardWireMessageV2
+  | WhiteboardWireMessageV3;
 
 /** Extras attached to each `broadcastScene` (throttled on the tutor). */
 export type WhiteboardWireBroadcastExtras = {
@@ -203,10 +232,19 @@ export type WhiteboardSyncClient = {
     extras?: WhiteboardWireBroadcastExtras
   ) => void;
   /**
-   * Send any queued `broadcastScene` immediately instead of waiting for the
-   * trailing-edge timer. Call between two logical sends (e.g. last frame of
-   * page A then snapshot of page B) so the second `broadcastScene` does not
-   * replace the first in the single-slot queue.
+   * Tutor: queue a **full multi-page** document (v3 wire). One payload carries
+   * every tab’s elements — not subject to the v2 one-scene+scenePageId split.
+   * Throttled like `broadcastScene` (one pending slot, whole board).
+   */
+  broadcastDocument: (doc: {
+    rev: number;
+    pages: Record<string, ExcalidrawLikeElement[]>;
+    page: WhiteboardWirePage;
+    follow?: WhiteboardWireFollow;
+  }) => void;
+  /**
+   * Send any pending `broadcastScene` or `broadcastDocument` immediately
+   * instead of waiting for the trailing-edge timer.
    */
   flushPendingBroadcast: () => boolean;
   /** Tear down the WS, drop subscriptions. Idempotent. */
@@ -299,6 +337,31 @@ function validateWireMessage(parsed: unknown): AnyWhiteboardWireMessage {
     throw new Error("[sync-client] decoded payload: not an object");
   }
   const v = (parsed as { v?: unknown }).v;
+  if (v === 3) {
+    const p = parsed as WhiteboardWireMessageV3;
+    if (typeof p.peerId !== "string" || (p.role !== "tutor" && p.role !== "student")) {
+      throw new Error("[sync-client] decoded payload v3: bad peerId/role");
+    }
+    if (typeof p.rev !== "number" || !Number.isFinite(p.rev) || p.rev < 0) {
+      throw new Error("[sync-client] decoded payload v3: bad rev");
+    }
+    if (
+      !p.page ||
+      typeof p.page.activePageId !== "string" ||
+      !Array.isArray(p.page.pageList)
+    ) {
+      throw new Error("[sync-client] decoded payload v3: bad page");
+    }
+    if (!p.pages || typeof p.pages !== "object") {
+      throw new Error("[sync-client] decoded payload v3: bad pages");
+    }
+    for (const [pid, els] of Object.entries(p.pages)) {
+      if (typeof pid !== "string" || !Array.isArray(els)) {
+        throw new Error(`[sync-client] decoded payload v3: bad pages.${pid}`);
+      }
+    }
+    return p;
+  }
   if (v !== 1 && v !== 2) {
     throw new Error("[sync-client] decoded payload: bad v");
   }
@@ -411,10 +474,21 @@ export function createWhiteboardSyncClient(
   let socket: Socket | null = null;
   let aesKey: CryptoKey | null = null;
   let aesKeyError: string | null = null;
-  type PendingPayload = {
-    elements: ExcalidrawLikeElement[];
-    extras?: WhiteboardWireBroadcastExtras;
-  };
+  type PendingPayload =
+    | {
+        kind: "v2";
+        elements: ExcalidrawLikeElement[];
+        extras?: WhiteboardWireBroadcastExtras;
+      }
+    | {
+        kind: "v3";
+        doc: {
+          rev: number;
+          pages: Record<string, ExcalidrawLikeElement[]>;
+          page: WhiteboardWirePage;
+          follow?: WhiteboardWireFollow;
+        };
+      };
   let pendingPayload: PendingPayload | null = null;
   // Cache the most recent scene we broadcast so that when a new
   // peer joins after the tutor has been drawing for a while, we can
@@ -558,6 +632,16 @@ export function createWhiteboardSyncClient(
         // if a future relay change starts echoing we don't want to
         // re-ingest our own strokes as remote peer strokes.
         if (msg.peerId === peerId) return;
+        if (msg.v === 3) {
+          const m = msg as WhiteboardWireMessageV3;
+          const details: WhiteboardWireRemoteDetails = {
+            follow: m.follow,
+            page: m.page,
+            document: { rev: m.rev, pages: m.pages },
+          };
+          fan(remoteSceneSubs, msg.peerId, [], details);
+          return;
+        }
         const details: WhiteboardWireRemoteDetails = {};
         if (msg.v === 2) {
           if (msg.follow) details.follow = msg.follow;
@@ -607,28 +691,38 @@ export function createWhiteboardSyncClient(
   }
 
   function encryptAndEmit(p: PendingPayload): Promise<void> {
-    const full: PendingPayload = {
-      elements: p.elements,
-      extras: p.extras,
-    };
-    lastBroadcastPayload = full;
+    lastBroadcastPayload = p;
     const job = (async () => {
       if (!aesKey || !socket) return;
-      const base = {
-        peerId,
-        role,
-        elements: p.elements,
-      };
-      const ext = p.extras;
-      const msg: AnyWhiteboardWireMessage = ext
-        ? {
-            v: 2,
-            ...base,
-            ...(ext.follow ? { follow: ext.follow } : {}),
-            ...(ext.page ? { page: ext.page } : {}),
-            ...(ext.scenePageId ? { scenePageId: ext.scenePageId } : {}),
-          }
-        : { v: 2, ...base };
+      let msg: AnyWhiteboardWireMessage;
+      if (p.kind === "v3") {
+        const d = p.doc;
+        msg = {
+          v: 3,
+          peerId,
+          role,
+          rev: d.rev,
+          pages: d.pages,
+          page: d.page,
+          ...(d.follow ? { follow: d.follow } : {}),
+        } as WhiteboardWireMessageV3;
+      } else {
+        const base = {
+          peerId,
+          role,
+          elements: p.elements,
+        };
+        const ext = p.extras;
+        msg = ext
+          ? {
+              v: 2,
+              ...base,
+              ...(ext.follow ? { follow: ext.follow } : {}),
+              ...(ext.page ? { page: ext.page } : {}),
+              ...(ext.scenePageId ? { scenePageId: ext.scenePageId } : {}),
+            }
+          : { v: 2, ...base };
+      }
       try {
         const { data, iv } = await encryptMessage(aesKey, msg);
         socket.emit("server-broadcast", roomId, data, iv);
@@ -650,8 +744,38 @@ export function createWhiteboardSyncClient(
     if (disposed) return;
     if (aesKeyError) return; // inert mode
     pendingPayload = {
+      kind: "v2",
       elements: elements.slice() as ExcalidrawLikeElement[],
       extras,
+    };
+    if (broadcastTimer === null) {
+      broadcastTimer = setTimeout(flushBroadcast, broadcastIntervalMs);
+    }
+  }
+
+  function broadcastDocument(args: {
+    rev: number;
+    pages: Record<string, ExcalidrawLikeElement[]>;
+    page: WhiteboardWirePage;
+    follow?: WhiteboardWireFollow;
+  }) {
+    if (disposed) return;
+    if (aesKeyError) return;
+    const pages: Record<string, ExcalidrawLikeElement[]> = {};
+    for (const [k, els] of Object.entries(args.pages)) {
+      pages[k] = (els as ExcalidrawLikeElement[]).map((e) => ({ ...e }));
+    }
+    pendingPayload = {
+      kind: "v3",
+      doc: {
+        rev: args.rev,
+        pages,
+        page: {
+          activePageId: args.page.activePageId,
+          pageList: args.page.pageList.map((x) => ({ ...x })),
+        },
+        follow: args.follow,
+      },
     };
     if (broadcastTimer === null) {
       broadcastTimer = setTimeout(flushBroadcast, broadcastIntervalMs);
@@ -689,6 +813,7 @@ export function createWhiteboardSyncClient(
       };
     },
     broadcastScene,
+    broadcastDocument,
     flushPendingBroadcast: tryFlushPendingBroadcastNow,
     disconnect: () => {
       if (disposed) return;

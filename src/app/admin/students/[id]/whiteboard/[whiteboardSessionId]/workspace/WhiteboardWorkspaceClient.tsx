@@ -48,6 +48,7 @@ import {
   createWhiteboardSyncClient,
   generateEncryptionKeyBase64Url,
   type WhiteboardSyncClient,
+  type WhiteboardWireFollow,
 } from "@/lib/whiteboard/sync-client";
 import {
   ACTIVE_PING_STALE_MS,
@@ -58,6 +59,7 @@ import {
   useWhiteboardRecorder,
   type ResumeResult,
 } from "@/hooks/useWhiteboardRecorder";
+import { useTutorLiveDocumentWire } from "@/hooks/useTutorLiveDocumentWire";
 import { uploadWhiteboardEvents } from "@/lib/whiteboard/upload";
 import {
   endWhiteboardSession,
@@ -519,6 +521,50 @@ export function WhiteboardWorkspaceClient({
     };
   }, [syncUrl]);
 
+  const getTutorDocumentPagesSnapshot = useCallback(() => {
+    const api = excalidrawAPIRef.current;
+    const cur = activePageIdRef.current;
+    const out: Record<string, ReadonlyArray<ExcalidrawLikeElement>> = {};
+    for (const p of pageListRef.current) {
+      if (p.id === cur && api) {
+        out[p.id] = api.getSceneElements() as ExcalidrawLikeElement[];
+      } else {
+        out[p.id] = pageDataRef.current[p.id] ?? [];
+      }
+    }
+    return out;
+  }, []);
+
+  const getTutorLiveFollow = useCallback((): WhiteboardWireFollow => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { scrollX: 0, scrollY: 0, zoom: 1 };
+    }
+    const st = api.getAppState() as {
+      scrollX: number;
+      scrollY: number;
+      zoom: { value: number };
+    };
+    return { scrollX: st.scrollX, scrollY: st.scrollY, zoom: st.zoom.value };
+  }, []);
+
+  const getTutorPageListAndActive = useCallback(
+    () => ({
+      pageList: pageListRef.current,
+      activePageId: activePageIdRef.current,
+    }),
+    []
+  );
+
+  const { scheduleDocumentBroadcast, flushDocumentBroadcastNow } =
+    useTutorLiveDocumentWire({
+      enabled: Boolean(sync) && Boolean(syncUrl),
+      sync,
+      getPagesSnapshot: getTutorDocumentPagesSnapshot,
+      getPageListAndActive: getTutorPageListAndActive,
+      getFollow: getTutorLiveFollow,
+    });
+
   const recorder = useWhiteboardRecorder({
     whiteboardSessionId,
     adminUserId,
@@ -530,19 +576,13 @@ export function WhiteboardWorkspaceClient({
     applyRemoteToCanvas,
     getScenePageIdForBroadcast: () => activePageIdRef.current,
     getWireBroadcastExtras: syncUrl ? getWireBroadcastExtras : undefined,
+    /** v3 full-document path owns tutor → student live bytes; v2 from recorder is off. */
+    includeLiveSyncBroadcast: !sync,
   });
-  const { flushThrottledFrameNow, broadcastScenePageSnapshot } = recorder;
+  const { flushThrottledFrameNow } = recorder;
   tutorResyncOnNewRemotePeerRef.current = async () => {
     flushThrottledFrameNow();
-    syncClientRef.current?.flushPendingBroadcast();
-    const api = excalidrawAPIRef.current;
-    if (!api) return;
-    const id = activePageIdRef.current;
-    const elements =
-      (pageDataRef.current[id] as ExcalidrawLikeElement[] | undefined) ??
-      (api.getSceneElements() as ExcalidrawLikeElement[]);
-    broadcastScenePageSnapshot({ elements, scenePageId: id });
-    syncClientRef.current?.flushPendingBroadcast();
+    flushDocumentBroadcastNow();
   };
 
   const selectTutorPage = useCallback(
@@ -554,11 +594,9 @@ export function WhiteboardWorkspaceClient({
         setActivePageId(nextId);
         return;
       }
-      // Drain the throttled onChange+sync for the old tab *before* we bump
-      // `activePageIdRef` — otherwise a flush after the switch can label page-1
-      // pixels with `scenePageId` p2 and peers paint the wrong tab.
+      // Drain the throttled onChange+event log for the old tab *before* we
+      // bump `activePageIdRef`.
       flushThrottledFrameNow();
-      syncClientRef.current?.flushPendingBroadcast();
       const from = activePageIdRef.current;
       // `getSceneElements()` can still reflect the *previous* tab for a frame when
       // the user flips pages faster than Excalidraw flushes. onChange is keyed by
@@ -608,13 +646,9 @@ export function WhiteboardWorkspaceClient({
         }, 0);
       }
       setActivePageId(nextId);
-      broadcastScenePageSnapshot({
-        elements: next,
-        scenePageId: nextId,
-      });
-      syncClientRef.current?.flushPendingBroadcast();
+      flushDocumentBroadcastNow();
     },
-    [broadcastScenePageSnapshot, flushThrottledFrameNow, whiteboardSessionId]
+    [flushDocumentBroadcastNow, flushThrottledFrameNow, whiteboardSessionId]
   );
 
   const addTutorPage = useCallback(() => {
@@ -631,12 +665,8 @@ export function WhiteboardWorkspaceClient({
     pageListRef.current = nextList;
     setPageList(nextList);
     pageDataRef.current[newId] = [];
-    // Still on `from`: drain the last throttled frame for the leaving page, then
-    // push it on the wire before the new-tab `broadcastScene` (sync uses a
-    // single pending slot — a second `broadcastScene` would otherwise replace
-    // the first).
+    // Still on `from`: drain the last throttled event-log frame for the leaving page.
     flushThrottledFrameNow();
-    syncClientRef.current?.flushPendingBroadcast();
     if (api) {
       pageSwitchProgrammaticRef.current += 1;
       try {
@@ -650,13 +680,14 @@ export function WhiteboardWorkspaceClient({
           );
         }, 0);
       }
-      broadcastScenePageSnapshot({ elements: [], scenePageId: newId });
-      syncClientRef.current?.flushPendingBroadcast();
     } else {
       activePageIdRef.current = newId;
     }
     setActivePageId(newId);
-  }, [broadcastScenePageSnapshot, flushThrottledFrameNow, pageList]);
+    if (api) {
+      flushDocumentBroadcastNow();
+    }
+  }, [flushDocumentBroadcastNow, flushThrottledFrameNow, pageList]);
 
   // ---------------------------------------------------------------
   // Live timer — Wyzant-style "both connected" billable clock
@@ -1078,6 +1109,9 @@ export function WhiteboardWorkspaceClient({
       // unknown[] so a future Excalidraw upgrade with a stricter type
       // doesn't break the call site.
       recorder.onCanvasChange(elements as ReadonlyArray<ExcalidrawLikeElement>);
+      if (sync && syncUrl) {
+        scheduleDocumentBroadcast();
+      }
 
       // Excalidraw's own image tool / library / drop: elements carry
       // fileId but no customData.assetUrl. Upload from local BinaryFiles
@@ -1104,15 +1138,9 @@ export function WhiteboardWorkspaceClient({
             });
             if (patched && excalidrawAPIRef.current) {
               excalidrawAPIRef.current.updateScene({ elements: patched });
-              // Push pixels to peers as soon as `customData.assetUrl` exists —
-              // the throttled recorder broadcast may still be one frame behind.
-              const client = syncClientRef.current;
-              if (client && syncUrl) {
-                const extras = getWireBroadcastExtras();
-                client.broadcastScene(
-                  patched as ReadonlyArray<ExcalidrawLikeElement>,
-                  extras ?? undefined
-                );
+              // Push full v3 document as soon as `customData.assetUrl` exists.
+              if (sync && syncUrl) {
+                flushDocumentBroadcastNow();
               }
             }
           } catch (err) {
@@ -1124,7 +1152,16 @@ export function WhiteboardWorkspaceClient({
         })();
       }
     },
-    [onLocalElementSnapshot, recorder, studentId, whiteboardSessionId, getWireBroadcastExtras, syncUrl]
+    [
+      flushDocumentBroadcastNow,
+      onLocalElementSnapshot,
+      recorder,
+      scheduleDocumentBroadcast,
+      studentId,
+      sync,
+      syncUrl,
+      whiteboardSessionId,
+    ]
   );
 
   // ---------------------------------------------------------------

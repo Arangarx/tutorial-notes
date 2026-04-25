@@ -104,6 +104,7 @@ import {
 } from "@/lib/whiteboard/checkpoint-store";
 import { consumeSkipIndexedDbResumeAfterGate } from "@/lib/whiteboard/resume-prompt-flags";
 import type {
+  WhiteboardSyncClient,
   WhiteboardWireBroadcastExtras,
   WhiteboardWireRemoteDetails,
 } from "@/lib/whiteboard/sync-client";
@@ -184,6 +185,10 @@ export type WhiteboardSyncClientLike = {
     extras?: WhiteboardWireBroadcastExtras
   ) => void;
   /**
+   * Tutor v3 full-document path — optional for mocks; production client always has it.
+   */
+  broadcastDocument?: WhiteboardSyncClient["broadcastDocument"];
+  /**
    * Must match `WhiteboardSyncClient.flushPendingBroadcast` when present —
    * prevents back-to-back `broadcastScene` from dropping the first packet.
    */
@@ -239,6 +244,13 @@ export type UseWhiteboardRecorderOptions = {
    * Optional: attach follow + page data to throttled E2E sync (v2 wire).
    */
   getWireBroadcastExtras?: () => WhiteboardWireBroadcastExtras | null;
+  /**
+   * Set false on the **tutor** workspace when live sync is driven by
+   * `useTutorLiveDocumentWire` (v3 full-document wire). The recorder
+   * still throttles the **event log**; it no longer also calls
+   * `sync.broadcastScene` (v2).
+   */
+  includeLiveSyncBroadcast?: boolean;
   /**
    * Local client id — broadcast on every `add` event so replay can
    * colour-tag strokes by author. Defaults to a random uuid.
@@ -351,6 +363,7 @@ export function useWhiteboardRecorder(
     getAudioMs,
     recordingActive,
     sync,
+    includeLiveSyncBroadcast = true,
   } = opts;
 
   // Keep `getAudioMs` and `sync` reachable via refs so we don't
@@ -364,6 +377,10 @@ export function useWhiteboardRecorder(
   useEffect(() => {
     syncRef.current = sync ?? null;
   }, [sync]);
+  const includeLiveSyncBroadcastRef = useRef(includeLiveSyncBroadcast);
+  useEffect(() => {
+    includeLiveSyncBroadcastRef.current = includeLiveSyncBroadcast;
+  }, [includeLiveSyncBroadcast]);
   const applyRemoteToCanvasRef = useRef(opts.applyRemoteToCanvas);
   useEffect(() => {
     applyRemoteToCanvasRef.current = opts.applyRemoteToCanvas;
@@ -471,19 +488,21 @@ export function useWhiteboardRecorder(
     // Live sync is independent of the event log. The tutor can draw and
     // use Insert PDF/image before pressing Start; the student must still
     // receive the latest scene. Recording remains gated below.
-    try {
-      const baseExtras = getWireBroadcastExtrasRef.current?.() ?? undefined;
-      const scenePageId = pendingScenePageIdRef.current;
-      const extras: WhiteboardWireBroadcastExtras | undefined =
-        baseExtras != null
-          ? { ...baseExtras, scenePageId }
-          : { scenePageId };
-      syncRef.current?.broadcastScene(frame, extras);
-    } catch (err) {
-      console.warn(
-        `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
-        (err as Error)?.message ?? String(err)
-      );
+    if (includeLiveSyncBroadcastRef.current) {
+      try {
+        const baseExtras = getWireBroadcastExtrasRef.current?.() ?? undefined;
+        const scenePageId = pendingScenePageIdRef.current;
+        const extras: WhiteboardWireBroadcastExtras | undefined =
+          baseExtras != null
+            ? { ...baseExtras, scenePageId }
+            : { scenePageId };
+        syncRef.current?.broadcastScene(frame, extras);
+      } catch (err) {
+        console.warn(
+          `[useWhiteboardRecorder] wbsid=${whiteboardSessionId} broadcast failed:`,
+          (err as Error)?.message ?? String(err)
+        );
+      }
     }
     if (!recordingActiveRef.current) {
       // No recording / no log events — the pre-recording canvas is
@@ -532,7 +551,7 @@ export function useWhiteboardRecorder(
       const client = syncRef.current;
       pendingFrameRef.current = args.elements;
       pendingScenePageIdRef.current = args.scenePageId;
-      if (!client) return;
+      if (!client || !includeLiveSyncBroadcastRef.current) return;
       try {
         const baseExtras = getWireBroadcastExtrasRef.current?.() ?? undefined;
         const extras: WhiteboardWireBroadcastExtras =

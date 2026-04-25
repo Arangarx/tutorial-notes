@@ -279,6 +279,55 @@ describe("sync-client lifecycle", () => {
     client.disconnect();
   });
 
+  test("broadcastDocument emits v3 wire payload (decrypts to rev + pages + page + follow)", async () => {
+    const { factory, sockets } = fakeIoFactory();
+    const k = generateEncryptionKeyBase64Url();
+    const client = createWhiteboardSyncClient({
+      url: "wss://test",
+      roomId: "room-xyz",
+      encryptionKeyBase64Url: k,
+      role: "tutor",
+      broadcastIntervalMs: 5,
+      _ioFactory: factory,
+    });
+
+    await realTick();
+    await flushMicrotasks(10);
+
+    const sock = sockets[0]!;
+    client.broadcastDocument({
+      rev: 7,
+      pages: { p1: sampleScene("a"), p2: [] },
+      page: {
+        activePageId: "p1",
+        pageList: [
+          { id: "p1", title: "Page 1" },
+          { id: "p2", title: "Page 2" },
+        ],
+      },
+      follow: { scrollX: 1, scrollY: 2, zoom: 1.5 },
+    });
+    client.flushPendingBroadcast();
+    await realTick(20);
+    await flushMicrotasks(10);
+
+    const last = sock.emitted.filter((e) => e.event === "server-broadcast").at(-1)!;
+    const data = last.args[1] as ArrayBuffer;
+    const iv = last.args[2] as ArrayBuffer;
+    const keyBytes = _testing.decodeBase64Url(k);
+    const key = await _testing.importAesKey(keyBytes);
+    const decrypted = await _testing.decryptMessage(key, data, iv);
+    if (decrypted.v !== 3) throw new Error("expected v3");
+    expect(decrypted.rev).toBe(7);
+    expect(Object.keys(decrypted.pages).sort()).toEqual(["p1", "p2"]);
+    expect(decrypted.page.activePageId).toBe("p1");
+    expect(decrypted.follow?.zoom).toBe(1.5);
+    const p1el = (decrypted.pages as Record<string, ExcalidrawLikeElement[]>)["p1"]![0]!;
+    expect(p1el.id).toBe("a");
+
+    client.disconnect();
+  });
+
   test("new-user triggers re-emit of last scene (no blank canvas for late joiner)", async () => {
     const { factory, sockets } = fakeIoFactory();
     const k = generateEncryptionKeyBase64Url();

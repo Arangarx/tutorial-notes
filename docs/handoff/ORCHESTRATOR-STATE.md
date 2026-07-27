@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `4d9e5e23` (BLOB_MAX merge).
 
-**Last action:** SubmitButton retire ready @ `eb5baa4b` ([Wave A SubmitButton retire](696ddada)); verifier dispatched.
+**Last action:** SubmitButton Sonnet **REJECT** ([Verify SubmitButton retirement](3b970cf5)) — 6 local forks ≠ dedupe; FormSubmitButton consolidation fix dispatched.
 
-**In-flight:** Verify SubmitButton retirement ([Verify SubmitButton retirement](3b970cf5)) @ `eb5baa4b`.
+**In-flight:** Fix FormSubmitButton consolidation ([Fix FormSubmitButton consolidation](78b66d4a)) then re-verify.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

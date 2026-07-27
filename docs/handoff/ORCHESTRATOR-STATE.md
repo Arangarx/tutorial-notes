@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Wave A safe leftovers **complete** except **NativeSelect deferred** (wb-chrome CSS). Next options: (1) optional first real agenticPipeline change-mode chunk, (2) Phase 2 executable verifier, (3) Wave C/D fragile (Opus), (4) Priority #2/#3 Andrew-owned. Google Console = Andrew-owned.
+**Next action(s):** Change-mode Phase 1 **proof complete**. Next: Phase 2 executable verifier; or harder change-mode chunks; NativeSelect still deferred; Wave C/D Opus-grade. Google Console / instrumentation = Andrew-owned.
 
 ---
 
@@ -51,18 +51,18 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `9501f6ec` (formatDuration tail merge).
+**Tip:** `master` @ `3ef04cc7` (V1 library drift merge; change-mode proof).
 
-**Last action:** ThemeToggle table fix landed @ `1acd9f48` ([Fix ThemeToggle table row](9f9c33d0)); re-verify dispatched.
+**Last action:** Change-mode proof **DONE** — run `run-2026-07-27T18-46-58` approved; docs merged @ [`3ef04cc7`](https://github.com/Arangarx/tutoring-notes/commit/3ef04cc7). Lessons: `RUN_DIR_ROOT` outside Documents (CFA); intent-coverage must quote spec strings verbatim; `approval_blocked` status sticks until reset to `approval_pending` before re-approve.
 
-**In-flight:** Re-verify library drift ([Re-verify library drift after table fix](af67245a)) @ `1acd9f48`.
+**In-flight:** (none).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 4. _(cleared)_ Merge agenticPipeline Phase 1 → pipeline master.
-5. After re-verify PASS: `node run.js --approve` (with RUN_DIR_ROOT) then merge docs branch.
-**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred).
+5. _(cleared)_ First change-mode proof chunk.
+**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof (V1 library drift).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

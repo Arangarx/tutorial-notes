@@ -43,7 +43,7 @@ node run.js --mode change --spec spec/examples/tutoring-notes-change.json
 - Real stage loop that advances/checkpoints/retries; task queue + worktree isolation + cost budgets; merge/PR automation with required checks (still no silent master push); pipeline self-CI proving the approve gates; learning aggregation stub. Defer greenfield deploy automation / post-release auto-fix / cloud runner — high blast radius, low help for the release track.
 
 ## First concrete step when Andrew greenlights
-~~Phase 1~~ **Complete.** Next: drive one Wave A dedupe chunk end-to-end through change mode (branch + gates + verify + approval-request, no merge), then Phase 2 executable verifier.
+~~Phase 1~~ **Complete** (merged agenticPipeline `master` @ `aa56225`). **First change-mode proof (2026-07-27):** run `run-2026-07-27T18-46-58` — V1-COMPONENT-LIBRARY inventory drift; executor → verifier (FAIL on GFM table cells → fix → PASS) → intent-coverage exact-string gate → `--approve` → TN merge [`3ef04cc7`](https://github.com/Arangarx/tutoring-notes/commit/3ef04cc7). Spec: agenticPipeline `spec/examples/tutoring-notes-change-v1-library-drift.json`. **Windows:** set `$env:RUN_DIR_ROOT` outside Documents (Controlled Folder Access blocks `.pipeline/runs` under Documents). Next: Phase 2 executable verifier; then harder change-mode chunks.
 
 ## Cross-refs
 - tutoring-notes: [`.cursor/rules/agentic-verification-pipeline.mdc`](../.cursor/rules/agentic-verification-pipeline.mdc), [`docs/DEDUPE-PLAN.md`](DEDUPE-PLAN.md), BACKLOG `PIPELINE-1`.

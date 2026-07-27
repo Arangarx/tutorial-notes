@@ -61,30 +61,6 @@
   --ring: var(--focus-ring);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: var(--surface-base);
-    --foreground: var(--text-default);
-    --card: var(--surface-1);
-    --card-foreground: var(--text-default);
-    --popover: var(--surface-1);
-    --popover-foreground: var(--text-default);
-    --primary: var(--accent);
-    --primary-foreground: var(--accent-on);
-    --secondary: var(--surface-2);
-    --secondary-foreground: var(--text-default);
-    --shadcn-muted: var(--surface-2);
-    --shadcn-muted-foreground: var(--text-muted);
-    --shadcn-accent: var(--accent-soft);
-    --shadcn-accent-foreground: var(--text-default);
-    --destructive: #e54848;
-    --destructive-foreground: #fcfbf4;
-    --border: var(--border-default);
-    --input: var(--surface-input);
-    --ring: var(--focus-ring);
-  }
-}
-
 [data-theme="dark"] {
   --background: var(--surface-base);
   --foreground: var(--text-default);

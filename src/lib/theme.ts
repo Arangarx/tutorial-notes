@@ -27,15 +27,10 @@ export function resolveTheme(mode: ThemeMode): ResolvedTheme {
   return getSystemResolvedTheme();
 }
 
-/** Apply mode to `<html data-theme>` — system removes the attribute for CSS media fallback. */
+/** Apply mode to `<html data-theme>` — always writes resolved light|dark. */
 export function applyThemeToDocument(mode: ThemeMode): ResolvedTheme {
   const resolved = resolveTheme(mode);
-  const root = document.documentElement;
-  if (mode === "system") {
-    root.removeAttribute("data-theme");
-  } else {
-    root.setAttribute("data-theme", mode);
-  }
+  document.documentElement.setAttribute("data-theme", resolved);
   return resolved;
 }
 
@@ -44,5 +39,5 @@ export function applyThemeToDocument(mode: ThemeMode): ResolvedTheme {
  * Must stay in sync with `applyThemeToDocument` semantics.
  */
 export function getThemeBootstrapScript(): string {
-  return `(function(){try{var d=document.documentElement;var p=new URLSearchParams(window.location.search);var u=p.get("theme");if(u==="light"||u==="dark"){d.setAttribute("data-theme",u);try{localStorage.setItem(${JSON.stringify(DEV_THEME_STORAGE_KEY)},u)}catch(e){}return}var m=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(m==="light"||m==="dark"){d.setAttribute("data-theme",m)}else{d.removeAttribute("data-theme")}}catch(e){}})();`;
+  return `(function(){try{var d=document.documentElement;var p=new URLSearchParams(window.location.search);var u=p.get("theme");if(u==="light"||u==="dark"){d.setAttribute("data-theme",u);try{localStorage.setItem(${JSON.stringify(DEV_THEME_STORAGE_KEY)},u)}catch(e){}return}var m=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});var r;if(m==="light"||m==="dark"){r=m}else{r=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}d.setAttribute("data-theme",r)}catch(e){}})();`;
 }

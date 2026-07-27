@@ -2,7 +2,7 @@
 
 Lightweight Andrew eyeball tracker after agent executor→verifier→merge passes land. **Not** a full smokebook — quick visual sanity on consolidated surfaces.
 
-**Branch:** `master` @ `0ce5ff4e` (Wave B complete)  
+**Branch:** `feat/dedupe-tokens-dark-palette` _(tip commit after merge — fill SHA)_  
 **Preview:** _(fill from Vercel `branchAlias` when running)_
 
 ---

@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `9501f6ec` (formatDuration tail merge).
 
-**Last action:** Change-mode verifier **FAIL** ([Change-mode verify library drift](7074828b)) — ThemeToggle table row 6 cells vs 4-col header; fix dispatched.
+**Last action:** ThemeToggle table fix landed @ `1acd9f48` ([Fix ThemeToggle table row](9f9c33d0)); re-verify dispatched.
 
-**In-flight:** Fix ThemeToggle table row ([Fix ThemeToggle table row](9f9c33d0)) then re-verify.
+**In-flight:** Re-verify library drift ([Re-verify library drift after table fix](af67245a)) @ `1acd9f48`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

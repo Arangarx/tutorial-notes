@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** (1) Finish anti-spam verify→merge→Neon. (2) Ship thin `/admin/design-system` Tier 1–2 gallery. (3) Google Console / pipeline Phase 1 when Andrew has cycles. Do NOT start Wave C/D without OK.
+**Next action(s):** Finish spam heuristic tune → verify → merge → re-backfill prod INBOX. Andrew eyeball via `/admin/design-system` + remaining DEDUPE list.
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `2a94c70b`.
+**Tip:** `master` @ `1767a2e2` (design-system gallery live).
 
-**Last action:** Neon main already had feedback spam columns (deploy race). Backfill applied on prod: 1 SPAM / 6 still INBOX. Gallery building.
+**Last action:** Design-system gallery APPROVE → `merge --no-ff` `1767a2e2`. Path: `/admin/design-system` (platform-maintainer nav).
 
-**In-flight:** design-system gallery executor ([5c0bbb6f](5c0bbb6f-703d-49a9-8ae8-0294e5c54a57)). Neon schema live (Vercel/prior); backfill marked 1/7 SPAM — heuristics may need tuning for remaining junk.
+**In-flight:** spam heuristics tune ([f7e02c8f](f7e02c8f-ce42-4f40-9a09-3d59524d52f4)). Gallery merged `1767a2e2`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

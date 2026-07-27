@@ -110,7 +110,7 @@ describe("submitFeedback", () => {
     expect(mockCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         status: "SPAM",
-        spamReason: expect.stringMatching(/seo_marketing|multi_url|cold_outreach/),
+        spamReason: expect.stringMatching(/seo_terms|multi_url|cold_opener/),
       }),
     });
   });

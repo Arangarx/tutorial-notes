@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Finish spam heuristic tune → verify → merge → re-backfill prod INBOX. Andrew eyeball via `/admin/design-system` + remaining DEDUPE list.
+**Next action(s):** Andrew: use Design system nav + DEDUPE eyeball list. Open: Google Console / pipeline Phase 1 / instrumentation slice. Wave C/D needs explicit OK.
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `1767a2e2` (design-system gallery live).
+**Tip:** `master` @ `22fbec0b`.
 
-**Last action:** Design-system gallery APPROVE → `merge --no-ff` `1767a2e2`. Path: `/admin/design-system` (platform-maintainer nav).
+**Last action:** Spam heuristics APPROVE (re-verify) → `merge --no-ff` `22fbec0b`; prod backfill marked remaining SEO/video/IG pitches SPAM.
 
-**In-flight:** spam heuristics tune ([f7e02c8f](f7e02c8f-ce42-4f40-9a09-3d59524d52f4)). Gallery merged `1767a2e2`.
+**In-flight:** none. Spam heuristics tuned + re-backfilled. Gallery live at `/admin/design-system`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

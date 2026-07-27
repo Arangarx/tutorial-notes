@@ -12,6 +12,7 @@ import { SessionCostPanel } from "@/components/admin/SessionCostPanel";
 import { getSessionCostBreakdown } from "@/lib/observability/cost-queries";
 import { loadTutorNoteForReview } from "@/app/admin/students/[id]/whiteboard/notes-actions";
 import { buildReplayAudioPayload } from "@/lib/whiteboard/replay-audio-payload";
+import { formatClockDuration } from "@/lib/time/format-duration-ms";
 
 export const dynamic = "force-dynamic";
 
@@ -69,16 +70,6 @@ function formatDate(d: Date): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return h > 0
-    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-    : `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export default async function WhiteboardReviewPage({
@@ -160,9 +151,9 @@ export default async function WhiteboardReviewPage({
     : detail.audioRecordings.reduce((sum, rec) => sum + (rec.durationSeconds ?? 0), 0);
   const durationLabel =
     recordingDurationSeconds > 0
-      ? formatDuration(recordingDurationSeconds)
+      ? formatClockDuration(recordingDurationSeconds, { padMinutes: false })
       : detail.durationSeconds
-        ? formatDuration(detail.durationSeconds)
+        ? formatClockDuration(detail.durationSeconds, { padMinutes: false })
         : null;
 
   const isLive = !detail.endedAt;

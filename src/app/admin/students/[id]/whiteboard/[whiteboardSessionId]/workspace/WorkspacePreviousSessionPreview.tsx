@@ -63,6 +63,7 @@ import {
   StartWhiteboardSession,
   type StartWhiteboardSessionProps,
 } from "@/app/admin/students/[id]/whiteboard/StartWhiteboardSession";
+import { formatClockDuration } from "@/lib/time/format-duration-ms";
 
 type LoadState =
   | { kind: "loading" }
@@ -121,16 +122,6 @@ function FormattedTime({ iso }: { iso: string }) {
     setText(new Date(iso).toLocaleString());
   }, [iso]);
   return <>{text}</>;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return h > 0
-    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-    : `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export function WorkspacePreviousSessionPreview(
@@ -390,7 +381,10 @@ export function WorkspacePreviousSessionPreview(
   // -----------------------------------------------------------------
 
   const durationLabel = useMemo(
-    () => formatDuration(durationSeconds),
+    () =>
+      durationSeconds == null
+        ? ""
+        : formatClockDuration(durationSeconds, { padMinutes: false }),
     [durationSeconds]
   );
 

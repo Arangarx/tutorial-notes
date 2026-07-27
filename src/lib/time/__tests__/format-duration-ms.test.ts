@@ -10,7 +10,7 @@
  * Independent oracle = hand-computed expected strings (not back-derived from
  * implementation helpers).
  */
-import { formatDurationMs } from "@/lib/time/format-duration-ms";
+import { formatClockDuration, formatDurationMs } from "@/lib/time/format-duration-ms";
 import { formatDuration } from "@/components/recording/format-duration";
 import { formatReplayDurationMs } from "@/lib/whiteboard/replay-helpers";
 
@@ -46,6 +46,17 @@ const RECORDING_SEC_CASES: Array<{
   { seconds: 3661, expected: "1:01:01", label: "1h1m1s" },
   { seconds: 7325, expected: "2:02:05", label: "multi-hour" },
 ];
+
+describe("formatClockDuration (unpadded seconds, page-local contract)", () => {
+  it.each([
+    { seconds: 0, expected: "0:00", label: "zero" },
+    { seconds: 61, expected: "1:01", label: "1m1s unpadded" },
+    { seconds: 3661, expected: "1:01:01", label: "1h1m1s" },
+  ])("$label → $expected", ({ seconds, expected }) => {
+    expect(formatClockDuration(seconds, { padMinutes: false })).toBe(expected);
+    expect(formatDurationMs(seconds * 1000)).toBe(expected);
+  });
+});
 
 describe("formatDurationMs (canonical ms→clock, unpadded minutes under 1h)", () => {
   it.each(MS_CASES)("$label → $expected", ({ ms, expected }) => {

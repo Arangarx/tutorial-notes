@@ -193,9 +193,9 @@ const SIGNAL_CHECKERS: SignalChecker[] = [
         /hope this (email|message) finds you/.test(m) ||
         /to the (website|site) owner/.test(m) ||
         /i came across your (website|site)/.test(m) ||
-        /i (just )?visited (your )?(website|site|usemynk\.com)/.test(m) ||
+        /i (just )?visited (your )?(website|site)/.test(m) ||
         /i was (just )?(on|browsing) your (website|site)/.test(m) ||
-        /i (just )?checked out (your )?(website|site|usemynk\.com)/.test(m)
+        /i (just )?checked out (your )?(website|site)/.test(m)
       );
     },
   },

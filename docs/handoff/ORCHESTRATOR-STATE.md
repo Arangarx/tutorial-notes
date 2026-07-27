@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `d43647f3` (pipeline Phase 1 docs merge).
 
-**Last action:** Pipeline Phase 1 impl complete; TN docs merged; BLOB_MAX branch pushed; verifiers in flight.
+**Last action:** Phase 1 Sonnet **REJECT** — change-mode tests + dead loadJsonIfExists fix dispatched; parseClientPayload + BLOB_MAX executors reported ready (verifiers already in flight).
 
-**In-flight:** (1) Verify agenticPipeline Phase 1 (`b8ea665e`). (2) Retro-verify parseClientPayload (`4fe56c1f`). (3) Verify BLOB_MAX (`0ad71859`).
+**In-flight:** (1) Phase 1 REJECT fixes (517f00d) then re-verify. (2) Retro-verify parseClientPayload (4fe56c1f). (3) Verify BLOB_MAX ( ad71859).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

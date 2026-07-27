@@ -41,9 +41,9 @@
 - **Wave B:** COMPLETE 6/6 (`0ce5ff4e`).
 - **Wave C/D:** whiteboard chrome monolith + A/V primitives (fragile) — Opus-grade.
 
-**agenticPipeline:** Phase 1 **implemented** on `feat/phase1-change-mode-fail-closed` @ [`b9c3787`](https://github.com/Arangarx/agenticPipeline/commit/b9c37879d230103e1500231a9c30538fb6a342ee) — change mode + fail-closed approve + TN template. **Not merged to pipeline master yet** (Sonnet re-verify in flight). TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
+**agenticPipeline:** Phase 1 **implemented** on `feat/phase1-change-mode-fail-closed` @ [`b9c3787`](https://github.com/Arangarx/agenticPipeline/commit/b9c37879d230103e1500231a9c30538fb6a342ee) — change mode + fail-closed approve + TN template. **Sonnet REJECT** (missing `validateChangeMode` tests + dead `loadJsonIfExists` in `run.js`); fix in flight. TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** (1) After Sonnet APPROVE → merge pipeline Phase 1 to agenticPipeline master. (2) Wave A leftovers: BLOB_MAX @ `5f728a93` awaiting verify → SubmitButton → StatTile (parseClientPayload on TN master @ `97e3b4a2` — post-hoc verify in flight). NativeSelect deferred. Google Console = Andrew-owned.
+**Next action(s):** (1) Land Phase 1 REJECT fixes → re-verify → merge pipeline master. (2) Wave A: merge BLOB_MAX after APPROVE; parseClientPayload already on master (post-hoc verify). Then SubmitButton → StatTile. NativeSelect deferred. Google Console = Andrew-owned.
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `d43647f3` (pipeline Phase 1 docs merge).
 
-**Last action:** Phase 1 Sonnet **REJECT** � change-mode tests + dead loadJsonIfExists fix dispatched; parseClientPayload + BLOB_MAX executors reported ready (verifiers already in flight).
+**Last action:** Phase 1 Sonnet **REJECT** ([Verify agenticPipeline Phase 1](b8ea665e)) — change-mode tests + dead `loadJsonIfExists`; fix agent dispatched. parseClientPayload + BLOB_MAX executors ready (verifiers in flight).
 
-**In-flight:** (1) Phase 1 REJECT fixes (517f00d) then re-verify. (2) Retro-verify parseClientPayload (4fe56c1f). (3) Verify BLOB_MAX ( ad71859).
+**In-flight:** (1) Phase 1 REJECT fixes (`b517f00d`) then re-verify. (2) Retro-verify parseClientPayload (`4fe56c1f`). (3) Verify BLOB_MAX (`0ad71859`).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

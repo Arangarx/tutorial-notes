@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Andrew pick — Google Console / agenticPipeline Phase 1 / remaining Wave A leftovers / eyeball pass. Do NOT start Wave C/D without explicit OK.
+**Next action(s):** (1) Finish anti-spam verify→merge→Neon. (2) Ship thin `/admin/design-system` Tier 1–2 gallery. (3) Google Console / pipeline Phase 1 when Andrew has cycles. Do NOT start Wave C/D without OK.
 
 ---
 
@@ -51,16 +51,15 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `8a7dc8b6` (Ready-to-teach midwidth fix).
+**Tip:** `master` @ `5c356400` (+ docs queue pending this commit).
 
-**Last action:** Ready-to-teach midwidth APPROVE → `merge --no-ff` `8a7dc8b6`. Design-system gallery discussed (hybrid /admin/design-system — not started).
+**Last action:** Andrew queued design-system gallery (2026-07-27) — no appetite for full-site hunting; platform-maintainer gate only (not future school operators). Recorded in BACKLOG + eyeball list.
 
-**In-flight:** feedback anti-spam Phase 1 Sonnet verifier ([ec85a9f5](ec85a9f5-a74c-4a06-bd97-4cbaa06e1b78)) on `feat/feedback-antispam-phase1` @ `9e2597c7`. Neon migrate owed after APPROVE.
+**In-flight:** feedback anti-spam Phase 1 Sonnet verifier ([ec85a9f5](ec85a9f5-a74c-4a06-bd97-4cbaa06e1b78)). After APPROVE: merge + Neon migrate + optional backfill. **Queued next:** `/admin/design-system` gallery (platform-maintainer only — Andrew bandwidth).
 **Open Andrew-confirms:**
-1. Google Console status + calendar verification package (hybrid sequencing locked).
+1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
-3. Which next: tokens.css / pipeline Phase 1 / remaining Wave A / pause for eyeball.
-
+3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 **Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).

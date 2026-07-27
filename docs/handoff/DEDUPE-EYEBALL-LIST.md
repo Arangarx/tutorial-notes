@@ -2,7 +2,9 @@
 
 Lightweight Andrew eyeball tracker after agent executor→verifier→merge passes land. **Not** a full smokebook — quick visual sanity on consolidated surfaces.
 
-**Branch:** `master` @ `f558b145` (tokens dark-palette merged)  
+> **2026-07-27:** Full-site hunting is too expensive for Andrew’s current bandwidth. Queued [`/admin/design-system`](../BACKLOG.md) gallery (platform-maintainer only) will become the primary findable eyeball surface for library components. Until it lands, agents must deep-link exact routes + what to look for — never “look around.”
+
+**Branch:** `master` @ `8a7dc8b6` (Ready-to-teach midwidth)  
 **Preview:** _(fill from Vercel `branchAlias` when running)_
 
 ---

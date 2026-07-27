@@ -11,6 +11,26 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 3. **Comprehensive instrumentation** — see EXACTLY how the site is used. **Policy (Andrew 2026-07-10):** anything touching **minor data or minor traffic MUST be first-party** (no third-party processors on COPPA-risk surfaces). Third-party analytics (e.g. PostHog) is acceptable **only** on non-COPPA surfaces (e.g. marketing/logged-out). **Terms/Privacy stay 100% honest — do not over-share, but absolutely never under-share; default to transparency when in doubt** until a real legal review is done. Archived reference: `docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md` (reframe to first-party for the app).
 4. **Finish scheduling** (depends on #2 calendar).
 
+### QUEUED — `/admin/design-system` component gallery (Andrew 2026-07-27)
+
+**Why:** Andrew’s work days no longer have appetite for full-site manual reviews — hunting every card/subpage to eyeball dedupe/layout is too slow. Agents must give him a **findable, organized** eyeball surface instead of “go look around the app.”
+
+**What:** Operator-gated (platform maintainer only — `OPERATOR_EMAILS` ∪ `ADMIN_EMAIL`; **not** future school/org admins) Next.js gallery at `/admin/design-system`, organized by composition tier:
+
+1. Primitives (`ui/*` variant matrix)
+2. Patterns (§1A recipes)
+3. Compositions (SectionCard, SubNav, PageShell, …)
+4. In-context deep links to live routes
+5. Fenced (WB chrome / recording / A/V) — link-outs only; gallery does **not** claim to represent live session chrome
+
+Each specimen: light/dark, canonical path, confidence badge (`isolated` | `composed` | `live-route-only`). Honesty rule: gallery PASS ≠ surface PASS when page-local CSS still overrides.
+
+**Gate:** Same allowlist as feedback/dev-tools — rename/document as **site operator / platform**, never expand with org-admin roles.
+
+**Sequencing:** After feedback anti-spam Phase 1 lands (in flight); thin Tier 1–2 first, then grow with inventory. Sync with [`V1-COMPONENT-LIBRARY.md`](V1-COMPONENT-LIBRARY.md) + [`handoff/DEDUPE-EYEBALL-LIST.md`](handoff/DEDUPE-EYEBALL-LIST.md).
+
+**Status:** `OPEN` — queued for next available executor wave (not Wave C/D fragile).
+
 ### Priority #2 — external Google approvals (start NOW; ~4–6 week lead)
 
 Audit 2026-07-10. Long external lead times → kick off before the dependent code is finished.
@@ -373,6 +393,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 
 #### UX & design system
 
+- **DESIGN-SYSTEM-GALLERY** — `/admin/design-system` platform-maintainer-only component gallery (Andrew 2026-07-27). See Release priorities § QUEUED. Enables eyeball without full-site hunting. (§7)
 - **2FA inline verify-at-login** —  (§7)
 - **ADMIN-STUDENT-DETAIL-MOBILE-DISCOVER** —  (§7)
 - **ADMIN-STUDENT-DETAIL-MOBILE-ICONS** —  (§7)

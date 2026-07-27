@@ -2,12 +2,12 @@
 
 Goal (Andrew 2026-07-10): advance the **`agenticPipeline`** project (`C:\Users\arang\Documents\Andrew\dev\agenticPipeline` — first crack, unrefined) toward a true autonomous, **industry-standard black-box agentic dev pipeline**, and **integrate it with tutoring-notes**. Priority stays tutoring-notes functionality/stability/responsiveness; pipeline advances in real, solid steps, deferrable only if it blocks release (Andrew approval), never permanently.
 
-> **Status: Phase 1 DONE (2026-07-27).** Implemented in agenticPipeline branch `feat/phase1-change-mode-fail-closed`. Phase 2+ below remain planned.
+> **Status: Phase 1 DONE + merged to agenticPipeline `master` (2026-07-27)** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225). Phase 2+ below remain planned.
 
 ## Current state of agenticPipeline (~25–30% of vision)
 
 - **Strong:** stage contracts (`spec → research → design → build → test → verifier → approval → deploy → handoff`), guardrail docs (trust bar, reliability-bar globbed at tutoring-notes), a verifier subagent spec (`.cursor/agents/verifier.md`), working bootstrap/approval scripts (`run.js` start + `--approve`), model-tiering rules.
-- **Phase 1 shipped (2026-07-27):** **change/iteration run mode** for sibling repos (`--mode change`, `spec.source.path` → tutoring-notes; feature branch; stop at approval, no merge/deploy); **fail-closed approval** (`verification-report.md` with `Result: PASS` required); tutoring-notes-targeted `AGENT-PROMPT` template; unit/CLI tests. See agenticPipeline `docs/CHANGE-MODE.md`.
+- **Phase 1 shipped + on agenticPipeline `master` (2026-07-27, `aa56225`):** **change/iteration run mode** for sibling repos (`--mode change`, `spec.source.path` → tutoring-notes; feature branch; stop at approval, no merge/deploy); **fail-closed approval** (`verification-report.md` with `Result: PASS` required); tutoring-notes-targeted `AGENT-PROMPT` template; unit/CLI tests (`change-mode`, approval-gates, approve CLI). See agenticPipeline `docs/CHANGE-MODE.md`.
 - **Still missing for full autonomy:** no programmatic stage loop (today a human pastes `AGENT-PROMPT.md` into a Cursor chat); verifier is a prompt, not invoked; no merge/PR automation; no task queue/isolation; no post-release loop; no pipeline self-CI.
 - **tutoring-notes already reinvented the core** (executor → independent verifier → gates) as always-apply rules + the overnight Wave A loop. Phase 1 encodes that loop into pipeline machinery.
 
@@ -25,7 +25,7 @@ Goal (Andrew 2026-07-10): advance the **`agenticPipeline`** project (`C:\Users\a
 - **`change`/iteration run mode** in `agenticPipeline` (`spec.source.path` → tutoring-notes sibling; scoped acceptance criteria; work on a feature branch; **stop at approval, no merge**).
 - **Fail-closed approval:** `run.js --approve` requires `verification-report.md` with `Result: PASS`.
 - **Tutoring-notes `AGENT-PROMPT` template:** `templates/AGENT-PROMPT-change-tutoring-notes.md` — executor → independent verifier (TN rules) → TN gates (`npm run test:wb-affected:run`, `npx next build`) → approval-request.
-- **Proof:** `node --test tests/approval-gates.test.js tests/run-approve-cli.test.js` in agenticPipeline; example spec at `spec/examples/tutoring-notes-change.json`.
+- **Proof:** `node --test tests/approval-gates.test.js tests/run-approve-cli.test.js tests/change-mode.test.js` in agenticPipeline (19 pass); example spec at `spec/examples/tutoring-notes-change.json`. Merged to agenticPipeline `master` @ `aa56225`.
 
 **How to run (Andrew try-this):**
 

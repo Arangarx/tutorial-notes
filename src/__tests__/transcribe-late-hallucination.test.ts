@@ -74,7 +74,7 @@ jest.mock("@/lib/blob", () => ({
   deleteBlob: (...args: unknown[]) => mockDeleteBlob(...args),
   isBlobConfigured: jest.fn().mockReturnValue(true),
   isAcceptedAudioType: jest.fn().mockReturnValue(true),
-  BLOB_MAX_BYTES: 100 * 1024 * 1024,
+  BLOB_MAX_BYTES: require("@/lib/audio-constants").BLOB_MAX_BYTES,
 }));
 
 global.fetch = jest.fn().mockResolvedValue({

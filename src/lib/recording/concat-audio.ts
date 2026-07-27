@@ -12,6 +12,7 @@ import {
   harnessServerPut,
   isBlobHarnessActive,
 } from "@/lib/blob-harness";
+import { BLOB_MAX_BYTES } from "@/lib/audio-constants";
 import { probeAudioBufferDurationSeconds } from "@/lib/transcribe-ffmpeg";
 import { TUTOR_MIC_STREAM_ID } from "@/lib/recording/lifecycle-machine";
 
@@ -114,7 +115,7 @@ async function concatBuffersToWebm(
       "48k",
       outputPath,
     ],
-    { maxBuffer: 100 * 1024 * 1024 }
+    { maxBuffer: BLOB_MAX_BYTES }
   );
 }
 

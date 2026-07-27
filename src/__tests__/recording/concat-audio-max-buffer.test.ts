@@ -4,7 +4,8 @@
  * Dedupe Wave A — concat ffmpeg execFile maxBuffer must track BLOB_MAX_BYTES
  * from audio-constants (not a duplicated 100*1024*1024 literal).
  *
- * Independent oracle: canonical BLOB_MAX_BYTES export (100 MB).
+ * Independent oracle: jest-mocked sentinel value (≠ 100 MB). If concat-audio
+ * reverts to a hardcoded literal, maxBuffer stays 100 MB and this test fails.
  */
 
 import type { ExecFileOptions } from "node:child_process";
@@ -17,6 +18,10 @@ jest.mock("node:child_process", () => ({
 }));
 
 jest.mock("ffmpeg-static", () => "/usr/bin/ffmpeg");
+
+jest.mock("@/lib/audio-constants", () => ({
+  BLOB_MAX_BYTES: 12345,
+}));
 
 jest.mock("@/lib/blob", () => ({
   fetchPrivateBlobBytes: jest.fn().mockResolvedValue({
@@ -62,7 +67,7 @@ beforeEach(() => {
 });
 
 describe("concatMixdownSegmentsToBlob ffmpeg maxBuffer", () => {
-  it("passes BLOB_MAX_BYTES as execFile maxBuffer (canonical audio-constants)", async () => {
+  it("passes mocked BLOB_MAX_BYTES as execFile maxBuffer (not a hardcoded literal)", async () => {
     const result = await concatMixdownSegmentsToBlob({
       adminUserId: "admin-1",
       studentId: "stu-1",
@@ -87,6 +92,6 @@ describe("concatMixdownSegmentsToBlob ffmpeg maxBuffer", () => {
     expect(mockExecFile).toHaveBeenCalled();
     const execOptions = mockExecFile.mock.calls[0]?.[2] as ExecFileOptions;
     expect(execOptions.maxBuffer).toBe(BLOB_MAX_BYTES);
-    expect(execOptions.maxBuffer).toBe(100 * 1024 * 1024);
+    expect(BLOB_MAX_BYTES).toBe(12345);
   });
 });

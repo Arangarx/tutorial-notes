@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { ChevronRight, Plus, Search } from "lucide-react";
 
 import { StudentAvatar } from "@/components/admin/StudentAvatar";
@@ -10,6 +9,7 @@ import { SectionCard } from "@/components/SectionCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import {
   Sheet,
   SheetContent,
@@ -32,21 +32,6 @@ type StudentsRosterProps = {
   students: StudentRosterItem[];
 };
 
-function AddStudentSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      variant="accent"
-      disabled={pending}
-      aria-busy={pending}
-      className="min-h-11 sm:min-w-[140px]"
-    >
-      {pending ? "Add student…" : "Add student"}
-    </Button>
-  );
-}
-
 function AddStudentForm({ idPrefix = "" }: { idPrefix?: string }) {
   return (
     <form action={createStudent} className="flex flex-col gap-4 sm:flex-row sm:items-end">
@@ -61,7 +46,12 @@ function AddStudentForm({ idPrefix = "" }: { idPrefix?: string }) {
           autoComplete="off"
         />
       </div>
-      <AddStudentSubmitButton />
+      <FormSubmitButton
+        label="Add student"
+        pendingLabel="Add student…"
+        variant="accent"
+        className="sm:min-w-[140px]"
+      />
     </form>
   );
 }

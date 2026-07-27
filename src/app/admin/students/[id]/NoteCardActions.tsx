@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { updateNote, deleteNote, setNoteStatus } from "./actions";
 import { TIME_INPUT_STEP_SECONDS } from "@/lib/time/snap";
 
@@ -25,15 +24,6 @@ interface NoteCardActionsProps {
   };
   status: string;
   sentAt: string | null;
-}
-
-function SaveNoteChangesButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" variant="default" disabled={pending} aria-busy={pending} className="min-h-11">
-      {pending ? "Saving…" : "Save changes"}
-    </Button>
-  );
 }
 
 export function NoteCardActions({
@@ -137,7 +127,7 @@ export function NoteCardActions({
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <button className="btn" type="button" onClick={() => setEditing(false)}>Cancel</button>
-          <SaveNoteChangesButton />
+          <FormSubmitButton label="Save changes" pendingLabel="Saving…" />
         </div>
       </form>
     );

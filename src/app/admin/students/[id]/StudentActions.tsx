@@ -1,21 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { renameStudent, deleteStudent } from "./actions";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-function SaveStudentNameButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" variant="default" disabled={pending} aria-busy={pending} className="min-h-11">
-      {pending ? "Saving…" : "Save"}
-    </Button>
-  );
-}
 
 export function StudentActions({
   studentId,
@@ -72,7 +63,7 @@ export function StudentActions({
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <SaveStudentNameButton />
+          <FormSubmitButton label="Save" pendingLabel="Saving…" />
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditing(false)}>
             Cancel
           </Button>

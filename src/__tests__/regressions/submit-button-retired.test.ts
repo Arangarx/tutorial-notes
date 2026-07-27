@@ -1,17 +1,16 @@
 /**
- * Wave A dedupe — SubmitButton wrapper retired.
+ * Wave A dedupe — one canonical FormSubmitButton composition.
  *
- * The shared SubmitButton component was a thin wrapper around Button +
- * useFormStatus. Call sites now use the same pattern inline (see
- * SendUpdateForm / feedback page) so we do not reintroduce a parallel
- * submit-button primitive.
+ * Guards against reintroducing SubmitButton or local useFormStatus submit
+ * wrappers outside src/components/ui/form-submit-button.tsx.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const SRC_ROOT = join(__dirname, "..", "..");
-const SUBMIT_BUTTON_PATH = join(SRC_ROOT, "components", "SubmitButton.tsx");
+const LEGACY_SUBMIT_BUTTON_PATH = join(SRC_ROOT, "components", "SubmitButton.tsx");
+const CANONICAL_PATH = join(SRC_ROOT, "components", "ui", "form-submit-button.tsx");
 
 function walkTsFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -27,9 +26,19 @@ function walkTsFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-describe("SubmitButton dedupe (Wave A)", () => {
-  it("deletes src/components/SubmitButton.tsx", () => {
-    expect(existsSync(SUBMIT_BUTTON_PATH)).toBe(false);
+function stripComments(content: string): string {
+  return content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+describe("FormSubmitButton dedupe (Wave A)", () => {
+  it("deletes legacy src/components/SubmitButton.tsx", () => {
+    expect(existsSync(LEGACY_SUBMIT_BUTTON_PATH)).toBe(false);
+  });
+
+  it("keeps exactly one canonical form-submit-button module", () => {
+    expect(existsSync(CANONICAL_PATH)).toBe(true);
+    const hits = walkTsFiles(SRC_ROOT).filter((file) => /form-submit-button\.tsx$/.test(file));
+    expect(hits).toEqual([CANONICAL_PATH]);
   });
 
   it("has no SubmitButton imports under src/ (excluding tests)", () => {
@@ -40,7 +49,7 @@ describe("SubmitButton dedupe (Wave A)", () => {
       if (
         content.includes('from "@/components/SubmitButton"') ||
         content.includes("from '@/components/SubmitButton'") ||
-        /\bSubmitButton\b/.test(content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""))
+        /\bSubmitButton\b/.test(stripComments(content))
       ) {
         offenders.push(relative(SRC_ROOT, file));
       }
@@ -48,22 +57,16 @@ describe("SubmitButton dedupe (Wave A)", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("migrated call sites wire Button + useFormStatus for pending state", () => {
-    const samples = [
-      "app/admin/settings/profile/ChangePasswordForm.tsx",
-      "app/admin/students/[id]/StudentActions.tsx",
-      "components/admin/StudentsRoster.tsx",
-      "app/admin/students/[id]/ShareLinkControls.tsx",
-      "app/admin/ImpersonateSubmitForm.tsx",
-    ];
-
-    for (const rel of samples) {
-      const content = readFileSync(join(SRC_ROOT, rel), "utf8");
-      expect(content).toContain("useFormStatus");
-      expect(content).toMatch(/type="submit"/);
-      expect(content).toContain('from "@/components/ui/button"');
-      expect(content).toMatch(/disabled=\{pending\}/);
-      expect(content).toMatch(/aria-busy=\{pending\}/);
+  it("has no useFormStatus outside the canonical FormSubmitButton module", () => {
+    const offenders: string[] = [];
+    for (const file of walkTsFiles(SRC_ROOT)) {
+      if (file.includes(`${join("src", "__tests__")}`)) continue;
+      if (file === CANONICAL_PATH) continue;
+      const content = stripComments(readFileSync(file, "utf8"));
+      if (/\buseFormStatus\b/.test(content)) {
+        offenders.push(relative(SRC_ROOT, file));
+      }
     }
+    expect(offenders).toEqual([]);
   });
 });

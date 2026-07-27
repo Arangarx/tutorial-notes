@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
 import zxcvbn from "zxcvbn";
 import { PasswordStrengthField } from "@/components/auth/PasswordStrengthField";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { storePasswordCredential } from "@/lib/credential-manager";
@@ -16,21 +16,6 @@ interface Props {
   email: string;
   /** When true, a TOTP step-up field is shown above the submit button. */
   has2FA?: boolean;
-}
-
-function UpdatePasswordButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      variant="default"
-      disabled={pending}
-      aria-busy={pending}
-      className="h-9 min-h-9"
-    >
-      {pending ? "Saving…" : "Update password"}
-    </Button>
-  );
 }
 
 export default function ChangePasswordForm({ email, has2FA }: Props) {
@@ -144,7 +129,11 @@ export default function ChangePasswordForm({ email, has2FA }: Props) {
           </p>
         ) : null}
 
-        <UpdatePasswordButton />
+        <FormSubmitButton
+          label="Update password"
+          pendingLabel="Saving…"
+          className="h-9 min-h-9"
+        />
       </form>
 
       <div className="border-t border-border pt-6 space-y-3">

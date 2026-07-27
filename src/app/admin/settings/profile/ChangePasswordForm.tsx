@@ -3,8 +3,8 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import zxcvbn from "zxcvbn";
 import { PasswordStrengthField } from "@/components/auth/PasswordStrengthField";
-import { SubmitButton } from "@/components/SubmitButton";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { storePasswordCredential } from "@/lib/credential-manager";
@@ -129,7 +129,7 @@ export default function ChangePasswordForm({ email, has2FA }: Props) {
           </p>
         ) : null}
 
-        <SubmitButton
+        <FormSubmitButton
           label="Update password"
           pendingLabel="Saving…"
           className="h-9 min-h-9"

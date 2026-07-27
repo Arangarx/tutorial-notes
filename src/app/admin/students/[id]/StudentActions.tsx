@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { renameStudent, deleteStudent } from "./actions";
-import { SubmitButton } from "@/components/SubmitButton";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -63,7 +63,7 @@ export function StudentActions({
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <SubmitButton label="Save" pendingLabel="Saving…" variant="default" />
+          <FormSubmitButton label="Save" pendingLabel="Saving…" />
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditing(false)}>
             Cancel
           </Button>

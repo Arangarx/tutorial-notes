@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { SubmitButton } from "@/components/SubmitButton";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { updateNote, deleteNote, setNoteStatus } from "./actions";
 import { TIME_INPUT_STEP_SECONDS } from "@/lib/time/snap";
 
@@ -127,7 +127,7 @@ export function NoteCardActions({
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <button className="btn" type="button" onClick={() => setEditing(false)}>Cancel</button>
-          <SubmitButton label="Save changes" pendingLabel="Saving…" />
+          <FormSubmitButton label="Save changes" pendingLabel="Saving…" />
         </div>
       </form>
     );

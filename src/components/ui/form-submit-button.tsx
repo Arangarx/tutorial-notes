@@ -1,15 +1,18 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface SubmitButtonProps {
+type ButtonVariant = ComponentProps<typeof Button>["variant"];
+
+export interface FormSubmitButtonProps {
   label: string;
   pendingLabel?: string;
   className?: string;
-  variant?: "default" | "accent" | "outline" | "destructive";
+  variant?: ButtonVariant;
   /**
    * Caller-imposed disabled state, ORed with the in-flight `pending`
    * state. Used by forms that require an interactive precondition
@@ -20,21 +23,21 @@ interface SubmitButtonProps {
   "aria-label"?: string;
 }
 
-function variantFromLegacyClass(className?: string): "default" | "outline" | "destructive" {
+function variantFromLegacyClass(className?: string): ButtonVariant {
   if (className?.includes("destructive")) return "destructive";
   if (className?.includes("primary") || className === "btn primary") return "default";
   if (className?.includes("btn") && !className.includes("primary")) return "outline";
   return "default";
 }
 
-export function SubmitButton({
+export function FormSubmitButton({
   label,
   pendingLabel,
   className,
   variant: variantProp,
   disabled,
   "aria-label": ariaLabel,
-}: SubmitButtonProps) {
+}: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
   const variant = variantProp ?? variantFromLegacyClass(className);
 

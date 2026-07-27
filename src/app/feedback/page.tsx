@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import {
   Card,
   CardContent,
@@ -26,15 +26,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { submitFeedback, type FeedbackResult } from "./actions";
-
-function SendButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Sending…" : "Send"}
-    </Button>
-  );
-}
 
 export default function FeedbackPage() {
   const { status } = useSession();
@@ -152,7 +143,7 @@ export default function FeedbackPage() {
                 ) : null}
 
                 <div className="flex justify-end pt-2">
-                  <SendButton />
+                  <FormSubmitButton label="Send" pendingLabel="Sending…" />
                 </div>
               </form>
             </CardContent>

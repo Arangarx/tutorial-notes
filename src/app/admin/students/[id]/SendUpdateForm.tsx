@@ -1,21 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { sendUpdateEmail, type SendUpdateResult } from "./actions";
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-function SendButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="min-h-11" aria-busy={pending}>
-      {pending ? "Sending…" : "Send"}
-    </Button>
-  );
-}
 
 export default function SendUpdateForm({
   studentId,
@@ -44,7 +34,7 @@ export default function SendUpdateForm({
           />
         </div>
         <div className="flex justify-end">
-          <SendButton />
+          <FormSubmitButton label="Send" pendingLabel="Sending…" />
         </div>
       </form>
       {state?.ok === true && state.sent ? (

@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/SectionCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/sheet";
 import { createStudent } from "@/app/admin/students/actions";
 import { StudentErasurePendingBadge } from "@/components/admin/StudentErasureStatus";
-import { SubmitButton } from "@/components/SubmitButton";
 import type { StudentErasureDisplayState } from "@/lib/erasure/student-erasure-display";
 
 export type StudentRosterItem = {
@@ -46,7 +46,12 @@ function AddStudentForm({ idPrefix = "" }: { idPrefix?: string }) {
           autoComplete="off"
         />
       </div>
-      <SubmitButton label="Add student" variant="accent" className="min-h-11 sm:min-w-[140px]" />
+      <FormSubmitButton
+        label="Add student"
+        pendingLabel="Add student…"
+        variant="accent"
+        className="sm:min-w-[140px]"
+      />
     </form>
   );
 }

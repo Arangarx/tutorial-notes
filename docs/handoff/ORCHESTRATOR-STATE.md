@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** (1) Wave A: BLOB_MAX sentinel-teeth fix → re-verify → merge → SubmitButton → StatTile. NativeSelect deferred. (2) Optional: first real change-mode chunk through pipeline. (3) Phase 2 executable verifier. Google Console = Andrew-owned.
+**Next action(s):** (1) Wave A leftovers: SubmitButton → Button+useFormStatus → StatTile/QuickLinkCard. NativeSelect deferred (wb-chrome CSS). (2) Optional: first real change-mode chunk through pipeline. (3) Phase 2 executable verifier. Google Console = Andrew-owned.
 
 ---
 
@@ -51,17 +51,17 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `7063c49f` (pre this docs commit).
+**Tip:** `master` @ `4d9e5e23` (BLOB_MAX merge).
 
-**Last action:** BLOB_MAX sentinel-teeth fix landed @ `ac1d4e2d` ([Fix BLOB_MAX teeth test](b733b218)); re-verify dispatched.
+**Last action:** BLOB_MAX **APPROVE** ([Re-verify BLOB_MAX teeth fix](5302309d)) → merged to master @ [`4d9e5e23`](https://github.com/Arangarx/tutoring-notes/commit/4d9e5e23).
 
-**In-flight:** Re-verify BLOB_MAX (`5302309d`) @ `ac1d4e2d` → merge on APPROVE.
+**In-flight:** Wave A SubmitButton leftover ([Wave A SubmitButton retire](696ddada)).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 4. _(cleared)_ Merge agenticPipeline Phase 1 → pipeline master.
-**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1 greenlight + impl + merge; parseClientPayload Wave A (post-hoc verified).
+**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1 greenlight + impl + merge; parseClientPayload Wave A (post-hoc verified); BLOB_MAX Wave A.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

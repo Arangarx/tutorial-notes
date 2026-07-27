@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `91edc98c` (billing rounding merge).
 
-**Last action:** Billing rounding **APPROVE** ([Verify billing rounding dedupe](8d0e64cb)) → merged @ [`91edc98c`](https://github.com/Arangarx/tutoring-notes/commit/91edc98c).
+**Last action:** formatDurationMs triage ([Triage formatDurationMs leftover](1d578d10)): core DONE on master; 2 page-local copies remain — fold dispatched.
 
-**In-flight:** formatDurationMs leftover triage ([Triage formatDurationMs leftover](1d578d10)).
+**In-flight:** Fold 2 formatDuration locals ([Fold 2 formatDuration locals](1464806d)).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

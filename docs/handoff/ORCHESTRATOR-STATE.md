@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `91edc98c` (billing rounding merge).
 
-**Last action:** formatDurationMs triage ([Triage formatDurationMs leftover](1d578d10)): core DONE on master; 2 page-local copies remain — fold dispatched.
+**Last action:** formatDuration tail fold ready @ `e416bb0d` ([Fold 2 formatDuration locals](1464806d)); verifier dispatched.
 
-**In-flight:** Fold 2 formatDuration locals ([Fold 2 formatDuration locals](1464806d)).
+**In-flight:** Verify formatDuration tail ([Verify formatDuration tail fold](5aaa3fc1)) @ `e416bb0d`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

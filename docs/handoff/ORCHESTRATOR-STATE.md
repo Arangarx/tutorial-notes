@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `2aca4d19` (StatTile merge).
 
-**Last action:** StatTile/QuickLinkCard **APPROVE** ([Verify StatTile QuickLinkCard](e8745bd5)) → merged @ [`2aca4d19`](https://github.com/Arangarx/tutoring-notes/commit/2aca4d19).
+**Last action:** Billing rounding ready @ `a452d905` ([Wave A billing rounding dedupe](0c82b076)); verifier dispatched.
 
-**In-flight:** Wave A billing rounding ([Wave A billing rounding dedupe](0c82b076)).
+**In-flight:** Verify billing rounding ([Verify billing rounding dedupe](8d0e64cb)) @ `a452d905`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

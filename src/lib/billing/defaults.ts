@@ -2,13 +2,11 @@
  * WS-J — shared billing default constants (Andrew-gated).
  */
 
-import {
-  DEFAULT_ROUNDING_INCREMENT_MIN,
-  DEFAULT_ROUNDING_MODE,
-  type RoundingMode,
-} from "./rounding";
+import type { RoundingMode } from "./rounding";
 
-export { DEFAULT_ROUNDING_INCREMENT_MIN, DEFAULT_ROUNDING_MODE };
+/** Andrew-gated default for new tutors (Sarah: round up to 5-min buckets). */
+export const DEFAULT_ROUNDING_INCREMENT_MIN = 5;
+export const DEFAULT_ROUNDING_MODE: RoundingMode = "up";
 
 /** Fixed fallback when tutor timezone is unset at close (not server TZ). */
 export const DEFAULT_TUTOR_TIMEZONE = "America/Denver";

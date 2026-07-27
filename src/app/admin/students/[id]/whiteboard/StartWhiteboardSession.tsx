@@ -42,7 +42,7 @@ function ErasureSuspendedCallout() {
 function ConsentRequiredCallout({ studentId }: { studentId: string }) {
   return (
     <div
-      className="rounded-2xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground"
+      className="min-w-0 break-words rounded-2xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground"
       data-testid="start-wb-consent-callout"
       role="status"
     >

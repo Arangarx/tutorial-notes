@@ -193,7 +193,7 @@ export default async function StudentDetailPage({
       Sessions unavailable while erasure is pending or complete.
     </p>
   ) : (
-    <div className="w-full md:w-auto [&_button]:h-12 [&_button]:w-full [&_button]:text-[15px] md:[&_button]:h-11 md:[&_button]:w-auto">
+    <div className="w-full lg:w-auto [&_button]:h-12 [&_button]:w-full [&_button]:text-[15px] lg:[&_button]:h-11 lg:[&_button]:w-auto">
       <StartWhiteboardSession
         studentId={student.id}
         consentRecordExists={consentRecordExists}

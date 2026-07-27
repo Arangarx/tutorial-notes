@@ -1,9 +1,8 @@
 /**
  * Design tokens — Phase 0 canonical source.
- * Theme resolution (Andrew 2026-05-27):
- *   1. [data-theme="light"|"dark"] on <html> wins (tutor preference, dev ?theme=)
- *   2. else prefers-color-scheme: dark → dark palette (current Sarah look)
- *   3. else light (Mynka Blue — docs/BRAND.md)
+ * Theme resolution (Andrew 2026-07-27):
+ *   [data-theme="light"|"dark"] on <html> — bootstrap + ThemeProvider always
+ *   write resolved light|dark (system preference resolved in JS, not @media).
  */
 
 /* ------------------------------------------------------------------ */
@@ -116,109 +115,7 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Dark — system preference (Mynka Blue — replaces legacy purple)     */
-/* ------------------------------------------------------------------ */
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --surface-base: #051a24;
-    --surface-inset: #021018;
-    --surface-1: #0e2a38;
-    --surface-2: #142f3e;
-    --surface-3: #1c3548;
-    --surface-inverse: #f0ede4;
-    --surface-drawer: #0d2330;
-    --surface-nav: rgba(2, 16, 24, 0.5);
-    --surface-elevated: #1c3548;
-    --surface-input: rgba(255, 255, 255, 0.06);
-    --surface-overlay: rgba(0, 0, 0, 0.6);
-    --surface-tile: rgba(5, 26, 36, 0.9);
-    --surface-tile-solid: #021018;
-
-    --border-subtle: #0e2a38;
-    --border-default: #1c3548;
-    --border-strong: #6a8fa0;
-
-    --shadow-sm: rgba(0, 0, 0, 0.3);
-    --shadow-md: rgba(0, 0, 0, 0.45);
-    --shadow-lg: rgba(0, 0, 0, 0.6);
-
-    --text-strong: #f0ede4;
-    --text-default: #f0ede4;
-    --text-muted: #a5b5c0;
-    --text-disabled: rgba(165, 181, 192, 0.45);
-    --text-inverse: #051a24;
-    --text-on-dark: rgba(165, 181, 192, 0.65);
-
-    --brand: #7ea4b1;
-    --brand-on: #051a24;
-    /* WCAG 7.3:1 vs --brand #7ea4b1 */
-    --brand-eyebrow: #021018;
-    --brand-on-subtle: #0a2834;
-    --brand-card-border: rgba(126, 164, 177, 0.62);
-
-    --calendar-event-dot: #e27d60;
-
-    --accent: #e27d60;
-    --accent-soft: rgba(226, 125, 96, 0.22);
-    --accent-strong: #d06b4e;
-    --accent-on: #051a24;
-    --accent-text: #e8a08a;
-
-    --success: #4ade80;
-    --success-soft: rgba(34, 197, 94, 0.12);
-    --success-border: rgba(34, 197, 94, 0.35);
-
-    --warning: #fde047;
-    --warning-soft: rgba(234, 179, 8, 0.12);
-    --warning-border: rgba(234, 179, 8, 0.4);
-
-    --error: #fca5a5;
-    --error-soft: rgba(239, 68, 68, 0.12);
-    --error-border: rgba(239, 68, 68, 0.35);
-
-    --info: #60a5fa;
-    --info-soft: rgba(37, 99, 235, 0.12);
-    --info-border: rgba(37, 99, 235, 0.4);
-
-    --focus-ring: var(--border-strong);
-    --overlay-scrim: rgba(0, 0, 0, 0.55);
-    --selection: rgba(226, 125, 96, 0.3);
-
-    --meter-quiet: #a5b5c0;
-    --meter-good: #4ade80;
-    --meter-loud: #fde047;
-    --meter-clip: #fca5a5;
-
-    --sign-out: #e8a08a;
-    --sign-out-hover-bg: rgba(226, 125, 96, 0.12);
-    --sign-out-hover-text: #e8a08a;
-
-    --slider-track: rgba(255, 255, 255, 0.15);
-    --slider-thumb: #f0ede4;
-    --slider-shadow: rgba(0, 0, 0, 0.4);
-
-    --badge-neutral-bg: rgba(126, 164, 177, 0.18);
-    --badge-neutral-fg: #a5b5c0;
-    --badge-neutral-dot: #7ea4b1;
-
-    --excalidraw-stroke: #f0ede4;
-    --excalidraw-bg: #0e2a38;
-    --excalidraw-bg-dark: #021018;
-
-    --page-bg-dark: #02080d;
-
-    --board-paper: #0c2433;
-    --board-paper-vignette: rgba(0, 0, 0, 0.35);
-
-    accent-color: var(--accent);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Dark — explicit [data-theme="dark"]                                */
+/* Dark — [data-theme="dark"] (Mynka Blue — replaces legacy purple)   */
 /* ------------------------------------------------------------------ */
 
 [data-theme="dark"] {

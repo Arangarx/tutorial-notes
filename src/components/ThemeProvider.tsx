@@ -13,7 +13,6 @@ import {
 import {
   THEME_STORAGE_KEY,
   applyThemeToDocument,
-  getSystemResolvedTheme,
   isThemeMode,
   resolveTheme,
   type ResolvedTheme,
@@ -81,7 +80,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (mode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
-      setResolvedTheme(getSystemResolvedTheme());
+      setResolvedTheme(applyThemeToDocument("system"));
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);

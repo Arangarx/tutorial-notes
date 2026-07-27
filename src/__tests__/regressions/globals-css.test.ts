@@ -15,7 +15,7 @@
  *      stretch to fill their flex container and push adjacent label text past
  *      the edge of the card.
  *
- *   3. `color-scheme` follows prefers-color-scheme + data-theme overrides
+ *   3. `color-scheme` follows [data-theme] on <html> (resolved by JS)
  *      so native form controls match the active theme.
  */
 
@@ -80,10 +80,14 @@ describe("tokens.css — theme + color-scheme", () => {
     expect(TOKENS).toMatch(/:root[\s\S]*color-scheme\s*:\s*light\b/);
   });
 
-  test("declares color-scheme: dark under prefers-color-scheme media", () => {
+  test("declares color-scheme: dark on [data-theme=dark]", () => {
     expect(TOKENS).toMatch(
-      /@media\s*\(prefers-color-scheme:\s*dark\)[\s\S]*color-scheme\s*:\s*dark\b/
+      /\[data-theme="dark"\][\s\S]*color-scheme\s*:\s*dark\b/
     );
+  });
+
+  test("does not use prefers-color-scheme media for dark palette (JS resolves system)", () => {
+    expect(TOKENS).not.toMatch(/@media\s*\(prefers-color-scheme:\s*dark\)/);
   });
 
   test("supports explicit data-theme light and dark overrides", () => {

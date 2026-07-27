@@ -87,13 +87,14 @@ No UI — **agent gates**. Audio now via `/api/upload/blob` `{ kind: "audio" }`.
 
 ---
 
-## tokens.css dark-palette _(after theme-plumbing branch)_
+## tokens.css dark-palette _(merged `f558b145`)_
 
-Same surfaces **light / dark / system** (system = OS prefers-dark with resolved `data-theme`).
+System preference now always writes resolved `data-theme`. Same surfaces **light / dark / system** (incl. live OS toggle while app open).
 
 - [ ] Login — light / dark / system
 - [ ] Admin home — light / dark / system
 - [ ] Privacy shell — light / dark / system
+- [ ] _(optional)_ Live OS dark/light switch while preference = System
 
 ---
 

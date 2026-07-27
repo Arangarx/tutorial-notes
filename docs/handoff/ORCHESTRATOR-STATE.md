@@ -37,13 +37,13 @@
 **Andrew greenlights (2026-07-10 session):** Wave B **go**; `tokens.css` dark-palette **approach defined** ([`docs/DEDUPE-PLAN.md`](../DEDUPE-PLAN.md) § tokens); Google calendar verification = **hybrid** (Console prep now + MVP demo then submit); **agenticPipeline Phase 1** greenlit (PM north-star: true autonomous black-box pipeline).
 
 **Remaining dedupe queue:**
-- **tokens.css** — approach-defined; execute after Wave B or parallel small branch when Andrew says go.
+- **tokens.css** — ✅ DONE (`f558b145`). Andrew eyeball owed.
 - **Wave B:** COMPLETE 6/6 (`0ce5ff4e`).
 - **Wave C/D:** whiteboard chrome monolith + A/V primitives (fragile) — Opus-grade.
 
 **agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** tokens.css executor → Sonnet verifier → merge; then Andrew pick (Google / pipeline / Wave A leftovers / eyeball).
+**Next action(s):** Andrew pick — Google Console / agenticPipeline Phase 1 / remaining Wave A leftovers / eyeball pass. Do NOT start Wave C/D without explicit OK.
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `0ce5ff4e` (Wave B complete).
+**Tip:** `master` @ `f558b145` (tokens dark-palette merged).
 
-**Last action:** Andrew (2026-07-27) greenlit tokens.css dark-palette next after resume.
+**Last action:** tokens.css dark-palette APPROVE (Sonnet) → `merge --no-ff` `f558b145`. System always resolves to `data-theme`; single dark palette.
 
-**In-flight:** tokens.css dark-palette executor dispatching (`feat/dedupe-tokens-dark-palette`).
+**In-flight:** none. tokens.css dark-palette merged.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package (hybrid sequencing locked).
 2. Priority #3 instrumentation first slice.

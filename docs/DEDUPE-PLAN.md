@@ -27,7 +27,7 @@ Pure functions and low-risk shared helpers; unit-testable; near-zero regression 
 - `buildAdminNavLinks()` → `src/lib/admin-nav-links.ts` (dupes: `AdminNav`, `AdminSidebarNav` — already drifted).
 - Retire `SubmitButton` wrapper → `Button` + `useFormStatus` (8 call sites).
 - `StatTile` / `QuickLinkCard` extraction (`admin/page.tsx`, `admin/cost/page.tsx` local copy).
-- ~~`tokens.css` dark palette~~ → **approach defined, ready to execute** (see [tokens.css dark-palette approach](#tokenscss-dark-palette-approach-andrew-2026-07-10) below). Execute after Wave B or parallel small branch when Andrew says go.
+- ~~`tokens.css` dark palette~~ → **✅ DONE** (`f558b145`, 2026-07-27) — see [tokens.css dark-palette approach](#tokenscss-dark-palette-approach-andrew-2026-07-10).
 - `NativeSelect` styling: single token-based block; delete hex copies in `whiteboard-chrome.css:3196` + `waiting-room-overlay.css`.
 
 ### tokens.css dark-palette approach (Andrew 2026-07-10)
@@ -41,7 +41,7 @@ Pure functions and low-risk shared helpers; unit-testable; near-zero regression 
 3. **Teeth:** Playwright visual baselines (or computed CSS-variable asserts) on 2–3 static surfaces (e.g. login, admin home, privacy) × light + explicit dark + system-with-emulated-prefers-dark. Red-before/green-after. Also update `theme-plumbing.test.ts` expectations if bootstrap script changes.
 4. **Andrew eyeball:** same surfaces light/dark/system after merge — [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](handoff/DEDUPE-EYEBALL-LIST.md).
 
-**Status:** approach-defined; ready to execute after Wave B or as a parallel small branch when Andrew says go.
+**Status:** ✅ merged `f558b145` (2026-07-27). Andrew eyeball still owed — [`DEDUPE-EYEBALL-LIST.md`](handoff/DEDUPE-EYEBALL-LIST.md) § tokens.css.
 
 ## Wave B — admin/account composition (medium risk) — ✅ COMPLETE (2026-07-10)
 

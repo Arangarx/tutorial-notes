@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Andrew pick — (1) tokens.css dark-palette (approach defined), (2) Google Console checklist (hybrid calendar), (3) agenticPipeline Phase 1 (greenlit), (4) remaining Wave A leftovers (parseClientPayload now easier, SubmitButton, StatTile, …). Andrew eyeball: DEDUPE-EYEBALL-LIST. Do NOT start Wave C/D without explicit OK.
+**Next action(s):** tokens.css executor → Sonnet verifier → merge; then Andrew pick (Google / pipeline / Wave A leftovers / eyeball).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `0ce5ff4e` (Wave B complete).
 
-**Last action:** Wave B-6 kill upload/audio APPROVE → `merge --no-ff` `0ce5ff4e`. Full Wave B done (SectionCard, SubNav, PageShell, consent-write, blob/share proxy, kill upload-audio).
+**Last action:** Andrew (2026-07-27) greenlit tokens.css dark-palette next after resume.
 
-**In-flight:** none. **Wave B COMPLETE** (6/6 verified→merged).
+**In-flight:** tokens.css dark-palette executor dispatching (`feat/dedupe-tokens-dark-palette`).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package (hybrid sequencing locked).
 2. Priority #3 instrumentation first slice.

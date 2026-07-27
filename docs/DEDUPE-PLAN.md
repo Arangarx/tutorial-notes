@@ -18,7 +18,7 @@ Pure functions and low-risk shared helpers; unit-testable; near-zero regression 
 - Extract `safeName` → `src/lib/blob-path.ts` (dupes: `recording/upload.ts:51`, `whiteboard/upload.ts:17`).
 - ~~Extract `parseClientPayload` → shared blob-upload parse~~ → **✅ DONE** (`feat/dedupe-wave-a-parse-client-payload`) — canonical `src/lib/blob-upload-payload.ts`; deleted `/api/upload/audio` dupe removed in Wave B.
 - One `formatDurationMs` (`H:MM:SS`) → `src/lib/time/` (dupes: `replay-helpers.ts:55`, `WhiteboardReplay.tsx:1586`, `WhiteboardWorkspaceClient` local, plus page-local `formatDuration`s). Reconcile with existing `components/recording/format-duration.ts`.
-- `BLOB_MAX_BYTES` magic (`100*1024*1024`) → use `audio-constants.ts` in `concat-audio.ts:117`.
+- ~~`BLOB_MAX_BYTES` magic (`100*1024*1024`) → use `audio-constants.ts` in `concat-audio.ts:117`.~~ → **✅ DONE** (`feat/dedupe-wave-a-blob-max-bytes`) — canonical `BLOB_MAX_BYTES` in `concat-audio.ts`; test mocks deduped.
 - Billing rounding defaults: collapse to single export surface (`billing/defaults.ts`; drop dup in `rounding.ts`).
 
 **UI (mechanical, no fragile surfaces)**

@@ -44,7 +44,10 @@ describe("StartWhiteboardSession — T10 consent affordance", () => {
       />
     );
 
-    expect(screen.getByTestId("start-wb-consent-callout")).toBeInTheDocument();
+    const callout = screen.getByTestId("start-wb-consent-callout");
+    expect(callout).toBeInTheDocument();
+    expect(callout.className).toMatch(/\bbreak-words\b/);
+    expect(callout.className).toMatch(/\bmin-w-0\b/);
     expect(
       screen.queryByTestId("start-whiteboard-session-btn")
     ).not.toBeInTheDocument();

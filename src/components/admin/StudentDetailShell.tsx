@@ -214,8 +214,11 @@ export function StudentDetailShell({
           </div>
         </header>
 
-        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[color:var(--brand-card-border)] bg-brand px-4 py-4 sm:flex-row sm:items-center md:mx-0">
-          <div className="min-w-0 flex-1">
+        <div
+          className="mb-4 flex flex-col gap-3 rounded-2xl border border-[color:var(--brand-card-border)] bg-brand px-4 py-4 md:mx-0 lg:flex-row lg:items-center"
+          data-testid="student-ready-to-teach-banner"
+        >
+          <div className="min-w-0 flex-1" data-testid="student-ready-to-teach-copy">
             <p className="label-mono m-0 text-[10px] text-[color:var(--brand-eyebrow)]">
               Ready to teach
             </p>
@@ -223,7 +226,9 @@ export function StudentDetailShell({
               Start a whiteboard session to record and generate notes.
             </p>
           </div>
-          <div className="hidden shrink-0 md:block [&_button]:whitespace-nowrap">{stickyCta}</div>
+          <div className="hidden w-full min-w-0 md:block lg:w-auto lg:shrink-0 [&_button]:whitespace-nowrap">
+            {stickyCta}
+          </div>
         </div>
 
         <div

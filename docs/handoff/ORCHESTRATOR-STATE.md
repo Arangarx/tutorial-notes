@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `828dbee5` (FormSubmitButton merge).
 
-**Last action:** FormSubmitButton **APPROVE** ([Re-verify FormSubmitButton fix](ff5fe211)) → merged @ [`828dbee5`](https://github.com/Arangarx/tutoring-notes/commit/828dbee5).
+**Last action:** StatTile/QuickLinkCard ready @ `51194c9d` ([Wave A StatTile QuickLinkCard](5b1a44c1)); verifier dispatched.
 
-**In-flight:** Wave A StatTile/QuickLinkCard ([Wave A StatTile QuickLinkCard](5b1a44c1)).
+**In-flight:** Verify StatTile QuickLinkCard ([Verify StatTile QuickLinkCard](e8745bd5)) @ `51194c9d`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

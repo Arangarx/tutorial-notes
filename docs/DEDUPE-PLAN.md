@@ -87,4 +87,4 @@ Non-negotiable, in order:
 6. Never destabilize a live surface for a refactor. **Zero tolerance for catchable regressions.**
 
 ## Doc drift to fix while here
-`V1-COMPONENT-LIBRARY.md`: `ThemeToggle` listed "not created" (exists); `PageSizeSelect` "candidate" (already shadcn); Account/Admin section cards "do not consolidate" (conflicts with 2026-07-10 rule).
+- ✅ **DONE** (`feat/dedupe-docs-v1-library-drift`, 2026-07-27) — `V1-COMPONENT-LIBRARY.md`: `ThemeToggle` listed as canonical (exists); `PageSizeSelect` marked canonical (already shadcn `Select`); §2.12 **(e)** documents `SectionCard` realm consolidation — supersedes prior "do not consolidate" admin/account section-card guidance.

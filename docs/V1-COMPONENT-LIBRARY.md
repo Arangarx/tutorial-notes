@@ -180,8 +180,7 @@ Andrew has **approved this mock for COLORS and FONTS only** — not as a final c
 |---|---|---|---|
 | `ImpersonationBanner` | `src/components/ImpersonationBanner.tsx` | Operator impersonation indicator bar | **canonical** |
 | `SubmitButton` | `src/components/SubmitButton.tsx` | Simple form submit button (pre-B1 era, some pages still use) | **candidate-for-consolidation** — new code should use `<Button>` from `ui/button.tsx`; migrate opportunistically |
-| `ThemeInit` | `src/components/ThemeInit.tsx` | **Dev-only** theme bootstrap (`?theme=light\|dark` + `tutoring-notes-dev-theme` localStorage). System `prefers-color-scheme` is CSS-only (`tokens.css`). **Not** the user-facing toggle — see `ThemeToggle` below. | **canonical (dev-only path)** |
-| **`ThemeToggle`** (planned) | `src/components/ThemeToggle.tsx` *(not yet created)* | **Component-library deliverable (pre-master).** Discoverable light/dark control (topbar or settings); persists user choice to localStorage; first visit defaults to system preference; sets `data-theme` on `<html>`. Replaces dev `?theme=` as the user mechanism. | **canonical target — ship before `v1-redesign → master`** |
+| `ThemeToggle` | `src/components/ThemeToggle.tsx` | Discoverable light/dark/system control (dropdown menu via `useThemeDropdown`); persists user choice through `ThemeProvider` / `THEME_STORAGE_KEY`; first visit defaults to system preference; sets resolved `data-theme` on `<html>`. Wired in `AdminNav`, `AppHeader`, `MarketingHeader`, `PageShell` (student join), `AdminSidebarNav`. Whiteboard live chrome uses `WbThemeToggle` (Wave C dedupe target per [`DEDUPE-PLAN.md`](DEDUPE-PLAN.md)). | `className` (optional) | App chrome surfaces above | **canonical** |
 | `Providers` | `src/components/Providers.tsx` | Root client providers (session, theme, etc.) | **canonical** |
 | `LocalDateTimeText` | `src/components/LocalDateTimeText.tsx` | Client-rendered local datetime from UTC | **canonical** |
 | `ModalPortal` | `src/components/ModalPortal.tsx` | Portal for modals | **canonical** |
@@ -194,7 +193,7 @@ Andrew has **approved this mock for COLORS and FONTS only** — not as a final c
 | `AiGeneratedNoteReviewGate` | `src/components/notes/AiGeneratedNoteReviewGate.tsx` | Gate for AI-generated note review (pre-slice-3 Cancel/dismiss) | **candidate — fold into B4 post-session controls** |
 | `TutorStudentNoteExpandedBody` | `src/components/notes/TutorStudentNoteExpandedBody.tsx` | Expanded note body (structured fields, `pre-wrap`) | **canonical** for student notes list — **not** for markdown `TutorNote.content` |
 | `NotesSearchBar` | `src/components/notes/NotesSearchBar.tsx` | Notes search | **canonical** |
-| `PageSizeSelect` | `src/components/notes/PageSizeSelect.tsx` | Pagination size selector | **candidate-for-consolidation** — consider shadcn Select |
+| `PageSizeSelect` | `src/components/notes/PageSizeSelect.tsx` | Pagination size selector for notes lists; updates `size` search param via shadcn `Select` + `Label` | **canonical** — already composes shadcn `Select` |
 | **`FormattedNotesBody`** (planned) | `src/components/notes/FormattedNotesBody.tsx` *(not yet created)* | **Canonical** rendered-markdown display for AI session notes: parses MD → styled headings/lists inside `.ai-prose` (`src/styles/typography.css`). **REQ-S3-1** — slice 3 smoke found `TutorNotesSection` shows raw source; B4 must route all auto-notes through this (or alias `RecapEditor` read-only mode). **REQ-S3-4** — section headings must match the canonical schema (topics / assessment / plan / links + vetted additions), not slice-3's dropped-field markdown shape. **No duplicate raw-MD renderer.** | **canonical target — implement at Chunk 3** |
 | **`RecapEditor`** (planned) | per [`v1-component-redesign-design-2026-05-31.md`](handoff/v1-component-redesign-design-2026-05-31.md) §5.5 | B4 session-detail recap panel: `.ai-prose`, editable inline, Regenerate. May compose `FormattedNotesBody` + edit chrome. **REQ-S3-4** — editor field model must align with canonical schema; cross-ref **REQ-S3-2** Save/Cancel. | **canonical target — Chunk 3** |
 | `NewNoteForm` | `src/app/admin/students/[id]/NewNoteForm.tsx` | Structured note create/edit; **"Save note"** submit (pre-slice-3 manual WB flow). **REQ-S3-4** — baseline canonical field set (topics / assessment / plan / links; homework optionally folded into Plan per Sarah pilot feedback). | **canonical** for structured `SessionNote` fields — reference for Save affordance and schema baseline |
@@ -475,7 +474,7 @@ Andrew's approved mock (Surface 2 — dashboard) demonstrates the "variety of us
 | Data rows within a list/panel | **No** — row styling only | `border-b border-border` row with hover background, inside a card container |
 | Pending-action / AI signal | **Partial** — strip, not card | `accent-soft` tinted strip with `border-l-4 border-accent` (`.dash-pending-summaries` mock pattern) |
 | Primary action on landing/dashboard | **Yes** | `SectionCard` or custom card for each distinct action unit |
-| Operator/debug pages (Feedback, Waitlist) | **Minimal** | One `AdminPageShell` + one `SectionCard` for the list; individual items = row styling |
+| Operator/debug pages (Feedback, Waitlist) | **Minimal** | One `PageShell realm="admin"` + one `SectionCard realm="admin"` for the list; individual items = row styling |
 
 **Current card usage audit (as of chunk 1):**
 - Landing/marketing page (Phase D): cards for feature grid — **appropriate** per mock
@@ -622,6 +621,7 @@ Post-redesign, the component tree is a **library**, not a page-by-page reimpleme
 | **(b)** | Every **complex / composite** component **MUST** be composed of shared lower-level components and primitives (`ui/*`, §1A primitives, inventory canonicals) — not re-implemented inline on each page. |
 | **(c)** | **Styling and behavior are single-source** — no per-page hardcoded colors, spacing, or one-off JSX structure. Consume design tokens and shared components only; a fix to a shared component's look or behavior **must propagate to every consumer** without duplicate edits. |
 | **(d)** | **Acceptance:** reviewer greps for duplicated JSX/structure and hardcoded color/style literals in component code; a change to a shared component's look/behavior must **visibly affect every consumer** in smoke. Pairs with §2.11 (tokens, not hex) and §2.9 (no raw hex). |
+| **(e)** | **Realm / surface variants = parameters, not forks** — when admin and account (or similar realms) differ only in styling contract or copy, use **one** component with a `realm` (or equivalent) prop. Wave B `SectionCard` consolidated former `AdminSectionCard` + `AccountSectionCard` (`a8a31e46`); **do not** reintroduce parallel admin/account section-card components. Supersedes any prior guidance to keep them separate. |
 
 #### Agent enforcement
 
@@ -932,7 +932,7 @@ Existing shells (`AdminNav`, `AuthShell`, `PageShell`, `AppHeader`, `MarketingHe
 
 ### Deferred library gaps (surface agents own)
 
-- `ThemeToggle` — inventory lists as planned; already in `AdminNav` but not documented as frozen here
+- ~~`ThemeToggle`~~ — **shipped**; see §1 Utilities inventory (`ThemeToggle` canonical)
 - `FormattedNotesBody`, `RecapEditor` — Chunk 3/B4 targets (§1 Notes inventory)
 - `AdminSidebarNav` composed component — use `PageShell` admin `sidebar` + §1A.8 token patterns; no dedicated component yet
 - `rounded-panel` (`10px`) Tailwind token — use `rounded-[10px]` until `tailwind.config` extends (§2.13)
@@ -942,6 +942,7 @@ Existing shells (`AdminNav`, `AuthShell`, `PageShell`, `AppHeader`, `MarketingHe
 
 ## Changelog
 
+- **2026-07-27:** **Doc drift fix** (`feat/dedupe-docs-v1-library-drift`) — `ThemeToggle` inventory reflects shipped component; `PageSizeSelect` marked canonical (already shadcn `Select`); §2.12 **(e)** clarifies `SectionCard` realm consolidation supersedes prior "do not consolidate" admin/account section-card guidance.
 - **2026-07-10:** **Wave B `PageShell` + `AppHeader` dedupe** — `PageShell` (`realm`: admin/account/student/share) replaces `AdminPageShell`, `AccountPageShell`, `StudentPageShell`, `ParentShareShell`; `AppHeader` (`realm`: account/student) extracts shared top chrome; share helpers moved to `SharePageHelpers.tsx`.
 - **2026-06-12:** **Doc sync — post-review tweak wave** (library remains FROZEN): admin shell max width `max-w-6xl xl:max-w-7xl` + sidebar `gap-6` (§2.1); `CheckboxField` inventory row; `StudentAvatar` deterministic FNV-1a `--avatar-N` palette spec expanded. Shipped on `v1-design-system` @ `6587592`.
 - **2026-06-11:** **§6 Frozen foundation** — full shadcn new-york primitive catalog on `v1-design-system`; theme-agnostic reconciliation (no `dark:` in `ui/`); `AdminPageShell` sidebar props; pending-approval dup-nav fix; `Providers` toaster/tooltip; strengthened `component-reuse.mdc`; surface conversion build order.

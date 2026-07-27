@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `4d9e5e23` (BLOB_MAX merge).
 
-**Last action:** BLOB_MAX **APPROVE** ([Re-verify BLOB_MAX teeth fix](5302309d)) → merged to master @ [`4d9e5e23`](https://github.com/Arangarx/tutoring-notes/commit/4d9e5e23).
+**Last action:** SubmitButton retire ready @ `eb5baa4b` ([Wave A SubmitButton retire](696ddada)); verifier dispatched.
 
-**In-flight:** Wave A SubmitButton leftover ([Wave A SubmitButton retire](696ddada)).
+**In-flight:** Verify SubmitButton retirement ([Verify SubmitButton retirement](3b970cf5)) @ `eb5baa4b`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

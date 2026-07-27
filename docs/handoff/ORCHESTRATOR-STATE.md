@@ -53,16 +53,16 @@
 
 **Tip:** `master` @ `9501f6ec` (formatDuration tail merge).
 
-**Last action:** formatDuration tail **APPROVE** ([Verify formatDuration tail fold](5aaa3fc1)) → merged @ [`9501f6ec`](https://github.com/Arangarx/tutoring-notes/commit/9501f6ec). Wave A leftovers grind complete (NativeSelect deferred).
+**Last action:** Started first change-mode proof chunk — docs drift in `V1-COMPONENT-LIBRARY.md` (clearly defined in DEDUPE-PLAN § Doc drift). Run `run-2026-07-27T18-46-58`. Note: Windows blocks writes under `Documents\...\agenticPipeline\.pipeline\runs` → use `$env:RUN_DIR_ROOT=C:\Users\arang\AppData\Local\agenticPipeline\runs`.
 
-**In-flight:** (none).
+**In-flight:** Change-mode executor ([Change-mode executor library drift](4ca66749)) — run `run-2026-07-27T18-46-58`, branch `feat/dedupe-docs-v1-library-drift`.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 4. _(cleared)_ Merge agenticPipeline Phase 1 → pipeline master.
-5. Whether to tackle NativeSelect now vs leave deferred; whether to drive a change-mode proof chunk next.
-**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; parseClientPayload; BLOB_MAX; FormSubmitButton; StatTile/QuickLinkCard; billing rounding; formatDurationMs tail.
+5. After this proof: approve + merge the docs branch; then Phase 2 / harder chunks.
+**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

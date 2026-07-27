@@ -7,10 +7,6 @@
 
 export type RoundingMode = "nearest" | "up" | "down";
 
-/** Andrew-gated default for new tutors (Sarah: round up to 5-min buckets). */
-export const DEFAULT_ROUNDING_INCREMENT_MIN = 5;
-export const DEFAULT_ROUNDING_MODE: RoundingMode = "up";
-
 const MS_PER_MINUTE = 60_000;
 
 /**

@@ -41,9 +41,9 @@
 - **Wave B:** COMPLETE 6/6 (`0ce5ff4e`).
 - **Wave C/D:** whiteboard chrome monolith + A/V primitives (fragile) — Opus-grade.
 
-**agenticPipeline:** Phase 1 (change-run + fail-closed verify) **greenlit** — can start in `agenticPipeline` repo. Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
+**agenticPipeline:** Phase 1 **implemented** on `feat/phase1-change-mode-fail-closed` @ [`b9c3787`](https://github.com/Arangarx/agenticPipeline/commit/b9c37879d230103e1500231a9c30538fb6a342ee) — change mode + fail-closed approve + TN template. **Not merged to pipeline master yet** (Sonnet re-verify in flight). TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Pipeline Phase 1 in agenticPipeline; Wave A leftovers on TN (parseClientPayload → BLOB_MAX → SubmitButton → StatTile). NativeSelect deferred (touches wb-chrome CSS). Google Console remains Andrew-owned.
+**Next action(s):** (1) After Sonnet APPROVE → merge pipeline Phase 1 to agenticPipeline master. (2) Wave A leftovers: BLOB_MAX @ `5f728a93` awaiting verify → SubmitButton → StatTile (parseClientPayload on TN master @ `97e3b4a2` — post-hoc verify in flight). NativeSelect deferred. Google Console = Andrew-owned.
 
 ---
 
@@ -51,16 +51,17 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `7ea1dab2`.
+**Tip:** `master` @ `d43647f3` (pipeline Phase 1 docs merge).
 
-**Last action:** Andrew (2026-07-27): eyeball list = **background backlog only**, not a merge gate. Partial pass so far OK; do not block on visual rechecks.
+**Last action:** Pipeline Phase 1 impl complete; TN docs merged; BLOB_MAX branch pushed; verifiers in flight.
 
-**In-flight:** (1) agenticPipeline Phase 1 implementation. (2) Wave A leftover grind starting with `parseClientPayload`.
+**In-flight:** (1) Verify agenticPipeline Phase 1 (`b8ea665e`). (2) Retro-verify parseClientPayload (`4fe56c1f`). (3) Verify BLOB_MAX (`0ad71859`).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
-**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1.
+4. Merge agenticPipeline `feat/phase1-change-mode-fail-closed` → pipeline master (after Sonnet APPROVE).
+**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1 greenlight + impl.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

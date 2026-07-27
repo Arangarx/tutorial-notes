@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **implemented** on `feat/phase1-change-mode-fail-closed` @ [`b9c3787`](https://github.com/Arangarx/agenticPipeline/commit/b9c37879d230103e1500231a9c30538fb6a342ee) — change mode + fail-closed approve + TN template. **Sonnet REJECT** (missing `validateChangeMode` tests + dead `loadJsonIfExists` in `run.js`); fix in flight. TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** (1) Land Phase 1 REJECT fixes → re-verify → merge pipeline master. (2) Wave A: merge BLOB_MAX after APPROVE; parseClientPayload already on master (post-hoc verify). Then SubmitButton → StatTile. NativeSelect deferred. Google Console = Andrew-owned.
+**Next action(s):** (1) Land Phase 1 REJECT fixes → re-verify → merge pipeline master. (2) Wave A: merge BLOB_MAX after APPROVE → SubmitButton → StatTile. NativeSelect deferred. Google Console = Andrew-owned.
 
 ---
 
@@ -51,17 +51,17 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `d43647f3` (pipeline Phase 1 docs merge).
+**Tip:** `master` @ `6ab287d2`.
 
-**Last action:** Phase 1 Sonnet **REJECT** ([Verify agenticPipeline Phase 1](b8ea665e)) — change-mode tests + dead `loadJsonIfExists`; fix agent dispatched. parseClientPayload + BLOB_MAX executors ready (verifiers in flight).
+**Last action:** parseClientPayload post-hoc **APPROVE** ([Retro-verify parseClientPayload](4fe56c1f)) — already on master @ `97e3b4a2`.
 
-**In-flight:** (1) Phase 1 REJECT fixes (`b517f00d`) then re-verify. (2) Retro-verify parseClientPayload (`4fe56c1f`). (3) Verify BLOB_MAX (`0ad71859`).
+**In-flight:** (1) Phase 1 REJECT fixes (`b517f00d`) then re-verify. (2) Verify BLOB_MAX (`0ad71859`).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 4. Merge agenticPipeline `feat/phase1-change-mode-fail-closed` → pipeline master (after Sonnet APPROVE).
-**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1 greenlight + impl.
+**Cleared this session:** Wave B greenlight; `tokens.css` approach; agenticPipeline Phase 1 greenlight + impl; parseClientPayload Wave A (post-hoc verified).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

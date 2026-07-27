@@ -41,7 +41,7 @@
 - **Wave B:** COMPLETE 6/6 (`0ce5ff4e`).
 - **Wave C/D:** whiteboard chrome monolith + A/V primitives (fragile) — Opus-grade.
 
-**agenticPipeline:** Phase 1 **implemented** on `feat/phase1-change-mode-fail-closed` @ [`b9c3787`](https://github.com/Arangarx/agenticPipeline/commit/b9c37879d230103e1500231a9c30538fb6a342ee) — change mode + fail-closed approve + TN template. **Sonnet REJECT** (missing `validateChangeMode` tests + dead `loadJsonIfExists` in `run.js`); fix in flight. TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
+**agenticPipeline:** Phase 1 tip `426b304` on `feat/phase1-change-mode-fail-closed` (REJECT fixes: change-mode tests + dead helper removed). Re-verify in flight. TN docs merged [`d43647f3`](https://github.com/Arangarx/tutoring-notes/commit/d43647f3). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
 **Next action(s):** (1) Land Phase 1 REJECT fixes → re-verify → merge pipeline master. (2) Wave A: merge BLOB_MAX after APPROVE → SubmitButton → StatTile. NativeSelect deferred. Google Console = Andrew-owned.
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `6ab287d2`.
 
-**Last action:** parseClientPayload post-hoc **APPROVE** ([Retro-verify parseClientPayload](4fe56c1f)) — already on master @ `97e3b4a2`.
+**Last action:** Phase 1 REJECT fixes landed @ `426b304` ([Fix Phase 1 REJECT items](b517f00d)); re-verify dispatched.
 
-**In-flight:** (1) Phase 1 REJECT fixes (`b517f00d`) then re-verify. (2) Verify BLOB_MAX (`0ad71859`).
+**In-flight:** (1) Re-verify Phase 1 (`c60ea931`) @ `426b304`. (2) Verify BLOB_MAX (`0ad71859`).
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

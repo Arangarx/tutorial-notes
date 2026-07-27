@@ -3,12 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { getClientIpFromHeaders } from "@/lib/client-ip";
 import { db } from "@/lib/db";
+import {
+  scoreFeedbackSubmission,
+  truncateSubmitterIp,
+} from "@/lib/feedback-spam";
+import { rateLimit } from "@/lib/rate-limit";
 
 export type FeedbackResult = { ok: true } | { ok: false; error: string };
 
 const MAX_MESSAGE = 10_000;
 const MAX_PAGE_REFERER = 2048;
+const FEEDBACK_RATE_LIMIT = { max: 5, windowMs: 3_600_000 };
+const HONEYPOT_FIELD = "companyWebsite";
 
 const FeedbackFormSchema = z.object({
   kind: z.enum(["BUG", "FEEDBACK"]),
@@ -27,6 +35,26 @@ export async function submitFeedback(
   _prev: FeedbackResult | null,
   formData: FormData
 ): Promise<FeedbackResult> {
+  const honeypot = formData.get(HONEYPOT_FIELD);
+  if (typeof honeypot === "string" && honeypot.trim() !== "") {
+    return { ok: true };
+  }
+
+  const h = await headers();
+  const ip = getClientIpFromHeaders(h);
+  const rateKey = `feedback:${ip}`;
+  const rl = rateLimit(
+    rateKey,
+    FEEDBACK_RATE_LIMIT.max,
+    FEEDBACK_RATE_LIMIT.windowMs
+  );
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      error: "Too many submissions. Try again in an hour.",
+    };
+  }
+
   const rawKind = String(formData.get("kind") ?? "FEEDBACK");
   const messageRaw = formData.get("message");
   const contactRaw = formData.get("contactEmail");
@@ -48,12 +76,14 @@ export async function submitFeedback(
 
   const { kind, message, contactEmail } = parsed.data;
 
-  const h = await headers();
   const referer = h.get("referer");
   const page =
     referer && referer.length > 0
       ? referer.slice(0, MAX_PAGE_REFERER)
       : null;
+
+  const spam = scoreFeedbackSubmission({ message, contactEmail });
+  const submitterIp = truncateSubmitterIp(ip);
 
   await db.feedbackItem.create({
     data: {
@@ -61,6 +91,9 @@ export async function submitFeedback(
       message,
       page,
       contactEmail: contactEmail ?? null,
+      status: spam.isSpam ? "SPAM" : "INBOX",
+      spamReason: spam.isSpam ? spam.reasons.join(", ") : null,
+      submitterIp,
     },
   });
 

@@ -32,7 +32,8 @@
     "test:e2e:smoke": "playwright test tests/smoke",
     "test:visual:update": "playwright test tests/visual --update-snapshots",
     "test:all": "npm run test && npm run test:e2e",
-    "erasure:resume": "npx tsx scripts/erasure-resume.ts"
+    "erasure:resume": "npx tsx scripts/erasure-resume.ts",
+    "feedback:spam-backfill": "npx tsx scripts/feedback-spam-backfill.ts"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",

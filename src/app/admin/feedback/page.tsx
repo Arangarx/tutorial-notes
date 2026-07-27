@@ -4,12 +4,21 @@ import { requireOperator } from "@/lib/operator";
 import { PageShell } from "@/components/PageShell";
 import { SectionCard } from "@/components/SectionCard";
 import { LocalDateTimeText } from "@/components/LocalDateTimeText";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminFeedbackPage() {
+type PageProps = {
+  searchParams: Promise<{ spam?: string }>;
+};
+
+export default async function AdminFeedbackPage({ searchParams }: PageProps) {
   await requireOperator();
+  const { spam } = await searchParams;
+  const showSpam = spam === "1";
+
   const items = await db.feedbackItem.findMany({
+    where: { status: showSpam ? "SPAM" : "INBOX" },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -28,23 +37,52 @@ export default async function AdminFeedbackPage() {
             Send feedback
           </Link>{" "}
           in the top nav — that opens the public <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">/feedback</code> form.
+          {!showSpam ? (
+            <>
+              {" "}
+              Obvious spam is filtered automatically and does not appear here.
+            </>
+          ) : null}
         </>
       }
     >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {showSpam ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/feedback">Back to inbox</Link>
+          </Button>
+        ) : (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/feedback?spam=1">Show spam</Link>
+          </Button>
+        )}
+        <p className="text-sm text-muted-foreground">
+          {showSpam
+            ? "Auto-filtered spam submissions (heuristic scoring)."
+            : "Clean submissions only (status INBOX)."}
+        </p>
+      </div>
+
       <SectionCard realm="admin"
-        title="Submissions"
+        title={showSpam ? "Spam" : "Submissions"}
         contentClassName="p-0"
       >
         {items.length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">
-            No submissions yet.{" "}
-            <Link
-              href="/feedback"
-              className="font-semibold text-foreground underline-offset-4 hover:underline"
-            >
-              Open the public form (/feedback)
-            </Link>{" "}
-            to send a test — not this URL.
+            {showSpam ? (
+              "No spam submissions yet."
+            ) : (
+              <>
+                No submissions yet.{" "}
+                <Link
+                  href="/feedback"
+                  className="font-semibold text-foreground underline-offset-4 hover:underline"
+                >
+                  Open the public form (/feedback)
+                </Link>{" "}
+                to send a test — not this URL.
+              </>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-border" role="list">
@@ -56,6 +94,7 @@ export default async function AdminFeedbackPage() {
                     <LocalDateTimeText dateTime={f.createdAt.toISOString()} />
                     {f.contactEmail ? ` · ${f.contactEmail}` : ""}
                     {f.page ? ` · ${f.page}` : ""}
+                    {showSpam && f.spamReason ? ` · spam: ${f.spamReason}` : ""}
                   </p>
                 </div>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{f.message}</p>

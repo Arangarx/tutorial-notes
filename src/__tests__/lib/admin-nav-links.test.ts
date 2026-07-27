@@ -76,6 +76,7 @@ function oracleAdminNav(
       ? [
           { href: "/admin/feedback", label: "Feedback inbox" },
           { href: "/admin/tutor-approvals", label: "Tutor approvals" },
+          { href: "/admin/design-system", label: "Design system" },
         ]
       : []),
     ...(flags.showCostDashboard ? [{ href: "/admin/cost", label: "Cost" }] : []),
@@ -105,6 +106,7 @@ function oracleSidebarNav(
       ? [
           { href: "/admin/feedback", label: "Feedback inbox" },
           { href: "/admin/tutor-approvals", label: "Tutor approvals" },
+          { href: "/admin/design-system", label: "Design system" },
         ]
       : []),
     ...(flags.showCostDashboard ? [{ href: "/admin/cost", label: "Cost" }] : []),
@@ -207,6 +209,7 @@ describe("buildAdminNavLinks — drift locks (consumers must not converge)", () 
       { href: "/admin/outbox", label: "Outbox" },
       { href: "/admin/feedback", label: "Feedback inbox" },
       { href: "/admin/tutor-approvals", label: "Tutor approvals" },
+      { href: "/admin/design-system", label: "Design system" },
       { href: "/admin/cost", label: "Cost" },
       { href: "/admin/erasure", label: "Erasure" },
       { href: "/feedback", label: "Send feedback" },
@@ -219,6 +222,7 @@ describe("buildAdminNavLinks — drift locks (consumers must not converge)", () 
       { href: "/admin/outbox", label: "Outbox" },
       { href: "/admin/feedback", label: "Feedback inbox" },
       { href: "/admin/tutor-approvals", label: "Tutor approvals" },
+      { href: "/admin/design-system", label: "Design system" },
       { href: "/admin/cost", label: "Cost" },
       { href: "/admin/erasure", label: "Erasure" },
       { href: "/admin/settings", label: "Settings" },

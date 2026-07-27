@@ -53,15 +53,15 @@
 
 **Tip:** `master` @ `9501f6ec` (formatDuration tail merge).
 
-**Last action:** Change-mode executor done @ `7a4e6a26` ([Change-mode executor library drift](4ca66749)); independent verifier dispatched.
+**Last action:** Change-mode verifier **FAIL** ([Change-mode verify library drift](7074828b)) — ThemeToggle table row 6 cells vs 4-col header; fix dispatched.
 
-**In-flight:** Change-mode verifier ([Change-mode verify library drift](7074828b)) for run `run-2026-07-27T18-46-58`.
+**In-flight:** Fix ThemeToggle table row ([Fix ThemeToggle table row](9f9c33d0)) then re-verify.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.
 3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
 4. _(cleared)_ Merge agenticPipeline Phase 1 → pipeline master.
-5. After verifier PASS: `node run.js --approve` (with RUN_DIR_ROOT) then merge docs branch.
+5. After re-verify PASS: `node run.js --approve` (with RUN_DIR_ROOT) then merge docs branch.
 **Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).

@@ -3,6 +3,7 @@
  */
 
 import {
+  HARD_SPAM_SIGNAL_IDS,
   MIN_SPAM_SIGNALS,
   scoreFeedbackSubmission,
   truncateSubmitterIp,
@@ -18,7 +19,46 @@ describe("scoreFeedbackSubmission", () => {
     "Recording stopped but the timer kept going.",
   ];
 
-  const spamSamples: Array<{ message: string; contactEmail?: string; minReasons: number }> = [
+  /** Andrew inbox-style pitches that Phase 1 backfill missed (2-signal floor too low). */
+  const andrewInboxSpamSamples = [
+    {
+      label: "X followers + $3/mo subscriber tier / retweet / guides resell",
+      message:
+        "Hi — I help tutors grow on X. Get more followers with our $3/mo subscriber tier, retweet packs, and guides you can resell.",
+    },
+    {
+      label: "SEO packages / Google visibility / organic traffic",
+      message:
+        "Want better Google visibility? Our SEO packages drive organic traffic to your tutoring site.",
+    },
+    {
+      label: "$195 video ads / impactful video / unsubscribe.video",
+      message:
+        "We produce impactful video ads for your brand starting at $195. Manage preferences at unsubscribe.video",
+    },
+    {
+      label: "Instagram growth / 300+ followers",
+      message:
+        "Grow your Instagram with 300+ followers in weeks — our growth service handles everything.",
+    },
+    {
+      label: "searchregister.net / GoogleSearchIndex / domains@search-*",
+      message:
+        "Register at searchregister.net for GoogleSearchIndex. Questions? Email domains@search-index.net",
+    },
+    {
+      label: "Cold usemynk.com visit + commercial CTA",
+      message:
+        "I just visited usemynk.com and love the product. We offer digital marketing packages — let me know if you're interested.",
+    },
+  ];
+
+  const spamSamples: Array<{
+    message: string;
+    contactEmail?: string;
+    minReasons: number;
+    expectSpam?: boolean;
+  }> = [
     {
       message:
         "Dear sir, we offer SEO packages and backlinks. Visit https://spam.example/a https://spam.example/b https://spam.example/c",
@@ -37,7 +77,8 @@ describe("scoreFeedbackSubmission", () => {
     {
       message:
         "Register at searchregister.com for GoogleSearchIndex service. We offer website optimization packages.",
-      minReasons: MIN_SPAM_SIGNALS,
+      minReasons: 1,
+      expectSpam: true,
     },
     {
       message:
@@ -65,14 +106,37 @@ describe("scoreFeedbackSubmission", () => {
 
   it.each(spamSamples)(
     "flags spam sample with $minReasons+ signals",
-    ({ message, contactEmail, minReasons }) => {
+    ({ message, contactEmail, minReasons, expectSpam }) => {
       const result = scoreFeedbackSubmission({ message, contactEmail });
       expect(result.reasons.length).toBeGreaterThanOrEqual(minReasons);
-      if (minReasons >= MIN_SPAM_SIGNALS) {
+      if (expectSpam ?? minReasons >= MIN_SPAM_SIGNALS) {
         expect(result.isSpam).toBe(true);
       }
     }
   );
+
+  it.each(andrewInboxSpamSamples)(
+    "flags Andrew inbox pitch: $label",
+    ({ message }) => {
+      const result = scoreFeedbackSubmission({ message });
+      expect(result.isSpam).toBe(true);
+      expect(result.reasons.length).toBeGreaterThanOrEqual(1);
+    }
+  );
+
+  it("hard_spam_kit alone is sufficient (searchregister / unsubscribe.video)", () => {
+    expect(
+      scoreFeedbackSubmission({
+        message: "Please visit searchregister.net to complete indexing.",
+      }).isSpam
+    ).toBe(true);
+    expect(
+      scoreFeedbackSubmission({
+        message: "Unsubscribe at unsubscribe.video if you prefer.",
+      }).isSpam
+    ).toBe(true);
+    expect(HARD_SPAM_SIGNAL_IDS.has("hard_spam_kit")).toBe(true);
+  });
 
   it("treats disposable email as a single signal (not spam alone)", () => {
     const result = scoreFeedbackSubmission({
@@ -97,6 +161,14 @@ describe("scoreFeedbackSubmission", () => {
       message: "Search broke after I typed seo in the notes field.",
     });
     expect(result.isSpam).toBe(false);
+    expect(result.reasons).toEqual(["seo_terms"]);
+  });
+
+  it("backfill dry-run: Andrew inbox samples all score spam", () => {
+    const flagged = andrewInboxSpamSamples.filter(
+      (s) => scoreFeedbackSubmission({ message: s.message }).isSpam
+    );
+    expect(flagged).toHaveLength(andrewInboxSpamSamples.length);
   });
 });
 

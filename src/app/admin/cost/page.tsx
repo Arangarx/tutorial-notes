@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StatTile } from "@/components/admin/StatTile";
 import { assertAdminOrNotFound } from "@/lib/impersonation";
 import { PageShell } from "@/components/PageShell";
 import { SectionCard } from "@/components/SectionCard";
@@ -28,24 +29,6 @@ import {
 } from "@/lib/observability/cost-queries";
 
 export const dynamic = "force-dynamic";
-
-function StatTile({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <div className="rounded-[10px] border border-border bg-card px-4 py-3.5 shadow-sm">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
-      {sub ? <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p> : null}
-    </div>
-  );
-}
 
 export default async function AdminCostPage() {
   await assertAdminOrNotFound();

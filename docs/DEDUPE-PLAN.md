@@ -26,7 +26,7 @@ Pure functions and low-risk shared helpers; unit-testable; near-zero regression 
 - `LegalDocumentShell` → `privacy/page.tsx` + `terms/page.tsx` wrapper (also folds the 35+ inline-spacing debt into the shell).
 - `buildAdminNavLinks()` → `src/lib/admin-nav-links.ts` (dupes: `AdminNav`, `AdminSidebarNav` — already drifted).
 - ~~Retire `SubmitButton` wrapper → one `FormSubmitButton` composition (`src/components/ui/form-submit-button.tsx`).~~ → **✅ DONE** (`feat/dedupe-wave-a-submit-button`) — deleted legacy `SubmitButton.tsx`; 10 call sites import canonical `FormSubmitButton` (8 former SubmitButton sites + `SendUpdateForm` + feedback page).
-- `StatTile` / `QuickLinkCard` extraction (`admin/page.tsx`, `admin/cost/page.tsx` local copy).
+- ~~`StatTile` / `QuickLinkCard` extraction (`admin/page.tsx`, `admin/cost/page.tsx` local copy).~~ → **✅ DONE** (`feat/dedupe-wave-a-stat-tile`) — canonical `src/components/admin/StatTile.tsx` + `QuickLinkCard.tsx`; admin home + cost pages import shared tiles.
 - ~~`tokens.css` dark palette~~ → **✅ DONE** (`f558b145`, 2026-07-27) — see [tokens.css dark-palette approach](#tokenscss-dark-palette-approach-andrew-2026-07-10).
 - `NativeSelect` styling: single token-based block; delete hex copies in `whiteboard-chrome.css:3196` + `waiting-room-overlay.css`.
 

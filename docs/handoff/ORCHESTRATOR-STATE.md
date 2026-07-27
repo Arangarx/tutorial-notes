@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `7063c49f` (pre this docs commit).
 
-**Last action:** agenticPipeline Phase 1 **APPROVE** ([Re-verify Phase 1 after fixes](c60ea931)) → merged to AP master @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225).
+**Last action:** BLOB_MAX sentinel-teeth fix landed @ `ac1d4e2d` ([Fix BLOB_MAX teeth test](b733b218)); re-verify dispatched.
 
-**In-flight:** Fix BLOB_MAX teeth test (`b733b218`) then re-verify → merge.
+**In-flight:** Re-verify BLOB_MAX (`5302309d`) @ `ac1d4e2d` → merge on APPROVE.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

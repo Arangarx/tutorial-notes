@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `4f78b2bf` (anti-spam Phase 1 merged; Neon migrate pending).
+**Tip:** `master` @ `2a94c70b`.
 
-**Last action:** Anti-spam APPROVE → `merge --no-ff` `4f78b2bf`. Neon prepare OK on temp branch `mcp-migration-2026-07-27T16-16-23`.
+**Last action:** Neon main already had feedback spam columns (deploy race). Backfill applied on prod: 1 SPAM / 6 still INBOX. Gallery building.
 
-**In-flight:** Neon feedback-spam migration prepared on temp branch — awaiting Andrew commit-to-main. Then backfill + design-system gallery.
+**In-flight:** design-system gallery executor ([5c0bbb6f](5c0bbb6f-703d-49a9-8ae8-0294e5c54a57)). Neon schema live (Vercel/prior); backfill marked 1/7 SPAM — heuristics may need tuning for remaining junk.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

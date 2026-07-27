@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalDocumentShell title="Privacy Policy" lastUpdated="July 9, 2026">
+    <LegalDocumentShell title="Privacy Policy" lastUpdated="July 27, 2026">
         <p className="text-sm leading-relaxed text-muted-foreground">
           This policy applies to <strong>Tutoring Notes</strong>, a web application operated
           by Andrew Mortensen under the Mortensen Apps umbrella. It supplements the
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
               <li><strong>Whiteboard session data:</strong> timestamped stroke logs, optional PDF / image inserts, and a session snapshot used for the parent replay surface.</li>
               <li><strong>Parent / guardian email addresses</strong> you enter when sending updates.</li>
               <li><strong>Outbound email logs</strong> (subject, recipient, body text, share link) retained for delivery troubleshooting.</li>
-              <li><strong>Feedback submissions</strong> (messages and optional contact email).</li>
+              <li><strong>Feedback submissions</strong> (message, optional contact email, and submitter IP address retained for abuse prevention on the public form).</li>
               <li><strong>Waitlist entries</strong> (email and optional name) submitted through interest forms or contact, retained for outreach.</li>
               <li><strong>Gmail OAuth tokens</strong> if you use &ldquo;Connect Gmail&rdquo; (see Google account and Gmail below).</li>
               <li><strong>Standard technical logs</strong> (IP address, user agent, timestamps) collected by our hosting provider for security and reliability.</li>

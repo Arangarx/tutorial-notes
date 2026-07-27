@@ -133,6 +133,18 @@ export default function FeedbackPage() {
                   />
                 </div>
 
+                {/* Honeypot — bots only; humans never see or tab to this field */}
+                <div className="sr-only" aria-hidden="true">
+                  <Label htmlFor="feedback-companyWebsite">Company website</Label>
+                  <Input
+                    id="feedback-companyWebsite"
+                    name="companyWebsite"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+
                 {state?.ok === false ? (
                   <p className="text-sm text-destructive" role="alert">
                     {state.error}

@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `5c356400` (+ docs queue pending this commit).
+**Tip:** `master` @ `4f78b2bf` (anti-spam Phase 1 merged; Neon migrate pending).
 
-**Last action:** Andrew queued design-system gallery (2026-07-27) — no appetite for full-site hunting; platform-maintainer gate only (not future school operators). Recorded in BACKLOG + eyeball list.
+**Last action:** Anti-spam APPROVE → `merge --no-ff` `4f78b2bf`. Neon prepare OK on temp branch `mcp-migration-2026-07-27T16-16-23`.
 
-**In-flight:** feedback anti-spam Phase 1 Sonnet verifier ([ec85a9f5](ec85a9f5-a74c-4a06-bd97-4cbaa06e1b78)). After APPROVE: merge + Neon migrate + optional backfill. **Queued next:** `/admin/design-system` gallery (platform-maintainer only — Andrew bandwidth).
+**In-flight:** Neon feedback-spam migration prepared on temp branch — awaiting Andrew commit-to-main. Then backfill + design-system gallery.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

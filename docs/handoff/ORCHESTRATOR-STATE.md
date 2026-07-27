@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `6ab287d2`.
 
-**Last action:** Phase 1 REJECT fixes landed @ `426b304` ([Fix Phase 1 REJECT items](b517f00d)); re-verify dispatched.
+**Last action:** BLOB_MAX Sonnet **REJECT** ([Verify Wave A BLOB_MAX_BYTES](0ad71859)) — toothless test (passes with literal restored); sentinel-mock fix dispatched.
 
-**In-flight:** (1) Re-verify Phase 1 (`c60ea931`) @ `426b304`. (2) Verify BLOB_MAX (`0ad71859`).
+**In-flight:** (1) Re-verify Phase 1 (`c60ea931`) @ `426b304`. (2) Fix BLOB_MAX teeth test (`b733b218`) then re-verify.
 **Open Andrew-confirms:**
 1. Google Console status + calendar verification package.
 2. Priority #3 instrumentation first slice.

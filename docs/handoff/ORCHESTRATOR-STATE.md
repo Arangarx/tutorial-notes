@@ -32,7 +32,7 @@
 7. `buildAdminNavLinks` → `src/lib/admin-nav-links.ts` (drift preserved per-consumer) (`89f8dfd9`)
 8. `LegalDocumentShell` → privacy/terms shell (legal bodies byte-untouched) (`c5f61fa9`)
 
-**✅ SAFE Wave A tier COMPLETE (8/8, zero regressions).** Andrew eyeball still due — [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
+**✅ SAFE Wave A tier COMPLETE (8/8, zero regressions).** Andrew eyeball = background backlog (not merge-blocking); partial pass 2026-07-27 — [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 
 **Andrew greenlights (2026-07-10 session):** Wave B **go**; `tokens.css` dark-palette **approach defined** ([`docs/DEDUPE-PLAN.md`](../DEDUPE-PLAN.md) § tokens); Google calendar verification = **hybrid** (Console prep now + MVP demo then submit); **agenticPipeline Phase 1** greenlit (PM north-star: true autonomous black-box pipeline).
 
@@ -53,7 +53,7 @@
 
 **Tip:** `master` @ `7ea1dab2`.
 
-**Last action:** Andrew (2026-07-27): proceed with already-approved next steps → pipeline Phase 1 + remaining Wave A leftovers. Not starting Wave C/D / instrumentation.
+**Last action:** Andrew (2026-07-27): eyeball list = **background backlog only**, not a merge gate. Partial pass so far OK; do not block on visual rechecks.
 
 **In-flight:** (1) agenticPipeline Phase 1 implementation. (2) Wave A leftover grind starting with `parseClientPayload`.
 **Open Andrew-confirms:**

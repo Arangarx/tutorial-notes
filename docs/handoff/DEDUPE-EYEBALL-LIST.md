@@ -1,10 +1,14 @@
-# Dedupe eyeball list — Wave A + Wave B
+# Dedupe / layout eyeball backlog (Andrew)
 
-Lightweight Andrew eyeball tracker after agent executor→verifier→merge passes land. **Not** a full smokebook — quick visual sanity on consolidated surfaces.
+**Not a merge gate.** Agents ship with Playwright/jest gates + independent verification; Andrew does **not** block merges waiting on visual rechecks.
 
-> **2026-07-27:** Full-site hunting is too expensive for Andrew’s current bandwidth. Prefer the operator-gated **[`/admin/design-system`](/admin/design-system)** gallery (platform maintainer only) for library component eyeballing. For surfaces not yet in the gallery, agents must deep-link exact routes + what to look for — never “look around.”
+**Purpose:** background checklist of surfaces Andrew should eventually glance at when he has bandwidth. Prefer **[`/admin/design-system`](/admin/design-system)** (platform-maintainer only) over hunting the live app. Agents always deep-link exact routes + what to look for.
 
-**Branch:** `master` @ `8a7dc8b6` (Ready-to-teach midwidth)  
+**Policy (Andrew 2026-07-27):** Partial eyeballs that pass are enough to keep going. Unchecked items stay here until he gets to them — no nagging mid-wave, no holding release track for a full tour.
+
+**Partial pass logged:** 2026-07-27 — what Andrew looked at so far **passes**; remaining items below are backlog only.
+
+**Tip at last doc touch:** `master` (see `git log -1`)  
 **Preview:** _(fill from Vercel `branchAlias` when running)_
 
 ---

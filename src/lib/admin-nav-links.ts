@@ -56,6 +56,7 @@ export function buildAdminNavLinks(opts: BuildAdminNavLinksOpts): AdminNavLink[]
       ? [
           { href: "/admin/feedback", label: "Feedback inbox" },
           { href: "/admin/tutor-approvals", label: "Tutor approvals" },
+          { href: "/admin/design-system", label: "Design system" },
         ]
       : []),
     ...(opts.showCostDashboard ? [{ href: "/admin/cost", label: "Cost" }] : []),

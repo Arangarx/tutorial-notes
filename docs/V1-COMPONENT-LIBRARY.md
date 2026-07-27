@@ -6,6 +6,8 @@
 
 > **Read before any UI work in this repo.** This doc answers: what components exist, which are canonical, which are duplicates, and what conventions all new surfaces must follow.
 
+**Live gallery (platform maintainer only):** [`/admin/design-system`](/admin/design-system) — organized specimens by composition tier (primitives → patterns → compositions → in-context links). Prefer the gallery over full-site hunting when eyeballing shared components; gallery PASS ≠ surface PASS when page-local CSS still overrides. See also [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](handoff/DEDUPE-EYEBALL-LIST.md).
+
 ---
 
 ## §0. Canonical Brand Reference

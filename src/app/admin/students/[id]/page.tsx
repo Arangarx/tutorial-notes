@@ -8,7 +8,11 @@ import {
 import SendUpdateForm from "./SendUpdateForm";
 import { canAccessStudentRow, getStudentScope } from "@/lib/student-scope";
 import { ShareLinkRow } from "./ShareLinkRow";
-import { SubmitButton } from "@/components/SubmitButton";
+import {
+  CreateShareLinkForm,
+  RegenerateShareLinkForm,
+  RevokeShareLinkForm,
+} from "./ShareLinkControls";
 import NoteEntrySection from "./NoteEntrySection";
 import { ActiveWhiteboardSessionsList } from "./whiteboard/ActiveWhiteboardSessionsList";
 import { EndedUnsavedSessionsList } from "./whiteboard/EndedUnsavedSessionsList";
@@ -239,12 +243,8 @@ export default async function StudentDetailPage({
               <>
                 <ShareLinkRow url={url} />
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <form action={regenerateShareLink.bind(null, student.id)}>
-                    <SubmitButton label="Regenerate" pendingLabel="Regenerating…" variant="outline" />
-                  </form>
-                  <form action={revokeShareLink.bind(null, student.id)}>
-                    <SubmitButton label="Revoke" pendingLabel="Revoking…" variant="outline" />
-                  </form>
+                  <RegenerateShareLinkForm action={regenerateShareLink.bind(null, student.id)} />
+                  <RevokeShareLinkForm action={revokeShareLink.bind(null, student.id)} />
                 </div>
               </>
             );
@@ -253,9 +253,7 @@ export default async function StudentDetailPage({
       ) : (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">No active share link yet.</p>
-          <form action={regenerateShareLink.bind(null, student.id)}>
-            <SubmitButton label="Create share link" variant="default" />
-          </form>
+          <CreateShareLinkForm action={regenerateShareLink.bind(null, student.id)} />
         </div>
       )}
     </>

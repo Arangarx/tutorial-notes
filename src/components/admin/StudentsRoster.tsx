@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { ChevronRight, Plus, Search } from "lucide-react";
 
 import { StudentAvatar } from "@/components/admin/StudentAvatar";
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/sheet";
 import { createStudent } from "@/app/admin/students/actions";
 import { StudentErasurePendingBadge } from "@/components/admin/StudentErasureStatus";
-import { SubmitButton } from "@/components/SubmitButton";
 import type { StudentErasureDisplayState } from "@/lib/erasure/student-erasure-display";
 
 export type StudentRosterItem = {
@@ -31,6 +31,21 @@ export type StudentRosterItem = {
 type StudentsRosterProps = {
   students: StudentRosterItem[];
 };
+
+function AddStudentSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      variant="accent"
+      disabled={pending}
+      aria-busy={pending}
+      className="min-h-11 sm:min-w-[140px]"
+    >
+      {pending ? "Add student…" : "Add student"}
+    </Button>
+  );
+}
 
 function AddStudentForm({ idPrefix = "" }: { idPrefix?: string }) {
   return (
@@ -46,7 +61,7 @@ function AddStudentForm({ idPrefix = "" }: { idPrefix?: string }) {
           autoComplete="off"
         />
       </div>
-      <SubmitButton label="Add student" variant="accent" className="min-h-11 sm:min-w-[140px]" />
+      <AddStudentSubmitButton />
     </form>
   );
 }

@@ -5,7 +5,7 @@
 import { db } from "@/lib/db";
 import { assertIsRealAdmin } from "@/lib/impersonation";
 import { startImpersonation } from "@/app/admin/actions/impersonate";
-import { SubmitButton } from "@/components/SubmitButton";
+import { ImpersonateSubmitForm } from "@/app/admin/ImpersonateSubmitForm";
 
 export async function AdminTestAccountsPanel() {
   await assertIsRealAdmin();
@@ -38,9 +38,7 @@ export async function AdminTestAccountsPanel() {
               Created {acct.createdAt.toLocaleDateString()}
             </div>
           </div>
-          <form action={startImpersonation.bind(null, acct.id)}>
-            <SubmitButton label="Log in as" pendingLabel="Opening…" variant="default" />
-          </form>
+          <ImpersonateSubmitForm action={startImpersonation.bind(null, acct.id)} />
         </li>
       ))}
     </ul>

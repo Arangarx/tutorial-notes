@@ -17,6 +17,10 @@ import { getAccountHolderSession } from "@/lib/account-holder-session";
 import { createActionCorrelationId } from "@/lib/action-correlation";
 import { assertTutorApproved } from "@/lib/tutor-approval-scope";
 import { resolveAhJoinLearnerProfileId } from "@/lib/join-scope";
+import {
+  parseClientPayload,
+  type UploadKind,
+} from "@/lib/blob-upload-payload";
 
 /**
  * Canonical client-direct Vercel Blob upload route.
@@ -52,39 +56,6 @@ import { resolveAhJoinLearnerProfileId } from "@/lib/join-scope";
  *    (PDF page renders, raster images, math-equation SVGs). Owned via
  *    WhiteboardSession because they live in the session's namespace.
  */
-export type UploadKind =
-  | "audio"
-  | "whiteboard-events"
-  | "whiteboard-snapshot"
-  | "whiteboard-asset";
-
-type ClientUploadPayload = {
-  kind?: UploadKind;
-  studentId?: string;
-  whiteboardSessionId?: string;
-  /**
-   * When set (with kind `whiteboard-asset` only), authorizes a browser that is
-   * *not* logged in as a tutor — the student join page — to upload the bytes
-   * for pasted/dropped images. Must match a live `WhiteboardJoinToken`.
-   */
-  joinToken?: string;
-  /** Optional asset slot (e.g. "pdf-page-3", "equation"); used only for log lines. */
-  assetTag?: string;
-};
-
-function parseClientPayload(raw: string | null): ClientUploadPayload | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed === "object" && parsed !== null) {
-      return parsed as ClientUploadPayload;
-    }
-  } catch {
-    // fall through
-  }
-  return null;
-}
-
 const POLICY: Record<
   UploadKind,
   { allowed: string[]; maxBytes: number }

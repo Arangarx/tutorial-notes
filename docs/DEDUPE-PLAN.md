@@ -16,7 +16,7 @@ Pure functions and low-risk shared helpers; unit-testable; near-zero regression 
 - Extract `getCookieFromRequest` → `src/lib/http/cookies.ts` (dupes: `learner-session.ts:269`, `account-holder-session.ts:248`).
 - Extract `isPrismaUniqueViolation` (P2002) → `src/lib/db/prisma-errors.ts` (3 copies: claim setup, consent actions, request-erasure-by-admin).
 - Extract `safeName` → `src/lib/blob-path.ts` (dupes: `recording/upload.ts:51`, `whiteboard/upload.ts:17`).
-- Extract `parseClientPayload` → shared blob-upload parse (dupes: `upload/audio`, `upload/blob`).
+- ~~Extract `parseClientPayload` → shared blob-upload parse~~ → **✅ DONE** (`feat/dedupe-wave-a-parse-client-payload`) — canonical `src/lib/blob-upload-payload.ts`; deleted `/api/upload/audio` dupe removed in Wave B.
 - One `formatDurationMs` (`H:MM:SS`) → `src/lib/time/` (dupes: `replay-helpers.ts:55`, `WhiteboardReplay.tsx:1586`, `WhiteboardWorkspaceClient` local, plus page-local `formatDuration`s). Reconcile with existing `components/recording/format-duration.ts`.
 - `BLOB_MAX_BYTES` magic (`100*1024*1024`) → use `audio-constants.ts` in `concat-audio.ts:117`.
 - Billing rounding defaults: collapse to single export surface (`billing/defaults.ts`; drop dup in `rounding.ts`).

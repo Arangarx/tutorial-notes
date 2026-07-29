@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** Change-mode Phase 1 **proof complete**. Next: Phase 2 executable verifier; or harder change-mode chunks; NativeSelect still deferred; Wave C/D Opus-grade. Google Console / instrumentation = Andrew-owned.
+**Next action(s):** **Await Andrew confirm** on pilot-expansion priority reorder (proposed 2026-07-29 after Sarah meeting). Proposed: (0) student-detail Start/consent/claim findability P0 → (1) Google external → (2) tutor signup/Google login UI → (3) email-OTP 2FA (+ SMS later) → (4) scheduling/calendar → (5) security MUST → (6) instrumentation; demote Wave C/D dedupe + pipeline Phase 2 to background. Options offered: (A) adopt + start P0, (B) Google before P0 UX, (C) adjust.
 
 ---
 
@@ -51,18 +51,16 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `3ef04cc7` (V1 library drift merge; change-mode proof).
+**Tip:** `master` @ `1672e7f4`.
 
-**Last action:** Change-mode proof **DONE** — run `run-2026-07-27T18-46-58` approved; docs merged @ [`3ef04cc7`](https://github.com/Arangarx/tutoring-notes/commit/3ef04cc7). Lessons: `RUN_DIR_ROOT` outside Documents (CFA); intent-coverage must quote spec strings verbatim; `approval_blocked` status sticks until reset to `approval_pending` before re-approve.
+**Last action:** Sarah brief (2026-07-29): wants pilot-expansion features (tutor signup, Google auth, email/SMS 2FA, scheduling/calendar, security). Student-detail: couldn't find Start; claim/consent path confusing; authenticator setup friction. Explore ([Explore consent claim start UX](ac69c219)) confirmed: `ConsentRequiredCallout` replaces Start (low-salience); claim mint only in bottom Parent section when `NEXT_PUBLIC_CLAIM_INVITES_ENABLED`; consent via `/claim/[token]`.
 
-**In-flight:** (none).
+**In-flight:** (none) — waiting Andrew A/B/C on priority reorder.
 **Open Andrew-confirms:**
-1. Google Console status + calendar verification package.
-2. Priority #3 instrumentation first slice.
-3. _(cleared)_ design-system gallery — queued, platform-maintainer only.
-4. _(cleared)_ Merge agenticPipeline Phase 1 → pipeline master.
-5. _(cleared)_ First change-mode proof chunk.
-**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof (V1 library drift).
+1. **Pilot priority reorder** (A adopt+start P0 / B Google first / C adjust) — see Next action(s).
+2. Google Console status + calendar verification package.
+3. Priority #3 instrumentation first slice (may demote under new order).
+**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

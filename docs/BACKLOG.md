@@ -2,14 +2,19 @@
 
 Living document for open work, pilot feedback, reliability gaps, and deferred product decisions.
 
-## 🎯 Release priorities (Andrew 2026-07-10) — do these first, in order
+## 🎯 Release priorities (Andrew 2026-07-30, option B) — do these first, in order
 
-We are on the **release track**: expand beyond Sarah to unsupervised new pilots. Ordered priorities:
+We are on the **release track**: expand beyond Sarah to unsupervised new pilots. **Re-ranked after Sarah 2026-07-29 meeting** (Andrew chose **B**: Google external before student-detail UX). Ordered priorities:
 
-1. **Comprehensive component + service dedupe** — eliminate ALL unjustified duplication site-wide. Plan + audit findings: [`docs/DEDUPE-PLAN.md`](DEDUPE-PLAN.md) (Wave A safe/mechanical → D fragile A/V). **Approach:** stability first; safe+tested consolidations up front, risky ones careful/small-chunk, never big-bang. New work = zero new duplication + reduce what it touches (absolute). See standard #1 below.
-2. **Everything requiring external validation** — Google sign-in, Google Calendar, and anything needing OAuth scope approval/verification. Kick off the **external approval process now** (long lead times) even before the dependent features are finished.
-3. **Comprehensive instrumentation** — see EXACTLY how the site is used. **Policy (Andrew 2026-07-10):** anything touching **minor data or minor traffic MUST be first-party** (no third-party processors on COPPA-risk surfaces). Third-party analytics (e.g. PostHog) is acceptable **only** on non-COPPA surfaces (e.g. marketing/logged-out). **Terms/Privacy stay 100% honest — do not over-share, but absolutely never under-share; default to transparency when in doubt** until a real legal review is done. Archived reference: `docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md` (reframe to first-party for the app).
-4. **Finish scheduling** (depends on #2 calendar).
+1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
+2. **Student-detail Start / consent / claim findability (P0)** — Sarah could not find Start; claim link buried in Parent section; `ConsentRequiredCallout` replaces Start with low salience. Epic: top-level claim affordance + clearer gated-Start CTA + “what the other party does next.” (Backlog: Unclaimed student claim link buried; BL-A.)
+3. **Tutor signup / self-serve auth** — waitlist → real signup; Google sign-in on login surfaces (depends on #1 Sign-In wiring).
+4. **2FA pilots will finish** — email OTP first; SMS later; keep TOTP as upgrade (Sarah authenticator-on-Apple friction).
+5. **Finish scheduling** (depends on #1 calendar scopes + sync).
+6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.
+7. **Comprehensive instrumentation** — first-party analytics on COPPA-risk surfaces; third-party (e.g. PostHog) only on non-COPPA (marketing/logged-out). **Terms/Privacy stay 100% honest.** Archived reference: `docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md`.
+
+**Background (not blocking the ordered list):** Wave C/D dedupe (fragile WB/A/V — Opus-grade); agenticPipeline Phase 2; NativeSelect; design-system gallery. Dedupe Wave A/B + tokens already done — new work still = zero new duplication ([`docs/DEDUPE-PLAN.md`](DEDUPE-PLAN.md)).
 
 ### QUEUED — `/admin/design-system` component gallery (Andrew 2026-07-27)
 
@@ -31,9 +36,9 @@ Each specimen: light/dark, canonical path, confidence badge (`isolated` | `compo
 
 **Status:** `OPEN` — queued for next available executor wave (not Wave C/D fragile).
 
-### Priority #2 — external Google approvals (start NOW; ~4–6 week lead)
+### Priority #1 — external Google approvals (ACTIVE; ~4–6 week lead)
 
-Audit 2026-07-10. Long external lead times → kick off before the dependent code is finished.
+Audit 2026-07-10; **elevated to #1** (Andrew option B, 2026-07-30). Long external lead times → kick off before dependent features finish.
 
 **Andrew (Google Cloud Console — no code):**
 - **Confirm consent-screen status** at [console](https://console.cloud.google.com/apis/credentials/consent): Published/In-production? `gmail.send` verified? (docs claim verified 2026-05-30 — confirm still true; INDEX was stale.)
@@ -44,9 +49,9 @@ Audit 2026-07-10. Long external lead times → kick off before the dependent cod
 
 **Sequencing (Andrew 2026-07-10):** Calendar verification = **hybrid** — Console prep **NOW** + MVP demo build, **then** submit bundled verification. **Apple Calendar** = CalDAV / no Google-style app review — **defer**. **Sign in with Apple** = optional (Apple Developer enrollment only if pursued). **Skip Facebook.** **Microsoft** = optional.
 
-**Our code (parallel prep; merge after scopes approved):** `/login` "Sign in with Google" button + Playwright (backend already wired, UI-only); Calendar OAuth routes + DB models + sync (replaces mock); scheduling backend (Priority #4, depends on calendar); umbrella privacy additive copy for calendar data before reviewers see new scopes.
+**Our code (parallel prep):** `/login` "Sign in with Google" button + Playwright (backend already wired, UI-only) — **next code chunk**; Calendar OAuth routes + DB models + sync (replaces mock) after Console path is clear; scheduling backend (Priority #5) depends on calendar; umbrella privacy additive copy for calendar data before reviewers see new scopes.
 
-**State:** Gmail send = shipped + likely verified. Google Sign-In = backend-only, needs login UI + redirect URI. Calendar = mock only, **long pole**. Note: Priority #3 instrumentation (PostHog) is gated on shipping the umbrella analytics legal draft ([`docs/legal-drafts/umbrella-pending-2026-05-18.md`](legal-drafts/umbrella-pending-2026-05-18.md)) — or go first-party to avoid the DPA gate.
+**State:** Gmail send = shipped + likely verified. Google Sign-In = backend-only, needs login UI + redirect URI. Calendar = mock only, **long pole**. Instrumentation (Priority #7) is gated on umbrella analytics legal draft ([`docs/legal-drafts/umbrella-pending-2026-05-18.md`](legal-drafts/umbrella-pending-2026-05-18.md)) — or go first-party to avoid the DPA gate.
 
 ### Non-negotiable standards (no exceptions without Andrew's explicit documented waiver — agents may NEVER self-authorize)
 
@@ -1625,7 +1630,7 @@ Single architectural root.
 Not buried in Settings.
 
 **[P2][UX] Unclaimed student claim link buried**  
-Top-level affordance.
+Top-level affordance. **Part of Priority #2 epic** (after Google #1): Start/consent/claim findability — `ConsentRequiredCallout` salience + claim mint not buried in Parent tab (Sarah 2026-07-29).
 
 **[P2][UX] Parent dashboard Manage button alignment**  
 Polish.

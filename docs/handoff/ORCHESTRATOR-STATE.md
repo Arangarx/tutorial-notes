@@ -8,7 +8,7 @@
 
 ## HEAD
 
-**🚦 RELEASE TRACK (Andrew 2026-07-10) — expand beyond Sarah to unsupervised new pilots.** Ordered priorities (canonical in [`docs/BACKLOG.md`](../BACKLOG.md) § Release priorities): **(1) comprehensive component + service dedupe (zero unjustified duplication)** → **(2) everything requiring external validation — Google sign-in, Calendar, OAuth scope approval — start the external process NOW** → **(3) instrument the site comprehensively (first-party analytics)** → **(4) finish scheduling.**
+**🚦 RELEASE TRACK (Andrew 2026-07-30 option B) — expand beyond Sarah to unsupervised new pilots.** Ordered priorities (canonical in [`docs/BACKLOG.md`](../BACKLOG.md) § Release priorities): **(1) Google external — Sign-In UI + Calendar Console/hybrid verify** → **(2) student-detail Start/consent/claim findability** → **(3) tutor signup / self-serve auth** → **(4) email-OTP 2FA (+ SMS later)** → **(5) scheduling** → **(6) security MUST** → **(7) instrumentation**. Wave C/D dedupe + pipeline Phase 2 = background.
 
 **⛔ NON-NEGOTIABLE STANDARDS (2026-07-10) — no exceptions without Andrew's explicit documented waiver; agents may NEVER self-authorize:** (1) zero unjustified duplication — no bespoke bullshit ([`composition-no-duplication.mdc`](../../.cursor/rules/composition-no-duplication.mdc)); (2) exhaustive red/green tests to spec on every touched surface ([`exhaustive-testing-mandate.mdc`](../../.cursor/rules/exhaustive-testing-mandate.mdc)); (3) independent agentic verification of code + tests before done ([`agentic-verification-pipeline.mdc`](../../.cursor/rules/agentic-verification-pipeline.mdc)) — moving rapidly toward a fully agentic dev pipeline (deferrable only with Andrew approval if it blocks release, never permanently).
 
@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Await Andrew confirm** on pilot-expansion priority reorder (proposed 2026-07-29 after Sarah meeting). Proposed: (0) student-detail Start/consent/claim findability P0 → (1) Google external → (2) tutor signup/Google login UI → (3) email-OTP 2FA (+ SMS later) → (4) scheduling/calendar → (5) security MUST → (6) instrumentation; demote Wave C/D dedupe + pipeline Phase 2 to background. Options offered: (A) adopt + start P0, (B) Google before P0 UX, (C) adjust.
+**Next action(s):** **Priority #1 Google external — ACTIVE.** (1) Andrew: Console consent-screen status + redirect URIs + Search Console (`usemynk.com`). (2) Agents: dispatch `/login` “Sign in with Google” UI + Playwright (backend already wired). Then calendar MVP demo for hybrid verify. Priority #2 (student-detail Start/claim) waits until Google track is underway.
 
 ---
 
@@ -51,16 +51,16 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `1672e7f4`.
+**Tip:** `master` @ `9010f93b` (pre this docs lock — update after commit).
 
-**Last action:** Sarah brief (2026-07-29): wants pilot-expansion features (tutor signup, Google auth, email/SMS 2FA, scheduling/calendar, security). Student-detail: couldn't find Start; claim/consent path confusing; authenticator setup friction. Explore ([Explore consent claim start UX](ac69c219)) confirmed: `ConsentRequiredCallout` replaces Start (low-salience); claim mint only in bottom Parent section when `NEXT_PUBLIC_CLAIM_INVITES_ENABLED`; consent via `/claim/[token]`.
+**Last action:** Andrew confirmed **B** (2026-07-30) — Google external before student-detail UX. Locked in BACKLOG + AGENTS + STATE. Sarah Start/claim epic = Priority #2 (queued).
 
-**In-flight:** (none) — waiting Andrew A/B/C on priority reorder.
+**In-flight:** (none) — ready to start Sign-in-with-Google UI once Andrew says go (or after Console note).
 **Open Andrew-confirms:**
-1. **Pilot priority reorder** (A adopt+start P0 / B Google first / C adjust) — see Next action(s).
-2. Google Console status + calendar verification package.
-3. Priority #3 instrumentation first slice (may demote under new order).
-**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof.
+1. ~~Pilot priority reorder~~ → **B locked**.
+2. Google Console status + calendar verification package (needed for #1).
+3. Instrumentation first slice demoted to Priority #7 — no action until later.
+**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof; priority reorder (B).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

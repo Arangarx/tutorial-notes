@@ -40,14 +40,17 @@ Master is delivered to Sarah; the doc/backlog is cleaned + release-triaged. We a
 2. **Exhaustive testing.** Nothing is done without comprehensive **red-before/green-after** tests written **to spec** (independent oracle), at the **right layer** (Playwright for layout/media/sync/geometry; jest is necessary-not-sufficient). [`.cursor/rules/exhaustive-testing-mandate.mdc`](.cursor/rules/exhaustive-testing-mandate.mdc) (alwaysApply).
 3. **Independent agentic verification.** Code/tests written by one agent are verified by a **separate specialized agent** (tests-to-spec + code soundness + no-duplication) before "done"/merge. Moving toward a fully agentic pipeline. Deferrable only with Andrew's approval if it blocks a release, never permanently. [`.cursor/rules/agentic-verification-pipeline.mdc`](.cursor/rules/agentic-verification-pipeline.mdc) (alwaysApply).
 
-**Release priorities (ordered, Andrew 2026-07-10)** — canonical list at top of [`docs/BACKLOG.md`](docs/BACKLOG.md):
+**Release priorities (ordered, Andrew 2026-07-30 option B)** — canonical list at top of [`docs/BACKLOG.md`](docs/BACKLOG.md):
 
-1. **Comprehensive component + service dedupe** — eliminate all unjustified duplication site-wide (see standard #1). Highest priority.
-2. **Everything requiring external validation/verification** — Google sign-in, Google Calendar, and anything needing OAuth scope approval/verification — get the **external approval process started now** (long lead times).
-3. **Instrument the site comprehensively** — first-party analytics; see exactly how the site is used (PostHog / usage instrumentation).
-4. **Finish scheduling** (depends on #2 calendar).
+1. **External Google validation** — Sign-In UI + Calendar scopes / Console (long lead times).
+2. **Student-detail Start / consent / claim findability** (Sarah 2026-07-29).
+3. **Tutor signup / self-serve auth** (incl. Google on login).
+4. **2FA pilots will finish** — email OTP first; SMS later; TOTP as upgrade.
+5. **Finish scheduling** (depends on #1 calendar).
+6. **Security MUST for strangers.**
+7. **Comprehensive instrumentation** (first-party on COPPA-risk surfaces).
 
-Everything else is release-triaged in `docs/BACKLOG.md` § Release triage (MUST / MAYBE / 1.x). The backlog also has stale rows — a **freshness pass** against current `master` is warranted when picking items up.
+Dedupe Wave C/D + agenticPipeline Phase 2 = **background**. Everything else is release-triaged in `docs/BACKLOG.md` § Release triage (MUST / MAYBE / 1.x). Freshness pass vs `master` when picking items up.
 
 ## Key docs
 

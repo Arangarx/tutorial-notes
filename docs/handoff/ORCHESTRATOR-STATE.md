@@ -51,15 +51,15 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `2ef8e60b`.
+**Tip:** `master` @ `43e0cfdf`.
 
-**Last action:** Andrew confirmed **B** (2026-07-30) — Google external before student-detail UX. Locked in BACKLOG + AGENTS + STATE. Sarah Start/claim epic = Priority #2 (queued).
+**Last action:** Andrew re-oriented 2026-08-09 after gap — still parked on Priority #1 Google (no Sign-In UI dispatch yet; no Console status received).
 
-**In-flight:** (none) — ready to start Sign-in-with-Google UI once Andrew says go (or after Console note).
+**In-flight:** (none).
 **Open Andrew-confirms:**
-1. ~~Pilot priority reorder~~ → **B locked**.
+1. ~~Pilot priority reorder~~ → **B locked** (2026-07-30).
 2. Google Console status + calendar verification package (needed for #1).
-3. Instrumentation first slice demoted to Priority #7 — no action until later.
+3. **Go** on `/login` Sign-in-with-Google UI dispatch (code can run parallel to Console).
 **Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof; priority reorder (B).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).

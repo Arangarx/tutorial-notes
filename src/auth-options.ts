@@ -136,6 +136,12 @@ export const authOptions: NextAuthOptions = {
           if (!hasSignupIntent) return "/login?error=not_authorized";
 
           admin = await createAdminFromGoogle(email, user.name ?? null);
+          const { logProductEvent } = await import("@/lib/observability/product-events");
+          await logProductEvent({
+            kind: "TUTOR_SIGNUP",
+            adminUserId: admin.id,
+            metadata: { method: "google" },
+          });
           await notifyOperatorsOfNewSignup({
             email: admin.email,
             displayName: admin.displayName,
@@ -189,6 +195,21 @@ export const authOptions: NextAuthOptions = {
           // but guard anyway for safety).
           token.twoFactorVerified = admin.isTestAccount ? true : false;
         }
+      }
+
+      if (user) {
+        const { logProductEvent } = await import("@/lib/observability/product-events");
+        const loginMethod = account?.provider === "google" ? "google" : "credentials";
+        const approvalStatus =
+          (token.approvalStatus as TutorApprovalStatus | undefined) ?? "WAITLISTED";
+        await logProductEvent({
+          kind: "TUTOR_LOGIN",
+          adminUserId: token.sub as string | undefined,
+          metadata: {
+            method: loginMethod,
+            approvalStatus,
+          },
+        });
       }
       // Impersonation fields (isImpersonating, originalAdminId, originalAdminEmail,
       // impersonationLogId, role) are already in the token when set by

@@ -24,8 +24,13 @@
 const mockAdminUserFindUnique = jest.fn();
 const mockAdminUserUpdate = jest.fn();
 const mockAdminUserCreate = jest.fn();
+const mockLogProductEvent = jest.fn();
 
 const mockWhiteboardSessionFindUnique = jest.fn();
+
+jest.mock("@/lib/observability/product-events", () => ({
+  logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+}));
 
 jest.mock("@/lib/db", () => ({
   db: {
@@ -145,6 +150,10 @@ function mockMissingAdmin() {
 // TAP-1: assertTutorApproved throws TutorNotApprovedError for WAITLISTED
 // ---------------------------------------------------------------------------
 describe("TAP-1 — assertTutorApproved throws for WAITLISTED", () => {
+  beforeEach(() => {
+    mockLogProductEvent.mockReset();
+  });
+
   it("throws TutorNotApprovedError with correct fields", async () => {
     mockWaitlistedAdmin();
     await expect(assertTutorApproved(WAITLISTED_ADMIN_ID)).rejects.toMatchObject({
@@ -164,6 +173,19 @@ describe("TAP-1 — assertTutorApproved throws for WAITLISTED", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(TutorNotApprovedError);
+  });
+
+  it("logs TUTOR_WAITLIST_BLOCKED before throwing", async () => {
+    mockWaitlistedAdmin();
+    await expect(assertTutorApproved(WAITLISTED_ADMIN_ID)).rejects.toBeInstanceOf(
+      TutorNotApprovedError
+    );
+
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_WAITLIST_BLOCKED",
+      adminUserId: WAITLISTED_ADMIN_ID,
+      metadata: { surface: "tutor_approval_gate" },
+    });
   });
 });
 
@@ -216,6 +238,10 @@ describe("TAP-5 — isTutorApproved returns true for APPROVED", () => {
 // TAP-6: approveTutor updates DB and logs
 // ---------------------------------------------------------------------------
 describe("TAP-6 — approveTutor updates DB", () => {
+  beforeEach(() => {
+    mockLogProductEvent.mockReset();
+  });
+
   it("calls db.adminUser.update with APPROVED status and operatorId", async () => {
     mockAdminUserUpdate.mockResolvedValueOnce({});
     await approveTutor(WAITLISTED_ADMIN_ID, OPERATOR_ID);
@@ -231,6 +257,17 @@ describe("TAP-6 — approveTutor updates DB", () => {
     );
     const call = mockAdminUserUpdate.mock.calls[0][0];
     expect(call.data.approvedAt).toBeInstanceOf(Date);
+  });
+
+  it("logs TUTOR_APPROVED product event with operatorId", async () => {
+    mockAdminUserUpdate.mockResolvedValueOnce({});
+    await approveTutor(WAITLISTED_ADMIN_ID, OPERATOR_ID);
+
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_APPROVED",
+      adminUserId: WAITLISTED_ADMIN_ID,
+      metadata: { operatorId: OPERATOR_ID },
+    });
   });
 });
 

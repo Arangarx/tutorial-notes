@@ -117,7 +117,8 @@ Dedupe Wave C/D + agenticPipeline Phase 2 = **background**. Everything else is r
   (workspace preview-before-Start), `pvs` (per-page whiteboard pan/zoom —
   Phase 5 task 8), `avx` (live-A/V session — Phase 4a;
   per-peer events also carry `peer=<peerId>`), `cev` (cost-event row —
-  OpenAI usage observability), `blb` (blob cleanup CLI), `brs` (branch
+  OpenAI usage observability), `pev` (product-event row — first-party
+  tutor funnel in Neon), `blb` (blob cleanup CLI), `brs` (branch
   sweep CLI), `imp` (impersonation lifecycle — SEC-1; every start/exit
   writes `[imp] imp=<logId> ...`), `tfa` (TOTP 2FA lifecycle — Identity
   Phase 1; every enroll/verify/reset transition writes `[tfa] ...

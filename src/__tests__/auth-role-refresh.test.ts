@@ -244,6 +244,138 @@ describe("Fix B — jwt callback role re-fetch on token refresh", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Product events — TUTOR_LOGIN on initial sign-in
+// ---------------------------------------------------------------------------
+
+describe("Product events — jwt callback logs TUTOR_LOGIN on sign-in", () => {
+  const mockLogProductEvent = jest.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    jest.resetModules();
+    mockLogProductEvent.mockReset();
+    process.env.NEXTAUTH_SECRET = "test-secret-32-chars-minimum-pad";
+    process.env.DATABASE_URL = "file:./test.db";
+    process.env.DIRECT_URL = "file:./test.db";
+    process.env.ADMIN_EMAIL = "admin@example.com";
+    process.env.ADMIN_PASSWORD = "replace-me";
+
+    jest.doMock("@/lib/observability/product-events", () => ({
+      logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+    }));
+    jest.doMock("@/lib/playwright-harness", () => ({
+      isPlaywrightHarnessActive: () => false,
+      isPlaywrightHarnessAdminEmail: () => false,
+    }));
+  });
+
+  it("credentials login logs TUTOR_LOGIN with adminUserId + approvalStatus from token", async () => {
+    jest.doMock("@/lib/auth-db", () => ({
+      hasAdminUsers: jest.fn().mockResolvedValue(true),
+      getAdminByEmail: jest.fn().mockResolvedValue(null),
+      getAdminById: jest.fn(),
+      verifyPassword: jest.fn().mockResolvedValue(true),
+    }));
+
+    const { authOptions } = await import("@/auth-options");
+    const jwtCallback = authOptions.callbacks?.jwt as Function;
+
+    const tutorId = "tutor-waitlisted-uuid";
+    await jwtCallback({
+      token: { sub: tutorId },
+      user: {
+        id: tutorId,
+        email: "waitlisted@example.com",
+        role: "TUTOR",
+        isTestAccount: false,
+        approvalStatus: "WAITLISTED",
+      },
+      account: { provider: "credentials", type: "credentials" },
+    });
+
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_LOGIN",
+      adminUserId: tutorId,
+      metadata: {
+        method: "credentials",
+        approvalStatus: "WAITLISTED",
+      },
+    });
+  });
+
+  it("Google login logs TUTOR_LOGIN with admin id from DB row", async () => {
+    const googleAdminId = "google-admin-uuid";
+    jest.doMock("@/lib/auth-db", () => ({
+      hasAdminUsers: jest.fn().mockResolvedValue(true),
+      getAdminByEmail: jest.fn().mockResolvedValue({
+        id: googleAdminId,
+        email: "approved@gmail.com",
+        passwordHash: null,
+        isTestAccount: false,
+        role: "TUTOR",
+        displayName: "Google Tutor",
+        approvalStatus: "APPROVED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+      getAdminById: jest.fn(),
+      verifyPassword: jest.fn().mockResolvedValue(false),
+    }));
+
+    const { authOptions } = await import("@/auth-options");
+    const jwtCallback = authOptions.callbacks?.jwt as Function;
+
+    await jwtCallback({
+      token: { sub: "placeholder-sub" },
+      user: {
+        id: "oauth-user-id",
+        email: "approved@gmail.com",
+        name: "Google Tutor",
+      },
+      account: { provider: "google", type: "oauth" },
+    });
+
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_LOGIN",
+      adminUserId: googleAdminId,
+      metadata: {
+        method: "google",
+        approvalStatus: "APPROVED",
+      },
+    });
+  });
+
+  it("token refresh (no user) does not log TUTOR_LOGIN", async () => {
+    jest.doMock("@/lib/auth-db", () => ({
+      hasAdminUsers: jest.fn().mockResolvedValue(true),
+      getAdminByEmail: jest.fn().mockResolvedValue(null),
+      getAdminById: jest.fn().mockResolvedValue({
+        id: "tutor-uuid",
+        role: "TUTOR",
+        isTestAccount: false,
+      }),
+      verifyPassword: jest.fn().mockResolvedValue(false),
+    }));
+
+    const { authOptions } = await import("@/auth-options");
+    const jwtCallback = authOptions.callbacks?.jwt as Function;
+
+    await jwtCallback({
+      token: {
+        sub: "tutor-uuid",
+        role: "TUTOR",
+        isTestAccount: false,
+        isImpersonating: false,
+        _roleCheckedAt: 0,
+      },
+      user: undefined,
+      account: null,
+    });
+
+    expect(mockLogProductEvent).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Fix A — getSessionCostBreakdown server-side authorization
 // ---------------------------------------------------------------------------
 

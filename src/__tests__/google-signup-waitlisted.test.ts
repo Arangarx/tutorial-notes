@@ -189,6 +189,7 @@ describe("Google signIn — signup intent dual path", () => {
   const mockNotify = jest.fn();
   const mockClearIntent = jest.fn();
   const mockCookiesGet = jest.fn();
+  const mockLogProductEvent = jest.fn();
 
   beforeEach(() => {
     jest.resetModules();
@@ -198,6 +199,7 @@ describe("Google signIn — signup intent dual path", () => {
     mockNotify.mockReset();
     mockClearIntent.mockReset();
     mockCookiesGet.mockReset();
+    mockLogProductEvent.mockReset();
 
     mockFindEmailRealmPresence.mockImplementation(async (email: string) => ({
       normalizedEmail: email.trim().toLowerCase(),
@@ -255,6 +257,10 @@ describe("Google signIn — signup intent dual path", () => {
         clearSignupIntentCookie: mockClearIntent,
       };
     });
+
+    jest.doMock("@/lib/observability/product-events", () => ({
+      logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+    }));
   });
 
   async function getSignInCallback() {
@@ -314,6 +320,11 @@ describe("Google signIn — signup intent dual path", () => {
       expect.objectContaining({ email: "new@gmail.com", method: "google" })
     );
     expect(mockClearIntent).toHaveBeenCalled();
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_SIGNUP",
+      adminUserId: "new-google",
+      metadata: { method: "google" },
+    });
   });
 
   it("rejects test-account email even when row exists", async () => {
@@ -364,6 +375,7 @@ describe("signup server action — operator notification", () => {
       inAdmin: false,
       inAccountHolder: false,
     });
+    const logProductEvent = jest.fn().mockResolvedValue(undefined);
 
     jest.doMock("@/lib/auth-db", () => ({
       createAdmin,
@@ -374,6 +386,9 @@ describe("signup server action — operator notification", () => {
     }));
     jest.doMock("@/lib/notify-operator-new-signup", () => ({
       notifyOperatorsOfNewSignup: notify,
+    }));
+    jest.doMock("@/lib/observability/product-events", () => ({
+      logProductEvent,
     }));
     jest.doMock("next/navigation", () => ({
       redirect: jest.fn(() => {
@@ -396,6 +411,11 @@ describe("signup server action — operator notification", () => {
       email: "brand-new@example.com",
       displayName: "Brand New",
       method: "credentials",
+    });
+    expect(logProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_SIGNUP",
+      adminUserId: "u1",
+      metadata: { method: "credentials" },
     });
   });
 });

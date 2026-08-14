@@ -106,6 +106,12 @@ jest.mock("@/lib/billing/freeze-at-close", () => {
   };
 });
 
+const mockLogProductEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/observability/product-events", () => ({
+  __esModule: true,
+  logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+}));
+
 import {
   endWhiteboardSession,
   type EndSessionSegment,
@@ -190,6 +196,7 @@ function setupActiveSession(
 }
 
 beforeEach(() => {
+  mockLogProductEvent.mockReset();
   txWhiteboardUpdateMock.mockReset();
   txWhiteboardFindUniqueMock.mockReset();
   txTokenUpdateManyMock.mockReset();
@@ -238,6 +245,16 @@ describe("endWhiteboardSession — events-only end (no segments)", () => {
     );
     expect(txSessionRecordingCreateManyMock).not.toHaveBeenCalled();
     expect(result.registeredSegments).toBe(0);
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "SESSION_ENDED",
+      adminUserId: "admin_1",
+      studentId: "stu_1",
+      whiteboardSessionId: "wb_42",
+      metadata: {
+        priorPhase: "ACTIVE",
+        path: "normal",
+      },
+    });
   });
 
   it("rejects an already-ended session", async () => {

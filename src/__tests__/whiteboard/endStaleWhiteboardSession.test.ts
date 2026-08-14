@@ -79,9 +79,16 @@ jest.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }));
 
+const mockLogProductEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/observability/product-events", () => ({
+  __esModule: true,
+  logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+}));
+
 import { endStaleWhiteboardSession } from "@/app/admin/students/[id]/whiteboard/actions";
 
 beforeEach(() => {
+  mockLogProductEvent.mockReset();
   txWhiteboardUpdateMock.mockReset();
   txTokenUpdateManyMock.mockReset();
   txWhiteboardFindUniqueMock.mockReset();
@@ -149,6 +156,16 @@ describe("endStaleWhiteboardSession", () => {
     expect(updateArgs.data.durationSeconds).toBeGreaterThanOrEqual(45 * 60 - 2);
     expect(updateArgs.data.durationSeconds).toBeLessThanOrEqual(45 * 60 + 2);
     expect(result.durationSeconds).toBe(1800);
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "SESSION_ENDED",
+      adminUserId: "admin_1",
+      studentId: "stu_1",
+      whiteboardSessionId: "wb_42",
+      metadata: {
+        priorPhase: "PENDING",
+        path: "stale",
+      },
+    });
   });
 
   it("revokes ALL still-live join tokens in the same transaction", async () => {

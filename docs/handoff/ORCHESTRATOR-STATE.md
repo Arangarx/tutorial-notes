@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `122bf761`.
+**Tip:** `master` @ `45e39812`.
 
-**Last action:** [Verify Google Sign-In UI](fd0f8170-8ad9-47ba-a2f7-133a4bb18f36) **APPROVE** → `merge --no-ff` [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761). Starting Priority #2 student-detail Start/claim.
+**Last action:** [Verify Google Sign-In UI](fd0f8170-8ad9-47ba-a2f7-133a4bb18f36) **APPROVE** → `merge --no-ff` [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761). Dispatched [Student-detail Start/claim UX](76d50639-415a-4399-98fa-886aa1fedd48).
 
-**In-flight:** Priority #2 student-detail findability (dispatching).
+**In-flight:** Priority #2 `feat/student-detail-start-claim-findability`.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console + live Google smoke after deploy. Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 **Cleared:** Sign-In UI (implemented + verified + merged).
 

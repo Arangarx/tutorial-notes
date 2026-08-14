@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Priority #1 Google Sign-In UI — executor done, independent verify in flight.** Branch `feat/google-signin-login-ui` @ [`1a51159c`](https://github.com/Arangarx/tutoring-notes/commit/1a51159c). Do not merge until verifier APPROVE. After merge: calendar MVP prep; then Priority #2 student-detail Start/claim. Andrew checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **Priority #2 student-detail Start/consent/claim findability — IN FLIGHT.** Google Sign-In UI **merged** [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) (verify APPROVE). Remaining #1 = calendar MVP (queued; Console still Andrew). Andrew checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `4d50604c`.
+**Tip:** `master` @ `122bf761`.
 
-**Last action:** [Implement Google Sign-In UI](ff3c3a4b-9ad0-4b4a-abfb-3a8c84e6b53c) pushed `feat/google-signin-login-ui` @ `1a51159c` (gated Google section + identity Playwright 4/4). Visual `login.png` owed (pre-existing heading a11y). Dispatched [Verify Google Sign-In UI](fd0f8170-8ad9-47ba-a2f7-133a4bb18f36).
+**Last action:** [Verify Google Sign-In UI](fd0f8170-8ad9-47ba-a2f7-133a4bb18f36) **APPROVE** → `merge --no-ff` [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761). Starting Priority #2 student-detail Start/claim.
 
-**In-flight:** independent verify of Sign-In UI (do not merge yet).
-**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console + live-smoke URIs. Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
-**Cleared:** Sign-In UI implementation (pending verify).
+**In-flight:** Priority #2 student-detail findability (dispatching).
+**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console + live Google smoke after deploy. Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
+**Cleared:** Sign-In UI (implemented + verified + merged).
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

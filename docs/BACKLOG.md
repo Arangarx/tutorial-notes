@@ -49,9 +49,9 @@ Audit 2026-07-10; **elevated to #1** (Andrew option B, 2026-07-30). Long externa
 
 **Sequencing (Andrew 2026-07-10):** Calendar verification = **hybrid** — Console prep **NOW** + MVP demo build, **then** submit bundled verification. **Apple Calendar** = CalDAV / no Google-style app review — **defer**. **Sign in with Apple** = optional (Apple Developer enrollment only if pursued). **Skip Facebook.** **Microsoft** = optional.
 
-**Our code (parallel prep):** `/login` "Sign in with Google" button + Playwright (backend already wired, UI-only) — **next code chunk**; Calendar OAuth routes + DB models + sync (replaces mock) after Console path is clear; scheduling backend (Priority #5) depends on calendar; umbrella privacy additive copy for calendar data before reviewers see new scopes.
+**Our code (parallel prep):** `/login` "Sign in with Google" button + Playwright (backend already wired, UI-only) — **IN FLIGHT 2026-08-14**; Calendar OAuth routes + DB models + sync (replaces mock) after Console path is clear; scheduling backend (Priority #5) depends on calendar; umbrella privacy additive copy for calendar data before reviewers see new scopes.
 
-**State:** Gmail send = shipped + likely verified. Google Sign-In = backend-only, needs login UI + redirect URI. Calendar = mock only, **long pole**. Instrumentation (Priority #7) is gated on umbrella analytics legal draft ([`docs/legal-drafts/umbrella-pending-2026-05-18.md`](legal-drafts/umbrella-pending-2026-05-18.md)) — or go first-party to avoid the DPA gate.
+**State:** Gmail send = shipped + likely verified. Google Sign-In = backend wired; **UI chunk in flight**. Calendar = mock only, **long pole**. Andrew Console checklist: [`docs/handoff/ANDREW-FOLLOW-UPS.md`](handoff/ANDREW-FOLLOW-UPS.md). Instrumentation (Priority #7) is gated on umbrella analytics legal draft ([`docs/legal-drafts/umbrella-pending-2026-05-18.md`](legal-drafts/umbrella-pending-2026-05-18.md)) — or go first-party to avoid the DPA gate.
 
 ### Non-negotiable standards (no exceptions without Andrew's explicit documented waiver — agents may NEVER self-authorize)
 

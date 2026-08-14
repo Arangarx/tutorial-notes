@@ -30,6 +30,7 @@ Bar to archive a doc or section: **(a)** its still-valid content is provably cap
 |---|---|---|
 | [docs/RELEASE-ROADMAP.md](RELEASE-ROADMAP.md) | Canonical wave-by-wave sequencing from solo-tutor reliability floor to Aug 2026 university-pitch readiness. Re-validate quarterly or after major Sarah feedback. | Start of any session where you're deciding what to work on next |
 | [docs/handoff/ORCHESTRATOR-STATE.md](handoff/ORCHESTRATOR-STATE.md) | **Living orchestrator bootstrap** — current branch/tip, merge gate, execution order, build status | **Every fresh orchestrator chat — read HEAD first** |
+| [docs/handoff/ANDREW-FOLLOW-UPS.md](handoff/ANDREW-FOLLOW-UPS.md) | **Andrew drop-in checklist** — Console / human work that does not block agent feature progress | When returning after a gap; Google Console tasks |
 | [docs/BACKLOG.md](BACKLOG.md) | Pilot feedback items, known follow-ups, reliability gaps (Axes 1–5), security recon, deferred phase notes, pointers to archived bootstrappers | Whenever triaging new work, checking reliability posture, or looking for a deferred item |
 
 ---

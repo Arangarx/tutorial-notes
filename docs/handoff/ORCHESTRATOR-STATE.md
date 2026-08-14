@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Priority #1 Google external — ACTIVE.** (1) Andrew: Console consent-screen status + redirect URIs + Search Console (`usemynk.com`). (2) Agents: dispatch `/login` “Sign in with Google” UI + Playwright (backend already wired). Then calendar MVP demo for hybrid verify. Priority #2 (student-detail Start/claim) waits until Google track is underway.
+**Next action(s):** **Priority #1 Google Sign-In UI — IN FLIGHT** (branch `feat/google-signin-login-ui`). Andrew human checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) (Console; does not block this UI chunk). After merge: calendar MVP prep; then Priority #2 student-detail Start/claim.
 
 ---
 
@@ -51,16 +51,15 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `43e0cfdf`.
+**Tip:** `master` @ `db081324` (update after docs commit).
 
-**Last action:** Andrew re-oriented 2026-08-09 after gap — still parked on Priority #1 Google (no Sign-In UI dispatch yet; no Console status received).
+**Last action:** Andrew 2026-08-14: document follow-ups + start features. Created [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md); dispatched Google Sign-In UI executor.
 
-**In-flight:** (none).
-**Open Andrew-confirms:**
-1. ~~Pilot priority reorder~~ → **B locked** (2026-07-30).
-2. Google Console status + calendar verification package (needed for #1).
-3. **Go** on `/login` Sign-in-with-Google UI dispatch (code can run parallel to Console).
-**Cleared this session:** Wave B; tokens.css; agenticPipeline Phase 1; Wave A leftovers (NativeSelect deferred); change-mode proof; priority reorder (B).
+**In-flight:** Google Sign-In `/login` UI + Playwright (`feat/google-signin-login-ui`).
+**Open Andrew-confirms / human work:**
+1. [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console checklist (consent screen, redirect URIs, Search Console) — **not** blocking UI merge.
+2. Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md) when convenient.
+**Cleared:** waiting-on-go for Sign-In UI — Andrew said start moving.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

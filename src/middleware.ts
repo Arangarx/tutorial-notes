@@ -190,7 +190,12 @@ export async function middleware(req: NextRequest) {
       const isImpersonating = (token.isImpersonating as boolean | undefined) ?? false;
       const isEnvAdmin = token.sub === "admin";
 
-      if (!isTestAccount && !isImpersonating && !isEnvAdmin && approvalStatus === "WAITLISTED") {
+      if (
+        !isTestAccount &&
+        !isImpersonating &&
+        !isEnvAdmin &&
+        (approvalStatus === "WAITLISTED" || approvalStatus === "REJECTED")
+      ) {
         console.log(
           `[tap] sub=${token.sub ?? "?"} action=middleware_redirect_pending pathname=${pathname}`
         );

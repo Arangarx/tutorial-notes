@@ -95,6 +95,7 @@ enum AdminUser2FAEmailChallengePurpose {
 enum TutorApprovalStatus {
   WAITLISTED
   APPROVED
+  REJECTED
 }
 
 enum SessionPhase {

@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { encryptTotpSecret } from "@/lib/crypto/totp-secret";
 import { generateBackupCodes, storeBackupCodes } from "@/lib/two-factor-db";
+import { hashEmailOtpCode } from "@/lib/email-otp-challenge";
 import { readLocalEnv } from "../../utils/read-dotenv";
 
 const { assertLocalDatabaseUrlForHarness } = require("../../../scripts/wb-regression-local-db.cjs");
@@ -122,6 +123,76 @@ export async function seedEnrolled2faTutor(): Promise<{
     );
 
     return { adminUserId: user.id, totpSecret };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/** TOTP-enrolled tutor with a seeded LOGIN email OTP challenge (chunk 2 email-alt path). */
+export async function seedTotpTutorWithEmailLoginChallenge(): Promise<{
+  adminUserId: string;
+  totpSecret: string;
+  loginCode: string;
+}> {
+  assertLocalDatabaseUrlForHarness();
+  ensureTotpEncryptionKey();
+
+  const prisma = new PrismaClient();
+  const passwordHash = await bcrypt.hash(TEST_2FA_TUTOR.password, 10);
+  const totpSecret = TEST_2FA_TUTOR.totpSecret;
+  const loginCode = "381604";
+
+  try {
+    const user = await prisma.adminUser.upsert({
+      where: { email: TEST_2FA_TUTOR.email },
+      create: {
+        email: TEST_2FA_TUTOR.email,
+        passwordHash,
+        displayName: TEST_2FA_TUTOR.displayName,
+        role: "TUTOR",
+        approvalStatus: "APPROVED",
+        isTestAccount: false,
+      },
+      update: {
+        passwordHash,
+        role: "TUTOR",
+        approvalStatus: "APPROVED",
+        isTestAccount: false,
+      },
+      select: { id: true },
+    });
+
+    await prisma.adminUser2FAEmailChallenge.deleteMany({ where: { adminUserId: user.id } });
+    await prisma.adminUser2FA.deleteMany({ where: { adminUserId: user.id } });
+
+    const totpSecretEnc = encryptTotpSecret(totpSecret);
+    const twoFa = await prisma.adminUser2FA.create({
+      data: {
+        adminUserId: user.id,
+        method: "TOTP",
+        totpSecretEnc,
+        enrolledAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    const backup = await generateBackupCodes();
+    await storeBackupCodes(
+      twoFa.id,
+      backup.map((c) => ({ hash: c.hash }))
+    );
+
+    await prisma.adminUser2FAEmailChallenge.create({
+      data: {
+        adminUserId: user.id,
+        twoFaId: twoFa.id,
+        codeHash: hashEmailOtpCode(loginCode),
+        purpose: "LOGIN",
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    return { adminUserId: user.id, totpSecret, loginCode };
   } finally {
     await prisma.$disconnect();
   }

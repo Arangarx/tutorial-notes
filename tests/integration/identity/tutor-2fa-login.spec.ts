@@ -5,6 +5,7 @@ import {
   generateTotpCode,
   loginTutorWithPassword,
   seedEnrolled2faTutor,
+  seedTotpTutorWithEmailLoginChallenge,
   seedUnenrolled2faTutor,
   submitTotpOnVerifyPage,
   TEST_2FA_ENROLL,
@@ -12,6 +13,7 @@ import {
   waitFor2faVerifyChallenge,
   expectTutorAuthedLanding,
 } from "./tutor-2fa-login.helpers";
+import { submitEmailOtpOnVerifyPage } from "./tutor-email-2fa-login.helpers";
 
 const EMPTY_STATE = { cookies: [] as [], origins: [] as [] };
 const INVALID_TOTP = "000000";
@@ -98,5 +100,51 @@ test.describe("P1-ID-2 — tutor 2FA login→land + QR local-gen", () => {
         ).toBe(false);
       }
     }
+  });
+});
+
+test.describe("TOTP enroll — email OTP login alternative (chunk 2)", () => {
+  test.use({ storageState: EMPTY_STATE });
+
+  test("happy path: TOTP tutor switches to email alt → seeded code lands authed", async ({
+    page,
+  }) => {
+    const { loginCode } = await seedTotpTutorWithEmailLoginChallenge();
+
+    await loginTutorWithPassword(page, TEST_2FA_TUTOR);
+    await waitFor2faVerifyChallenge(page);
+
+    await expect(page.getByRole("button", { name: "Email me a code instead" })).toBeVisible();
+    await page.getByRole("button", { name: "Email me a code instead" }).click();
+
+    // Seeded challenge — skip send to avoid invalidating hash.
+    await submitEmailOtpOnVerifyPage(page, loginCode);
+    await expectTutorAuthedLanding(page);
+  });
+
+  test("security teeth: wrong email OTP on alt path stays on challenge", async ({ page }) => {
+    await seedTotpTutorWithEmailLoginChallenge();
+
+    await loginTutorWithPassword(page, TEST_2FA_TUTOR);
+    await waitFor2faVerifyChallenge(page);
+
+    await page.getByRole("button", { name: "Email me a code instead" }).click();
+    await submitEmailOtpOnVerifyPage(page, INVALID_TOTP);
+
+    await expect(page).toHaveURL(/\/admin\/settings\/2fa\/verify/);
+    await expect(page.getByText(/invalid or expired code/i)).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("TOTP authenticator path still works when email alt is available", async ({ page }) => {
+    const { totpSecret } = await seedTotpTutorWithEmailLoginChallenge();
+
+    await loginTutorWithPassword(page, TEST_2FA_TUTOR);
+    await waitFor2faVerifyChallenge(page);
+
+    await expect(page.getByRole("button", { name: "Email me a code instead" })).toBeVisible();
+
+    const code = generateTotpCode(totpSecret);
+    await submitTotpOnVerifyPage(page, code);
+    await expectTutorAuthedLanding(page);
   });
 });

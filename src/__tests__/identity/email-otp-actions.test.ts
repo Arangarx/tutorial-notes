@@ -284,3 +284,184 @@ describe("confirmEmailOtpEnrollment — session mint parity with TOTP enroll", (
     expect(mockMint).toHaveBeenCalledWith(decodedToken);
   });
 });
+
+describe("TOTP enroll — LOGIN email OTP alternative (chunk 2)", () => {
+  const TOTP_ADMIN_ID = "totp-email-alt-admin";
+  const TOTP_ROW_ID = "totp-email-alt-row";
+
+  function setupTotpAuthMocks(): void {
+    jest.mock("next-auth", () => ({
+      getServerSession: jest.fn().mockResolvedValue({
+        user: { email: "totp-alt@example.com", id: TOTP_ADMIN_ID, isTestAccount: false },
+      }),
+    }));
+    jest.mock("@/auth-options", () => ({ authOptions: {} }));
+    jest.mock("@/lib/student-scope", () => ({
+      requireStudentScope: jest.fn().mockResolvedValue({
+        kind: "admin",
+        adminId: TOTP_ADMIN_ID,
+      }),
+    }));
+    jest.mock("next/navigation", () => ({
+      redirect: jest.fn((url: string) => {
+        throw new Error(`redirect:${url}`);
+      }),
+    }));
+  }
+
+  it("sendLoginEmailOtp succeeds for enrolled TOTP user", async () => {
+    setupTotpAuthMocks();
+
+    const mockSend = jest.fn().mockResolvedValue({ ok: true });
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser: {
+          findUnique: jest.fn().mockImplementation(async ({ where, select }) => {
+            if (select?.email) return { email: "totp-alt@example.com" };
+            return { id: where.id, isTestAccount: false };
+          }),
+        },
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: TOTP_ROW_ID,
+            method: "TOTP",
+            enrolledAt: new Date(),
+          }),
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      sendEmailOtpChallenge: mockSend,
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
+    jest.mock("@/lib/two-factor-step-up", () => ({
+      verifyTotpStepUp: jest.fn(),
+    }));
+
+    const { sendLoginEmailOtp } = await import("@/app/admin/settings/2fa/actions");
+    const result = await sendLoginEmailOtp();
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.maskedEmail).toContain("@");
+    }
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminUserId: TOTP_ADMIN_ID,
+        purpose: "LOGIN",
+        twoFaId: TOTP_ROW_ID,
+      })
+    );
+  });
+
+  it("verifyEmailOtpCode LOGIN succeeds for TOTP user without flipping method", async () => {
+    setupTotpAuthMocks();
+
+    const mockUpdate = jest.fn().mockResolvedValue({});
+
+    jest.mock("@/lib/auth-rate-limit", () => ({
+      check2faVerifyRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        requestCount: 1,
+        retryAfterMs: 0,
+      }),
+    }));
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser: {
+          findUnique: jest.fn().mockResolvedValue({ id: TOTP_ADMIN_ID, isTestAccount: false }),
+        },
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: TOTP_ROW_ID,
+            method: "TOTP",
+            enrolledAt: new Date(),
+          }),
+          update: mockUpdate,
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      sendEmailOtpChallenge: jest.fn(),
+      verifyEmailOtpChallenge: jest.fn().mockResolvedValue({ ok: true, challengeId: "ch-1" }),
+    }));
+
+    jest.mock("next/headers", () => ({
+      cookies: jest.fn().mockResolvedValue({ get: jest.fn(), set: jest.fn() }),
+      headers: jest.fn().mockResolvedValue({ get: jest.fn() }),
+    }));
+
+    jest.mock("@/lib/two-factor-step-up", () => ({
+      verifyTotpStepUp: jest.fn(),
+    }));
+
+    const { verifyEmailOtpCode } = await import("@/app/admin/settings/2fa/actions");
+    const result = await verifyEmailOtpCode("445566");
+
+    expect(result.ok).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: TOTP_ROW_ID },
+      data: { lastVerifiedAt: expect.any(Date) },
+    });
+    expect(mockUpdate.mock.calls[0][0].data).not.toHaveProperty("method");
+  });
+
+  it("verifyEmailOtpCode rate-limits TOTP user before OTP validation", async () => {
+    setupTotpAuthMocks();
+
+    const mockVerify = jest.fn().mockResolvedValue({ ok: true });
+
+    jest.mock("@/lib/auth-rate-limit", () => ({
+      check2faVerifyRateLimit: jest.fn().mockResolvedValue({
+        allowed: false,
+        requestCount: 20,
+        retryAfterMs: 30_000,
+      }),
+    }));
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser: {
+          findUnique: jest.fn().mockResolvedValue({ id: TOTP_ADMIN_ID, isTestAccount: false }),
+        },
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: TOTP_ROW_ID,
+            method: "TOTP",
+            enrolledAt: new Date(),
+          }),
+          update: jest.fn(),
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      sendEmailOtpChallenge: jest.fn(),
+      verifyEmailOtpChallenge: mockVerify,
+    }));
+
+    jest.mock("@/lib/two-factor-step-up", () => ({
+      verifyTotpStepUp: jest.fn(),
+    }));
+
+    jest.mock("next/headers", () => ({
+      cookies: jest.fn().mockResolvedValue({ get: jest.fn(), set: jest.fn() }),
+      headers: jest.fn().mockResolvedValue({ get: jest.fn() }),
+    }));
+
+    const { verifyEmailOtpCode } = await import("@/app/admin/settings/2fa/actions");
+    const result = await verifyEmailOtpCode("112233");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/Too many verification attempts/i);
+      expect(result.error).toContain("30");
+    }
+    expect(mockVerify).not.toHaveBeenCalled();
+  });
+});

@@ -175,7 +175,7 @@ Each **student** row is tied to the signed-in **database admin** (`Student.admin
 
 ## Public sign-up (`/signup`) and Gmail OAuth allowlist
 
-- **`/signup`** creates a new **tutor account** (email + password, or **Google** when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set). No invite required. New accounts are **WAITLISTED** — operators approve at **`/admin/tutor-approvals`**. Google auto-provision happens **only** from `/signup` (a short-lived signup-intent cookie); Google on **`/login`** still rejects unknown emails.
+- **`/signup`** creates a new **tutor account** (email + password, or **Google** when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set). No invite required. New accounts are **WAITLISTED** — operators approve at **`/admin/tutor-approvals`**. Google auto-provision happens **only** with a valid short-lived **signup-intent cookie** (minted on GET `/signup`). Google OAuth **without** that cookie — including the `/login` button for an unknown email — rejects and creates **no** row.
 - **`GMAIL_CONNECT_ALLOWLIST`** (optional): comma-separated emails that may use **Connect Gmail**. If **unset**, any signed-in tutor may connect Gmail (same as before). If **set** (e.g. `you@gmail.com,pilot@school.edu`), only those accounts see the **Connect Gmail** button; everyone else uses **SMTP** for outbound mail. Use this when you are fine with random signups but do not want them on Gmail OAuth.
 
 ---

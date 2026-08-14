@@ -1431,7 +1431,7 @@ Adult self-learner claim UX.
 B1 approval gating shipped; operator revocation not built.
 
 **[P2][AUTH] Signup waitlist pagination + Google OAuth auto-provision**  
-Deferred.
+Google signup → WAITLISTED **first chunk shipped** (`feat/google-signup-waitlisted`). Pagination + REJECTED UI still deferred.
 
 **[P2][AUTH] 2FA remember-device open decisions**  
 `__Secure-` prefix; max devices; backup codes interaction.
@@ -1819,6 +1819,9 @@ Dual-device takeover; waiting-room A/V.
 
 **[P3][TEST] Preview email loopback**  
 Signup on preview lands on production.
+
+**[P2][TEST] PLAYWRIGHT-GAP — hermetic Google OAuth signup round-trip**  
+No IdP in the identity harness. Surrogate: jest `google-signup-waitlisted.test.ts` (signup-intent + `signIn` provision/reject) + Playwright `/signup` Google UI. Named gap: `tests/integration/identity/tutor-signup-waitlisted.spec.ts`.
 
 ### PLAYWRIGHT-GAP hardware oracles (summary)
 

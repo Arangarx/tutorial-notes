@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#4 email OTP 2FA first chunk IN FLIGHT** (email-first enroll for new approved tutors; TOTP unchanged). Calendar connect+stub **merged** [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Andrew: add `/api/auth/calendar/callback` + enable Calendar API; submit **one** bundled verification when deploy is crawlable. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#4 email OTP 2FA — executor done, independent verify in flight.** Branch `feat/email-otp-2fa-enroll` @ [`501e4be7`](https://github.com/Arangarx/tutoring-notes/commit/501e4be7). Auth-boundary + migration — do not merge until verifier APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `da93ab78`.
+**Tip:** `master` @ `ec9351e1`.
 
-**Last action:** [Verify calendar OAuth connect stub](23cdb7b4-73f5-4414-9584-665b306e9528) **APPROVE** → merge [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Starting #4 email OTP 2FA.
+**Last action:** [Email OTP 2FA first chunk](d493c791-bd1a-40cd-bea9-b01f0340ba96) pushed `feat/email-otp-2fa-enroll` @ `501e4be7`. Dispatched [Verify email OTP 2FA chunk](089370c8-923c-4a56-bd55-bfc8c3952ed9).
 
-**In-flight:** [Email OTP 2FA first chunk](d493c791-bd1a-40cd-bea9-b01f0340ba96) (`feat/email-otp-2fa-enroll`).
+**In-flight:** independent verify of email OTP 2FA (do not merge yet).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Optional leftovers: Gmail/Calendar OAuth helper extract; SessionSyncBadge honesty; #2 flag-off/mobile.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup WAITLISTED; Calendar connect+stub.
 

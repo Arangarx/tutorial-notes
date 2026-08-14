@@ -51,7 +51,7 @@ Notes:
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 <<<<<<< Updated upstream
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
-| #4 | Email OTP 2FA (TOTP stays) | **In flight** — `feat/email-otp-2fa-enroll` (email-first enroll for new approved tutors; Sarah TOTP unchanged) |
+| #4 | Email OTP 2FA (TOTP stays) | Branch [`feat/email-otp-2fa-enroll`](https://github.com/Arangarx/tutoring-notes/tree/feat/email-otp-2fa-enroll) @ [`501e4be7`](https://github.com/Arangarx/tutoring-notes/commit/501e4be7) — **independent verify in flight** |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 

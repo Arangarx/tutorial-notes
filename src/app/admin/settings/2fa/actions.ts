@@ -618,7 +618,11 @@ export async function sendLoginEmailOtp(): Promise<SendLoginEmailOtpResult> {
     where: { adminUserId: adminId },
     select: { id: true, method: true, enrolledAt: true },
   });
-  if (!row?.enrolledAt || row.method !== "EMAIL_OTP") {
+  if (!row?.enrolledAt) {
+    return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
+  }
+  // LOGIN email OTP: primary path for EMAIL_OTP enroll; alternate for TOTP enroll (chunk 2).
+  if (row.method !== "EMAIL_OTP" && row.method !== "TOTP") {
     return { ok: false, error: "Email verification is not enabled for this account." };
   }
 
@@ -664,13 +668,21 @@ export async function verifyEmailOtpCode(
     where: { adminUserId: adminId },
     select: { id: true, method: true, enrolledAt: true },
   });
-  if (!row || row.method !== "EMAIL_OTP") {
-    return { ok: false, error: "Email verification is not enabled for this account." };
+  if (!row) {
+    return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
   }
 
   const purpose = opts?.purpose ?? "LOGIN";
-  if (purpose === "LOGIN" && !row.enrolledAt) {
-    return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
+  if (purpose === "ENROLL" && row.method !== "EMAIL_OTP") {
+    return { ok: false, error: "Email verification is not enabled for this account." };
+  }
+  if (purpose === "LOGIN") {
+    if (!row.enrolledAt) {
+      return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
+    }
+    if (row.method !== "EMAIL_OTP" && row.method !== "TOTP") {
+      return { ok: false, error: "Email verification is not enabled for this account." };
+    }
   }
 
   const verified = await verifyEmailOtpChallenge({

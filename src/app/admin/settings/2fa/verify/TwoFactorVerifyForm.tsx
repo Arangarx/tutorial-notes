@@ -2,6 +2,7 @@
 
 /**
  * 2FA Verify Client Component — email OTP or TOTP based on enrollment method.
+ * TOTP-enrolled users may switch to email OTP as a login alternative (chunk 2).
  */
 
 import { useState, useTransition } from "react";
@@ -20,6 +21,7 @@ export function TwoFactorVerifyForm({
   const [info, setInfo] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [useEmailAlt, setUseEmailAlt] = useState(method === "EMAIL_OTP");
   const [isPending, startTransition] = useTransition();
 
   function handleSendEmail() {
@@ -47,10 +49,9 @@ export function TwoFactorVerifyForm({
     setError("");
     setInfo("");
     startTransition(async () => {
-      const result =
-        method === "EMAIL_OTP"
-          ? await verifyEmailOtpCode(input, { rememberDevice })
-          : await verifyTotpCode(input, { rememberDevice });
+      const result = useEmailAlt
+        ? await verifyEmailOtpCode(input, { rememberDevice })
+        : await verifyTotpCode(input, { rememberDevice });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -62,10 +63,11 @@ export function TwoFactorVerifyForm({
   const normalized = codeInput.replace(/\s/g, "");
   const isBackupLen = normalized.length === 8;
   const isTotpLen = normalized.length === 6;
-  const canSubmit =
-    method === "EMAIL_OTP" ? isTotpLen && !isPending : (isTotpLen || isBackupLen) && !isPending;
+  const canSubmit = useEmailAlt
+    ? isTotpLen && !isPending
+    : (isTotpLen || isBackupLen) && !isPending;
 
-  if (method === "EMAIL_OTP") {
+  if (useEmailAlt) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
@@ -117,6 +119,21 @@ export function TwoFactorVerifyForm({
         >
           {emailSent ? "Resend code" : "Send verification code"}
         </button>
+        {method === "TOTP" && (
+          <button
+            type="button"
+            onClick={() => {
+              setUseEmailAlt(false);
+              setCodeInput("");
+              setError("");
+              setInfo("");
+            }}
+            disabled={isPending}
+            className="text-sm underline"
+          >
+            Use authenticator app instead
+          </button>
+        )}
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -164,6 +181,19 @@ export function TwoFactorVerifyForm({
           {isPending ? "Verifying…" : "Verify"}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          setUseEmailAlt(true);
+          setCodeInput("");
+          setError("");
+          setInfo("");
+        }}
+        disabled={isPending}
+        className="text-sm underline"
+      >
+        Email me a code instead
+      </button>
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <input
           type="checkbox"

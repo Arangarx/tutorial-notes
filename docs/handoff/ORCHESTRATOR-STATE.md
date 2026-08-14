@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#4 chunk 2 IN FLIGHT** — email OTP as login alternative for existing TOTP tutors (Sarah). Chunk 1 **merged** [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) (re-verify APPROVE). Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#4 chunk 2 — executor done, independent verify in flight.** Branch `feat/email-otp-totp-login-alt` @ [`74ae6498`](https://github.com/Arangarx/tutoring-notes/commit/74ae6498). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `ab70f002`.
 
-**Last action:** [Re-verify email OTP 2FA](009c0d34-9897-46c2-acc7-283a3151acd6) **APPROVE** → merge [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002). Starting chunk 2 (TOTP login email-alt).
+**Last action:** [Email OTP at TOTP login](2ff7f5a4-86c0-4bdb-bd76-70d738d73e08) pushed `feat/email-otp-totp-login-alt` @ `74ae6498`. Dispatched [Verify TOTP login email-alt](d278c6c0-f7b3-45bf-9772-29d4ac35a79b).
 
-**In-flight:** [Email OTP at TOTP login](2ff7f5a4-86c0-4bdb-bd76-70d738d73e08) (`feat/email-otp-totp-login-alt`).
+**In-flight:** independent verify of TOTP login email-alt (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Optional leftovers: Gmail/Calendar OAuth helper extract; SessionSyncBadge honesty; #2 flag-off/mobile.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP enroll (chunk 1).
 

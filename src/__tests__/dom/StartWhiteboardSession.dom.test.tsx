@@ -46,15 +46,19 @@ describe("StartWhiteboardSession — T10 consent affordance", () => {
 
     const callout = screen.getByTestId("start-wb-consent-callout");
     expect(callout).toBeInTheDocument();
-    expect(callout.className).toMatch(/\bbreak-words\b/);
-    expect(callout.className).toMatch(/\bmin-w-0\b/);
+    expect(callout).toHaveAttribute("role", "alert");
+    expect(
+      screen.getByText(/Start whiteboard session unavailable/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/privacy preferences are not complete/i)
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId("start-whiteboard-session-btn")
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /parent account/i })).toHaveAttribute(
-      "href",
-      "/admin/students/stu_1#student-section-parent"
-    );
+    expect(
+      screen.queryByRole("link", { name: /parent account/i })
+    ).not.toBeInTheDocument();
   });
 
   it("replaces Start with callout when student is unclaimed", () => {
@@ -63,13 +67,20 @@ describe("StartWhiteboardSession — T10 consent affordance", () => {
         {...baseProps}
         consentRecordExists={false}
         studentClaimed={false}
+        claimInvitesEnabled={true}
+        hasTopClaimBanner={true}
       />
     );
 
     expect(screen.getByTestId("start-wb-consent-callout")).toBeInTheDocument();
+    expect(screen.getByText(/banner above/i)).toBeInTheDocument();
     expect(
       screen.queryByTestId("start-whiteboard-session-btn")
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /parent account/i })).toHaveAttribute(
+      "href",
+      "/admin/students/stu_1#student-section-parent"
+    );
   });
 
   it("renders normal Start when consent record exists", () => {

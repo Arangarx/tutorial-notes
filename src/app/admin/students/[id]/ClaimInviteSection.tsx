@@ -18,10 +18,13 @@ export function ClaimInviteSection({
   studentId,
   studentName,
   alreadyClaimed,
+  prominent = false,
 }: {
   studentId: string;
   studentName: string;
   alreadyClaimed: boolean;
+  /** Larger CTA for top-of-page banner placement. */
+  prominent?: boolean;
 }) {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -110,7 +113,15 @@ export function ClaimInviteSection({
           </Button>
         </>
       ) : (
-        <Button onClick={handleSendInvite} disabled={busy} aria-busy={busy} size="sm">
+        <Button
+          onClick={handleSendInvite}
+          disabled={busy}
+          aria-busy={busy}
+          size={prominent ? "default" : "sm"}
+          variant={prominent ? "accent" : "default"}
+          className={prominent ? "min-h-11" : undefined}
+          data-testid="create-claim-link-btn"
+        >
           {busy ? "Creating link..." : "Create claim link"}
         </Button>
       )}

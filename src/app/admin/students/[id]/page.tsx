@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ClaimInviteSection } from "./ClaimInviteSection";
 import { ConnectedParentSection, type ConnectedParent } from "./ConnectedParentSection";
 import { StudentDetailShell } from "@/components/admin/StudentDetailShell";
+import { UnclaimedParentClaimBanner } from "@/components/admin/UnclaimedParentClaimBanner";
 import { StudentErasurePendingBanner } from "@/components/admin/StudentErasureStatus";
 import { StudentOverflowActions } from "@/components/admin/StudentOverflowActions";
 import { deriveStudentErasureDisplayState } from "@/lib/erasure/student-erasure-display";
@@ -172,6 +173,13 @@ export default async function StudentDetailPage({
         }))
       : false;
 
+  const sessionCanStart =
+    !accessSuspended &&
+    (isSelfLearner || (student.learnerProfileId && consentRecordExists));
+  const sessionStartBlocked = !accessSuspended && !sessionCanStart;
+  const showUnclaimedClaimBanner =
+    claimInvitesEnabled && !student.learnerProfileId && !accessSuspended;
+
   const activeShare = student.shareLinks[0] ?? null;
   const shareDisplayBaseUrl = activeShare ? await getRequestBaseUrl() : null;
 
@@ -204,6 +212,8 @@ export default async function StudentDetailPage({
         isSelfLearner={isSelfLearner}
         studentClaimed={!!student.learnerProfileId}
         accessSuspended={false}
+        claimInvitesEnabled={claimInvitesEnabled}
+        hasTopClaimBanner={showUnclaimedClaimBanner}
       />
     </div>
   );
@@ -360,11 +370,18 @@ export default async function StudentDetailPage({
   return (
     <div className="space-y-4">
       <StudentErasurePendingBanner state={erasureState} />
+      {showUnclaimedClaimBanner ? (
+        <UnclaimedParentClaimBanner
+          studentId={student.id}
+          studentName={student.name}
+        />
+      ) : null}
       <StudentDetailShell
       studentId={student.id}
       studentName={student.name}
       meta={meta}
       noteCount={noteCount}
+      sessionStartBlocked={sessionStartBlocked}
       headerActions={
         <>
           <StudentOverflowActions studentId={student.id} studentName={student.name} />

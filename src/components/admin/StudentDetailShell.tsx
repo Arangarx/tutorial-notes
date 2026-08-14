@@ -37,6 +37,8 @@ type StudentDetailShellProps = {
   stickyCta: ReactNode;
   sections: StudentDetailSection[];
   noteCount?: number;
+  /** When consent/claim blocks session start — banner copy reflects blocked state. */
+  sessionStartBlocked?: boolean;
 };
 
 const defaultIcons = {
@@ -56,6 +58,7 @@ export function StudentDetailShell({
   stickyCta,
   sections,
   noteCount = 0,
+  sessionStartBlocked = false,
 }: StudentDetailShellProps) {
   const [activeTab, setActiveTab] = useState(sections[0]?.id ?? "session");
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -220,10 +223,12 @@ export function StudentDetailShell({
         >
           <div className="min-w-0 flex-1" data-testid="student-ready-to-teach-copy">
             <p className="label-mono m-0 text-[10px] text-[color:var(--brand-eyebrow)]">
-              Ready to teach
+              {sessionStartBlocked ? "Before you can start" : "Ready to teach"}
             </p>
             <p className="mt-1 text-[13px] text-[color:var(--brand-on-subtle)]">
-              Start a whiteboard session to record and generate notes.
+              {sessionStartBlocked
+                ? "Complete the steps below to unlock whiteboard sessions."
+                : "Start a whiteboard session to record and generate notes."}
             </p>
           </div>
           <div className="hidden w-full min-w-0 md:block lg:w-auto lg:shrink-0 [&_button]:whitespace-nowrap">

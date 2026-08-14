@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +7,7 @@ import {
   parseConsentActionError,
 } from "@/lib/consent-action-error";
 import { createWhiteboardSession } from "./actions";
+import { SessionStartBlockedCallout } from "./SessionStartBlockedCallout";
 
 export type StartWhiteboardSessionProps = {
   studentId: string;
@@ -16,6 +16,9 @@ export type StartWhiteboardSessionProps = {
   studentClaimed: boolean;
   /** ER-4 — block Start when learner is in erasure grace or post-purge. */
   accessSuspended?: boolean;
+  claimInvitesEnabled?: boolean;
+  /** Top-of-page UnclaimedParentClaimBanner is shown — callout references it. */
+  hasTopClaimBanner?: boolean;
 };
 
 function canStartSession(props: StartWhiteboardSessionProps): boolean {
@@ -34,31 +37,6 @@ function ErasureSuspendedCallout() {
       <p className="m-0 text-foreground">
         This learner&apos;s account is deactivated pending erasure. You cannot
         start new sessions until erasure is canceled or the grace period ends.
-      </p>
-    </div>
-  );
-}
-
-function ConsentRequiredCallout({ studentId }: { studentId: string }) {
-  return (
-    <div
-      className="min-w-0 break-words rounded-2xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground"
-      data-testid="start-wb-consent-callout"
-      role="status"
-    >
-      <p className="m-0 text-foreground">
-        Before you can start a session, the student&apos;s parent must claim
-        this account and set privacy preferences.
-      </p>
-      <p className="mb-0 mt-2">
-        Open the{" "}
-        <Link
-          href={`/admin/students/${studentId}#student-section-parent`}
-          className="font-medium text-accent-text underline underline-offset-2"
-        >
-          Parent account
-        </Link>{" "}
-        section to send a claim invite or check whether a parent is connected.
       </p>
     </div>
   );
@@ -86,7 +64,14 @@ export function StartWhiteboardSession(props: StartWhiteboardSessionProps) {
     if (props.accessSuspended) {
       return <ErasureSuspendedCallout />;
     }
-    return <ConsentRequiredCallout studentId={studentId} />;
+    return (
+      <SessionStartBlockedCallout
+        studentId={studentId}
+        studentClaimed={props.studentClaimed}
+        claimInvitesEnabled={props.claimInvitesEnabled ?? false}
+        hasTopClaimBanner={props.hasTopClaimBanner ?? false}
+      />
+    );
   }
 
   const handleStart = async () => {

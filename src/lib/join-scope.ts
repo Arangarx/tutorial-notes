@@ -20,7 +20,16 @@
  * SERVER-ONLY: never import on the client.
  */
 
+import { redirect } from "next/navigation";
 import { db, withDbRetry } from "@/lib/db";
+
+/** Neutral denial page for authenticated wrong principal on /join/[sessionId]. */
+export const NOT_MY_SESSION_PATH = "/account/not-my-session" as const;
+
+/** Redirect helper — use only when an authenticated AH is the wrong principal. */
+export function redirectJoinWrongPrincipal(): never {
+  redirect(NOT_MY_SESSION_PATH);
+}
 
 /**
  * Resolve the learnerProfileId for an account-holder join attempt.

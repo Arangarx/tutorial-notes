@@ -26,6 +26,7 @@ import {
   getLearnerSessionFromHeaders,
   getAccountHolderSessionFromHeaders,
 } from "@/lib/server-session";
+import { redirectJoinWrongPrincipal } from "@/lib/join-scope";
 import {
   assertIsSessionParticipant,
   verifyIsSessionParticipant,
@@ -145,14 +146,14 @@ export default async function JoinSessionPage({
             ` reason=${!lpId ? "no_profile" : "not_self_learner"}` +
             ` accountHolderId=${ahSession.accountHolderId}`
         );
-        notFound();
+        redirectJoinWrongPrincipal();
       }
 
       if (
         lp.tombstonedAt !== null ||
         lp.accountHolderId !== ahSession.accountHolderId
       ) {
-        // Ownership failure.
+        // Ownership failure — authenticated wrong account-holder.
         console.error(
           `[lpr] lpr=${lpId} action=assert_owns_denied accountHolderId=${ahSession.accountHolderId}`
         );
@@ -160,7 +161,7 @@ export default async function JoinSessionPage({
           `[wjg] wjg=${shortId} wbsid=${sessionId} action=ah_join_denied` +
             ` reason=not_owner accountHolderId=${ahSession.accountHolderId} lpr=${lpId}`
         );
-        notFound();
+        redirectJoinWrongPrincipal();
       }
 
       // Ownership confirmed — participant gate (same check as learner path).

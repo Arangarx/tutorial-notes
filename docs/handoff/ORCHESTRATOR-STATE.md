@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#5 native schedule CRUD — executor done, independent verify in flight.** Branch `feat/schedule-native-crud` @ [`5442d401`](https://github.com/Arangarx/tutoring-notes/commit/5442d401). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#5 native schedule CRUD — verify REJECT, fix in flight.** Branch `feat/schedule-native-crud` @ [`5442d401`](https://github.com/Arangarx/tutoring-notes/commit/5442d401). Blocker: Jest `assertOwnsStudent` always succeeds — create-path ownership denial missing. Do not merge. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `529f619e`.
 
-**Last action:** [Native scheduled-session CRUD](e36cf7b0-dad8-4b28-abe6-86a01b0b5c3a) pushed `feat/schedule-native-crud` @ `5442d401`. Dispatched [Verify native schedule CRUD](a9752500-6ff7-4ce9-a93d-868e908a2a94).
+**Last action:** [Verify native schedule CRUD](a9752500-6ff7-4ce9-a93d-868e908a2a94) **REJECT** — create-path ownership Jest incomplete (`assertOwnsStudent` mocked always-succeed). Dispatched [Fix schedule ownership Jest](cbe1a2c6-9f9e-4235-8082-cba5950f0f57).
 
-**In-flight:** independent verify of schedule CRUD (do not merge).
+**In-flight:** ownership-test fix on `feat/schedule-native-crud` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt).
 

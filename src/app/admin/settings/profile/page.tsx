@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth-options";
 import { getAdminByEmail } from "@/lib/auth-db";
+import { db } from "@/lib/db";
 import { PageShell } from "@/components/PageShell";
 import { SectionCard } from "@/components/SectionCard";
 import { SubNav } from "@/components/SubNav";
@@ -24,7 +25,14 @@ export default async function ProfileSettingsPage() {
     );
   }
   const admin = await getAdminByEmail(email);
-  const has2FA = !!(admin && session?.user?.twoFactorVerified);
+  const adminRow = admin
+    ? await db.adminUser.findUnique({
+        where: { email: email.trim().toLowerCase() },
+        select: { twoFactor: { select: { method: true, enrolledAt: true } } },
+      })
+    : null;
+  const has2FA = !!adminRow?.twoFactor?.enrolledAt;
+  const twoFactorMethod = adminRow?.twoFactor?.method;
 
   return (
     <PageShell realm="admin"
@@ -59,7 +67,11 @@ export default async function ProfileSettingsPage() {
             title="Password"
             description="Change your sign-in password or request a reset link."
           >
-            <ChangePasswordForm email={email ?? ""} has2FA={has2FA} />
+            <ChangePasswordForm
+              email={email ?? ""}
+              has2FA={has2FA}
+              twoFactorMethod={twoFactorMethod}
+            />
           </SectionCard>
         ) : (
           <SectionCard realm="admin" title="Password">

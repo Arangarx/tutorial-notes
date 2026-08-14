@@ -63,6 +63,18 @@ enum AdminRole {
   TUTOR
 }
 
+/// Admin/tutor 2FA method — EMAIL_OTP (default for new enrollments) or TOTP authenticator.
+enum TwoFactorMethod {
+  EMAIL_OTP
+  TOTP
+}
+
+/// Purpose for one-time email OTP challenges during 2FA enroll or login verify.
+enum AdminUser2FAEmailChallengePurpose {
+  ENROLL
+  LOGIN
+}
+
 /// Tutor account approval status (B1 signup-waitlist).
 /// New tutor signups land WAITLISTED; operator must approve before they can incur cost.
 /// Existing rows are backfilled to APPROVED via the migration (grandfather).
@@ -722,6 +734,7 @@ model AdminUser {
   /// TOTP 2FA enrollment. Null = not enrolled; populated after enrollment.
   /// isTestAccount rows are EXEMPT and will never have a twoFactor row.
   twoFactor               AdminUser2FA?
+  twoFactorEmailChallenges AdminUser2FAEmailChallenge[]
   claimInvites            StudentClaimInvite[]   @relation("TutorClaimInvites")
   /// B2: consent records where this tutor is the recipient of the parent's consent grant.
   consentRecords          ConsentRecord[]        @relation("TutorConsentRecords")
@@ -735,19 +748,21 @@ model AdminUser {
   tutorTimezone               String?
 }
 
-/// TOTP 2FA enrollment for AdminUser accounts (Identity Phase 1).
+/// TOTP / email OTP 2FA enrollment for AdminUser accounts (Identity Phase 1 + email OTP chunk 1).
 /// ADDITIVE ONLY — no existing columns are renamed or dropped.
-/// totpSecretEnc: AES-256-GCM encrypted base32 TOTP secret; NEVER plaintext.
+/// totpSecretEnc: AES-256-GCM encrypted base32 TOTP secret; NEVER plaintext. Null for EMAIL_OTP.
 /// Rotating or losing TOTP_ENCRYPTION_KEY requires re-enrolling all tutors
 /// (see docs/PLATFORM-ASSUMPTIONS.md for the key-rotation story).
 model AdminUser2FA {
   id                   String                   @id @default(uuid())
   adminUserId          String                   @unique
   adminUser            AdminUser                @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  /// EMAIL_OTP (default for new enrollments) or TOTP (existing Sarah-style authenticator).
+  method               TwoFactorMethod          @default(TOTP)
   /// AES-256-GCM ciphertext. Format: base64url(iv) + "." + base64url(ciphertext+authTag).
-  /// The plaintext TOTP secret is NEVER stored or logged.
-  totpSecretEnc        String
-  enrolledAt           DateTime                 @default(now())
+  /// The plaintext TOTP secret is NEVER stored or logged. Null when method=EMAIL_OTP.
+  totpSecretEnc        String?
+  enrolledAt           DateTime?
   lastVerifiedAt       DateTime?
   /// Rotation: new pending secret stored here while current totpSecretEnc remains valid.
   /// Swapped atomically to totpSecretEnc on rotateTotpConfirm; cleared on success/abandon.
@@ -755,6 +770,25 @@ model AdminUser2FA {
   /// When rotation was started. Null when no rotation is in progress.
   pendingEnrolledAt    DateTime?
   backupCodes          AdminUser2FABackupCode[]
+  emailChallenges      AdminUser2FAEmailChallenge[]
+}
+
+/// Single-use hashed email OTP for 2FA enroll or login verify.
+/// codeHash: SHA-256 hex digest of the 6-digit OTP. Plaintext NEVER stored or logged.
+model AdminUser2FAEmailChallenge {
+  id          String                            @id @default(uuid())
+  adminUserId String
+  adminUser   AdminUser                         @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  twoFaId     String?
+  twoFa       AdminUser2FA?                     @relation(fields: [twoFaId], references: [id], onDelete: Cascade)
+  codeHash    String
+  purpose     AdminUser2FAEmailChallengePurpose
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime                          @default(now())
+
+  @@index([adminUserId, purpose])
+  @@index([twoFaId])
 }
 
 /// Single-use backup codes for TOTP 2FA recovery (Identity Phase 1).

@@ -1,30 +1,45 @@
 "use client";
 
 /**
- * 2FA Setup Client Component — Identity Phase 1.
- * Handles the two-step enrollment flow:
- *   Step 1: Show QR code + base32 secret (start enrollment)
- *   Step 2: Confirm with first TOTP code → show backup codes
- *
- * QR code is rendered from a server-generated data: URI — the TOTP secret
- * never leaves our infrastructure.
+ * 2FA Setup Client Component — email OTP default + TOTP opt-in.
  */
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { startTotpEnrollment, confirmTotpEnrollment, clearPostEnrollCookie } from "../actions";
+import {
+  startTotpEnrollment,
+  confirmTotpEnrollment,
+  clearPostEnrollCookie,
+  startEmailOtpEnrollment,
+  confirmEmailOtpEnrollment,
+  resendEmailOtpEnrollment,
+} from "../actions";
+
+type SetupMethod = "email" | "totp";
 
 type Step =
   | "idle"
   | "loading-start"
+  | "email-sent"
+  | "email-confirming"
   | "show-qr"
   | "confirming"
   | "show-backup"
   | "error";
 
-export function TwoFactorSetupForm() {
+export function TwoFactorSetupForm({
+  pendingEmailEnrollment,
+  pendingMaskedEmail,
+}: {
+  pendingEmailEnrollment?: boolean;
+  pendingMaskedEmail?: string;
+}) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("idle");
+  const [method, setMethod] = useState<SetupMethod>("email");
+  const [step, setStep] = useState<Step>(
+    pendingEmailEnrollment ? "email-sent" : "idle"
+  );
+  const [maskedEmail, setMaskedEmail] = useState(pendingMaskedEmail ?? "");
   const [qrDataUri, setQrDataUri] = useState<string>("");
   const [secret, setSecret] = useState<string>("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
@@ -50,7 +65,47 @@ export function TwoFactorSetupForm() {
     URL.revokeObjectURL(url);
   }, [backupCodes]);
 
-  function handleStart() {
+  function handleStartEmail() {
+    setMethod("email");
+    setStep("loading-start");
+    setError("");
+    startTransition(async () => {
+      const result = await startEmailOtpEnrollment();
+      if (!result.ok) {
+        setError(result.error);
+        setStep("error");
+        return;
+      }
+      setMaskedEmail(result.maskedEmail);
+      setStep("email-sent");
+    });
+  }
+
+  function handleResendEmail() {
+    setError("");
+    startTransition(async () => {
+      const result = await resendEmailOtpEnrollment();
+      if (!result.ok) setError(result.error);
+    });
+  }
+
+  function handleConfirmEmail() {
+    if (!tokenInput.trim()) return;
+    setError("");
+    setStep("email-confirming");
+    startTransition(async () => {
+      const result = await confirmEmailOtpEnrollment(tokenInput.trim());
+      if (!result.ok) {
+        setError(result.error);
+        setStep("email-sent");
+        return;
+      }
+      router.push("/admin/students");
+    });
+  }
+
+  function handleStartTotp() {
+    setMethod("totp");
     setStep("loading-start");
     setError("");
     startTransition(async () => {
@@ -66,7 +121,7 @@ export function TwoFactorSetupForm() {
     });
   }
 
-  function handleConfirm() {
+  function handleConfirmTotp() {
     if (!tokenInput.trim()) return;
     setError("");
     setStep("confirming");
@@ -82,19 +137,46 @@ export function TwoFactorSetupForm() {
     });
   }
 
+  function switchToTotp() {
+    setTokenInput("");
+    setError("");
+    handleStartTotp();
+  }
+
+  function switchToEmail() {
+    setTokenInput("");
+    setError("");
+    setStep("idle");
+    setMethod("email");
+  }
+
   if (step === "idle" || step === "loading-start") {
+    const loading = isPending || step === "loading-start";
+    if (method === "totp" && loading) {
+      return (
+        <p className="text-sm text-muted-foreground">Preparing authenticator setup…</p>
+      );
+    }
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Two-factor authentication adds a second layer of security to your account.
-          You will need an authenticator app (Google Authenticator, Authy, 1Password, etc.).
+          Two-factor authentication adds a second layer of security. By default we email a
+          one-time code to your account address — no app required.
         </p>
         <button
-          onClick={handleStart}
-          disabled={isPending}
+          onClick={handleStartEmail}
+          disabled={loading}
           className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
         >
-          {isPending ? "Starting…" : "Set up 2FA"}
+          {loading && method === "email" ? "Sending code…" : "Set up 2FA"}
+        </button>
+        <button
+          type="button"
+          onClick={switchToTotp}
+          disabled={loading}
+          className="block text-sm underline text-muted-foreground hover:text-foreground"
+        >
+          Use authenticator app instead
         </button>
       </div>
     );
@@ -105,7 +187,10 @@ export function TwoFactorSetupForm() {
       <div className="space-y-4">
         <p className="text-sm text-destructive">{error}</p>
         <button
-          onClick={() => setStep("idle")}
+          onClick={() => {
+            setStep("idle");
+            setMethod("email");
+          }}
           className="text-sm underline"
         >
           Try again
@@ -114,9 +199,63 @@ export function TwoFactorSetupForm() {
     );
   }
 
+  if (step === "email-sent" || step === "email-confirming") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          We sent a 6-digit code to <strong>{maskedEmail}</strong>. Enter it below to finish setup.
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleConfirmEmail();
+          }}
+          className="flex flex-wrap gap-2 items-center"
+        >
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            placeholder="000000"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="border rounded-md px-3 py-2 text-sm w-32 font-mono tracking-widest"
+            autoComplete="one-time-code"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={isPending || tokenInput.length < 6}
+            className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isPending ? "Verifying…" : "Confirm"}
+          </button>
+        </form>
+        <div className="flex flex-wrap gap-3 text-sm">
+          <button type="button" onClick={handleResendEmail} disabled={isPending} className="underline">
+            Resend code
+          </button>
+          <button type="button" onClick={switchToTotp} disabled={isPending} className="underline text-muted-foreground">
+            Use authenticator app instead
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "show-qr" || step === "confirming") {
     return (
       <div className="space-y-6">
+        <button
+          type="button"
+          onClick={switchToEmail}
+          disabled={isPending}
+          className="text-sm underline text-muted-foreground hover:text-foreground"
+        >
+          Use email code instead
+        </button>
         <div>
           <h2 className="text-base font-semibold mb-2">Step 1 — Scan this QR code</h2>
           <p className="text-sm text-muted-foreground mb-3">
@@ -147,7 +286,10 @@ export function TwoFactorSetupForm() {
           </p>
           {error && <p className="text-sm text-destructive mb-2">{error}</p>}
           <form
-            onSubmit={(e) => { e.preventDefault(); handleConfirm(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleConfirmTotp();
+            }}
             className="flex gap-2"
           >
             <input

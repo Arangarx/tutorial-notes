@@ -21,6 +21,7 @@ import { db } from "@/lib/db";
 import { decryptTotpSecret } from "@/lib/crypto/totp-secret";
 import { redeemBackupCode } from "@/lib/two-factor-db";
 import { check2faVerifyRateLimit } from "@/lib/auth-rate-limit";
+import { verifyEmailOtpChallenge } from "@/lib/email-otp-challenge";
 
 const APP_ISSUER = "Mynk";
 const TOTP_DIGITS = 6;
@@ -52,13 +53,32 @@ export async function verifyTotpStepUp(
 
   const row = await db.adminUser2FA.findUnique({
     where: { adminUserId },
-    select: { id: true, totpSecretEnc: true },
+    select: { id: true, method: true, totpSecretEnc: true },
   });
   if (!row) {
     return { ok: false, error: "2FA not enrolled. Cannot perform step-up verification." };
   }
 
   const input = codeInput.replace(/\s/g, "").toUpperCase();
+
+  if (row.method === "EMAIL_OTP") {
+    const verified = await verifyEmailOtpChallenge({
+      adminUserId,
+      code: input,
+      purpose: "LOGIN",
+    });
+    if (!verified.ok) {
+      console.log(
+        `[tfa] tfa=${row.id} adminUserId=${adminUserId} action=step-up-fail type=email-otp`
+      );
+      return verified;
+    }
+    console.log(
+      `[tfa] tfa=${row.id} adminUserId=${adminUserId} action=step-up-success type=email-otp`
+    );
+    return { ok: true };
+  }
+
   const isBackupCode = input.length === 8 && /^[A-Z0-9]+$/.test(input);
   const isTotpCode = /^\d{6}$/.test(input);
 
@@ -77,6 +97,9 @@ export async function verifyTotpStepUp(
   }
 
   if (isTotpCode) {
+    if (!row.totpSecretEnc) {
+      return { ok: false, error: "Authenticator app is not configured for this account." };
+    }
     let secret: string;
     try {
       secret = decryptTotpSecret(row.totpSecretEnc);

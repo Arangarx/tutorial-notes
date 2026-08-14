@@ -34,7 +34,7 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
     });
     const mockDbFindUnique = jest.fn().mockImplementation(async () => {
       callOrder.push("dbQuery");
-      return { id: "tfa-row", totpSecretEnc: "enc" };
+      return { id: "tfa-row", method: "TOTP", totpSecretEnc: "enc" };
     });
 
     jest.mock("@/lib/auth-rate-limit", () => ({
@@ -62,6 +62,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       redeemBackupCode: jest.fn().mockResolvedValue(null),
     }));
 
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
     await verifyTotpStepUp("admin-td10a", "123456");
 
@@ -87,6 +91,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       },
     }));
 
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
     const result = await verifyTotpStepUp("admin-td15a", "123456");
 
@@ -108,6 +116,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       db: { adminUser2FA: { findUnique: jest.fn() } },
     }));
 
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
     const result = await verifyTotpStepUp("admin-td15b", "654321");
 
@@ -116,5 +128,139 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       // 60000ms → "60 seconds"
       expect(result.error).toContain("60");
     }
+  });
+});
+
+describe("verifyTotpStepUp — EMAIL_OTP method", () => {
+  it("delegates to verifyEmailOtpChallenge with purpose LOGIN and returns its result", async () => {
+    const mockVerifyEmail = jest.fn().mockResolvedValue({ ok: true });
+
+    jest.mock("@/lib/auth-rate-limit", () => ({
+      check2faVerifyRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        requestCount: 1,
+        retryAfterMs: 0,
+      }),
+    }));
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "tfa-email-otp",
+            method: "EMAIL_OTP",
+            totpSecretEnc: null,
+          }),
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: mockVerifyEmail,
+    }));
+
+    const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
+    const result = await verifyTotpStepUp("admin-email-otp", "123456");
+
+    expect(result.ok).toBe(true);
+    expect(mockVerifyEmail).toHaveBeenCalledTimes(1);
+    expect(mockVerifyEmail).toHaveBeenCalledWith({
+      adminUserId: "admin-email-otp",
+      code: "123456",
+      purpose: "LOGIN",
+    });
+  });
+
+  it("propagates verifyEmailOtpChallenge failure — no trusted-device shortcut", async () => {
+    const mockVerifyEmail = jest.fn().mockResolvedValue({
+      ok: false,
+      error: "Invalid or expired code.",
+    });
+
+    jest.mock("@/lib/auth-rate-limit", () => ({
+      check2faVerifyRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        requestCount: 1,
+        retryAfterMs: 0,
+      }),
+    }));
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "tfa-email-fail",
+            method: "EMAIL_OTP",
+            totpSecretEnc: null,
+          }),
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: mockVerifyEmail,
+    }));
+
+    jest.mock("@/lib/two-factor-db", () => ({
+      redeemBackupCode: jest.fn(),
+    }));
+
+    jest.mock("@/lib/crypto/totp-secret", () => ({
+      decryptTotpSecret: jest.fn(),
+    }));
+
+    jest.mock("otpauth", () => ({
+      TOTP: jest.fn(),
+      Secret: { fromBase32: jest.fn() },
+    }));
+
+    const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
+    const result = await verifyTotpStepUp("admin-email-fail", "000000");
+
+    expect(result).toEqual({ ok: false, error: "Invalid or expired code." });
+    expect(mockVerifyEmail).toHaveBeenCalledWith({
+      adminUserId: "admin-email-fail",
+      code: "000000",
+      purpose: "LOGIN",
+    });
+  });
+
+  it("does not skip step-up via session or trusted-device flags — always requires live code", async () => {
+    const mockVerifyEmail = jest.fn().mockResolvedValue({ ok: true });
+
+    jest.mock("@/lib/auth-rate-limit", () => ({
+      check2faVerifyRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        requestCount: 1,
+        retryAfterMs: 0,
+      }),
+    }));
+
+    jest.mock("@/lib/db", () => ({
+      db: {
+        adminUser2FA: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "tfa-email-live",
+            method: "EMAIL_OTP",
+            totpSecretEnc: null,
+          }),
+        },
+      },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: mockVerifyEmail,
+    }));
+
+    const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
+
+    // verifyTotpStepUp has no rememberDevice / twoFactorVerified parameters —
+    // step-up always demands a fresh code via verifyEmailOtpChallenge.
+    await verifyTotpStepUp("admin-email-live", "999888");
+
+    expect(mockVerifyEmail).toHaveBeenCalledTimes(1);
+    expect(mockVerifyEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: "LOGIN", code: "999888" })
+    );
   });
 });

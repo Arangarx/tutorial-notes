@@ -16,6 +16,9 @@ export default async function TwoFactorSetupPage() {
   // (middleware skips them), but guard here too.
   if (session.user.isTestAccount) redirect("/admin");
 
+  let pendingEmailEnrollment = false;
+  let pendingMaskedEmail: string | undefined;
+
   if (session.user.id) {
     const admin = await db.adminUser.findUnique({
       where: { id: session.user.id },
@@ -25,12 +28,14 @@ export default async function TwoFactorSetupPage() {
         },
       },
     });
-    // An enrollment is CONFIRMED when backup codes exist (created by confirmTotpEnrollment).
-    // If no backup codes → interrupted enrollment (row exists but never confirmed).
-    // Treat interrupted enrollment as "not enrolled" — allow fresh QR generation.
-    // This closes p1-reenroll-trap: previously any row caused a redirect to /verify,
-    // trapping users who started but never completed enrollment.
-    const isConfirmed = (admin?.twoFactor?._count?.backupCodes ?? 0) > 0;
+    // An enrollment is CONFIRMED when:
+    //   EMAIL_OTP — enrolledAt is set after code confirmation
+    //   TOTP — backup codes exist (created by confirmTotpEnrollment)
+    const twoFa = admin?.twoFactor;
+    const isConfirmed =
+      twoFa?.method === "EMAIL_OTP"
+        ? !!twoFa.enrolledAt
+        : (twoFa?._count?.backupCodes ?? 0) > 0;
 
     if (isConfirmed && !session.user.twoFactorVerified && session.user.id) {
       // Trusted-device skip: route to the Route Handler if the cookie is present.
@@ -60,15 +65,26 @@ export default async function TwoFactorSetupPage() {
       redirect("/admin/settings/2fa");
     }
     // Falls through: not enrolled, interrupted (unconfirmed), OR mid-enrollment backup display.
+    // p1-reenroll-trap: unconfirmed TOTP (no backup codes) or EMAIL_OTP (no enrolledAt) stay on setup.
+    pendingEmailEnrollment =
+      twoFa?.method === "EMAIL_OTP" && !twoFa?.enrolledAt ? true : false;
+    if (pendingEmailEnrollment && admin?.email) {
+      const email = admin.email.trim().toLowerCase();
+      const at = email.indexOf("@");
+      pendingMaskedEmail = at > 1 ? `${email[0]}***${email.slice(at - 1)}` : `${email[0]}***`;
+    }
   }
 
   return (
     <div className="card" style={{ maxWidth: 540 }}>
       <h1 style={{ marginTop: 0 }}>Set up Two-Factor Authentication</h1>
       <p className="muted" style={{ marginBottom: 20 }}>
-        Protect your account with a one-time code from an authenticator app.
+        Protect your account with a one-time code — emailed by default, or use an authenticator app.
       </p>
-      <TwoFactorSetupForm />
+      <TwoFactorSetupForm
+        pendingEmailEnrollment={pendingEmailEnrollment}
+        pendingMaskedEmail={pendingMaskedEmail}
+      />
     </div>
   );
 }

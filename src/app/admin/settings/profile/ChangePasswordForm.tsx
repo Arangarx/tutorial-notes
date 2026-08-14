@@ -10,15 +10,17 @@ import { Label } from "@/components/ui/label";
 import { storePasswordCredential } from "@/lib/credential-manager";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-strength";
 import { changePassword, sendPasswordResetEmail } from "./actions";
+import { sendLoginEmailOtp } from "../2fa/actions";
 
 interface Props {
   /** The signed-in admin's email — used as a hidden username anchor for password managers. */
   email: string;
-  /** When true, a TOTP step-up field is shown above the submit button. */
+  /** When true, a 2FA step-up field is shown above the submit button. */
   has2FA?: boolean;
+  twoFactorMethod?: "EMAIL_OTP" | "TOTP";
 }
 
-export default function ChangePasswordForm({ email, has2FA }: Props) {
+export default function ChangePasswordForm({ email, has2FA, twoFactorMethod }: Props) {
   const [state, formAction] = useActionState(changePassword, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -29,6 +31,8 @@ export default function ChangePasswordForm({ email, has2FA }: Props) {
   const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [resetErr, setResetErr] = useState<string | null>(null);
   const [resetPending, startReset] = useTransition();
+  const [otpMsg, setOtpMsg] = useState<string | null>(null);
+  const [otpPending, startOtpSend] = useTransition();
 
   useEffect(() => {
     if (state?.ok) {
@@ -101,19 +105,49 @@ export default function ChangePasswordForm({ email, has2FA }: Props) {
 
         {has2FA && (
           <div className="space-y-1.5">
+            {twoFactorMethod === "EMAIL_OTP" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Request a verification code, then enter it below to confirm the password change.
+                </p>
+                {otpMsg ? (
+                  <p className="text-xs text-success" role="status">
+                    {otpMsg}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={otpPending}
+                  onClick={() => {
+                    setOtpMsg(null);
+                    startOtpSend(async () => {
+                      const r = await sendLoginEmailOtp();
+                      if (r.ok) setOtpMsg(`Code sent to ${r.maskedEmail}.`);
+                      else setOtpMsg(r.error ?? "Could not send code.");
+                    });
+                  }}
+                >
+                  {otpPending ? "Sending…" : "Send verification code"}
+                </Button>
+              </div>
+            ) : null}
             <Label htmlFor="totp-code">2FA code</Label>
             <Input
               id="totp-code"
               name="totpCode"
               type="text"
               inputMode="numeric"
-              maxLength={8}
+              maxLength={twoFactorMethod === "EMAIL_OTP" ? 6 : 8}
               placeholder="000000"
               autoComplete="one-time-code"
               className="w-36 font-mono tracking-widest"
             />
             <p className="text-xs text-muted-foreground">
-              Enter your authenticator code or backup code to confirm the password change.
+              {twoFactorMethod === "EMAIL_OTP"
+                ? "Enter the 6-digit code from your email."
+                : "Enter your authenticator code or backup code to confirm the password change."}
             </p>
           </div>
         )}

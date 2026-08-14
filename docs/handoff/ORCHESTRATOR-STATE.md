@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#7 ProductEvent chunk 1 — executor done, independent verify in flight.** Branch `feat/product-events-chunk-1-tutor-funnel` @ [`6f845d48`](https://github.com/Arangarx/tutoring-notes/commit/6f845d48). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#7 ProductEvent — verify REJECT, call-site tests in flight.** Branch `feat/product-events-chunk-1-tutor-funnel` @ [`6f845d48`](https://github.com/Arangarx/tutoring-notes/commit/6f845d48). Missing oracles: TUTOR_LOGIN, SESSION_STARTED, SESSION_ENDED, credentials SIGNUP. Do not merge. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb) (SMOKE-PRIV-1 merge).
 
-**Last action:** [Ship ProductEvent tutor funnel](0cb50db0-5fa7-4d90-b8a0-18fc1068ed67) pushed `6f845d48`. Dispatched [Verify ProductEvent tutor funnel](0d9dcdba-fd54-4101-9da4-114ae4bc0183).
+**Last action:** [Verify ProductEvent tutor funnel](0d9dcdba-fd54-4101-9da4-114ae4bc0183) **REJECT** — 3 of 7 kinds lack call-site tests. Dispatched [Fix ProductEvent call-site tests](c2e2a033-1c45-4947-a74f-8e0b038affb2).
 
-**In-flight:** independent verify of `feat/product-events-chunk-1-tutor-funnel` (do not merge). `tutoring-notes-master-ops` stays on master.
+**In-flight:** call-site test fix (do not merge). `tutoring-notes-master-ops` stays on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; VERIFY-ACCT-1; api-test hard-404; SMOKE-PRIV-1.
 

@@ -56,6 +56,10 @@ export async function approveTutorAction(
     return { ok: false, error: "Tutor is already approved." };
   }
 
+  if (target.approvalStatus === "REJECTED") {
+    return { ok: false, error: "Rejected tutors cannot be approved." };
+  }
+
   await approveTutor(adminUserId, operator.operatorId);
 
   revalidatePath("/admin/tutor-approvals");

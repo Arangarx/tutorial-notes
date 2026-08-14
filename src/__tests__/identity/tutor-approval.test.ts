@@ -18,6 +18,7 @@
  *   TAP-14: assertTutorApproved throws for REJECTED
  *   TAP-15: isTutorApproved returns false for REJECTED
  *   TAP-16: revokeTutorApproval updates APPROVED → WAITLISTED
+ *   TAP-17: approveTutorAction refuses REJECTED (terminal)
  *   TAP-7: non-operator cannot call approve/reject/revoke actions
  *
  * Mocks: @/lib/db via jest.mock — no real DB connection needed.
@@ -510,6 +511,33 @@ describe("TAP-16 — revokeTutorApproval updates APPROVED → WAITLISTED", () =>
         approvedByAdminId: null,
       },
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-17: approveTutorAction refuses REJECTED (terminal)
+// ---------------------------------------------------------------------------
+describe("TAP-17 — approveTutorAction refuses REJECTED", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsOperatorEmail.mockReturnValue(true);
+    mockOperatorSession();
+  });
+
+  it("returns error and does not call approveTutor when status is REJECTED", async () => {
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: REJECTED_ADMIN_ID,
+      approvalStatus: "REJECTED",
+      email: "rejected@example.com",
+    });
+
+    const result = await approveTutorAction(REJECTED_ADMIN_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Rejected tutors cannot be approved.",
+    });
+    expect(mockAdminUserUpdate).not.toHaveBeenCalled();
   });
 });
 

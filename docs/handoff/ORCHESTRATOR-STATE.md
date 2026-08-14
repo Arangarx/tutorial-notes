@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#3 leftovers deferred** (pagination premature; invite links need Andrew). **#6 Join denial UX IN FLIGHT** (`feat/join-denial-not-my-session`). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 Join denial UX — executor done, independent verify in flight.** Branch `feat/join-denial-not-my-session` @ [`e1b797d6`](https://github.com/Arangarx/tutoring-notes/commit/e1b797d6). Do not merge until APPROVE. Fail-closed G6 must stay 404. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111) (waitlist reject/revoke merge).
 
-**Last action:** [Explore next leftover after B1](ce61b4f5-5610-40c0-a141-ddf8a2cbe35a) — #3 leftovers deferred; recommended Join denial UX. Dispatched [Join denial not-my-session](dda95d4e-3d42-4906-b66a-c83b5b720bc6).
+**Last action:** [Join denial not-my-session](dda95d4e-3d42-4906-b66a-c83b5b720bc6) pushed `e1b797d6`. Dispatched [Verify join denial UX](5bf11ff4-d73a-4d46-a55d-fa1646209b44).
 
-**In-flight:** `feat/join-denial-not-my-session` executor (do not merge). Preserve fail-closed join 404 / G6.
+**In-flight:** independent verify of `feat/join-denial-not-my-session` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 

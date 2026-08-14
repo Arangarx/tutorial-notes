@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { normalizeEmail } from "@/lib/normalize-email";
 
 const SALT_ROUNDS = 10;
 
@@ -9,7 +10,7 @@ export async function hasAdminUsers(): Promise<boolean> {
 }
 
 export async function getAdminByEmail(email: string) {
-  return db.adminUser.findUnique({ where: { email: email.trim().toLowerCase() } });
+  return db.adminUser.findUnique({ where: { email: normalizeEmail(email) } });
 }
 
 /** Fetch minimal role + approval fields by id — used by the JWT refresh path in auth-options. */
@@ -28,7 +29,7 @@ export async function verifyPassword(plain: string, hash: string | null): Promis
 export async function createTestAccount(email: string, displayName?: string | null) {
   return db.adminUser.create({
     data: {
-      email: email.trim().toLowerCase(),
+      email: normalizeEmail(email),
       passwordHash: null,
       isTestAccount: true,
       displayName: displayName?.trim() || null,
@@ -47,7 +48,7 @@ export async function createAdmin(
   // covers it, but being explicit here makes intent clear and testable.
   return db.adminUser.create({
     data: {
-      email: email.trim().toLowerCase(),
+      email: normalizeEmail(email),
       passwordHash: hash,
       displayName: dn,
       role: "TUTOR",
@@ -65,7 +66,7 @@ export async function createAdminFromGoogle(
   const dn = displayName?.trim() || null;
   return db.adminUser.create({
     data: {
-      email: email.trim().toLowerCase(),
+      email: normalizeEmail(email),
       passwordHash: null,
       displayName: dn,
       role: "TUTOR",
@@ -77,7 +78,7 @@ export async function createAdminFromGoogle(
 
 export async function updateAdminDisplayName(email: string, displayName: string | null) {
   await db.adminUser.update({
-    where: { email: email.trim().toLowerCase() },
+    where: { email: normalizeEmail(email) },
     data: { displayName: displayName?.trim() || null },
   });
 }
@@ -85,7 +86,7 @@ export async function updateAdminDisplayName(email: string, displayName: string 
 export async function updateAdminPassword(email: string, plainPassword: string) {
   const hash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
   await db.adminUser.update({
-    where: { email: email.trim().toLowerCase() },
+    where: { email: normalizeEmail(email) },
     data: { passwordHash: hash },
   });
 }

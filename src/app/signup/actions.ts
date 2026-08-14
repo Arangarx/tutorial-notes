@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createAdmin, getAdminByEmail } from "@/lib/auth-db";
+import { createAdmin } from "@/lib/auth-db";
+import { findEmailRealmPresence } from "@/lib/cross-realm-email";
 import { notifyOperatorsOfNewSignup } from "@/lib/notify-operator-new-signup";
 import { validatePasswordStrength, MIN_PASSWORD_LENGTH } from "@/lib/password-strength";
 
@@ -49,8 +50,8 @@ export async function signup(
     return { error: strengthCheck.feedback || "Password is too weak. Try a longer phrase." };
   }
 
-  const existing = await getAdminByEmail(email);
-  if (existing) {
+  const presence = await findEmailRealmPresence(email);
+  if (presence.inAdmin || presence.inAccountHolder) {
     // Anti-enumeration: a malicious actor can otherwise probe which emails
     // have accounts. Redirect to the same /login?registered=1 destination
     // a successful signup would hit, so the externally-observable outcome

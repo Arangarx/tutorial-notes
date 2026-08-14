@@ -10,6 +10,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { findEmailRealmPresence } from "@/lib/cross-realm-email";
+import { normalizeEmail } from "@/lib/normalize-email";
 import { hashAccountHolderPassword } from "@/lib/account-holder-auth";
 import { hashToken, EMAIL_TOKEN_TTL_MS_24H } from "@/lib/crypto/session-tokens";
 import { generateRawToken } from "@/lib/crypto/session-tokens";
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     returnTo?: string;
   };
 
-  const normalizedEmail = (email ?? "").trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email ?? "");
 
   if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400 });
@@ -50,9 +52,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "password_too_weak" }, { status: 400 });
   }
 
-  const existing = await db.accountHolder.findUnique({ where: { email: normalizedEmail } });
+  const presence = await findEmailRealmPresence(normalizedEmail);
 
-  if (existing) {
+  if (presence.inAccountHolder || presence.inAdmin) {
     // Anti-enumeration: don't reveal the account exists to anonymous callers.
     // Send a "you already have an account" email to the real owner.
     const base = getPublicBaseUrl();

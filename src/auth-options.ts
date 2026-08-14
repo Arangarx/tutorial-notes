@@ -12,6 +12,7 @@ import {
   verifyPassword,
 } from "@/lib/auth-db";
 import { notifyOperatorsOfNewSignup } from "@/lib/notify-operator-new-signup";
+import { findEmailRealmPresence } from "@/lib/cross-realm-email";
 import {
   isPlaywrightHarnessActive,
   isPlaywrightHarnessAdminEmail,
@@ -117,6 +118,9 @@ export const authOptions: NextAuthOptions = {
         const email = user.email.trim().toLowerCase();
         let admin = await getAdminByEmail(email);
         if (!admin) {
+          const presence = await findEmailRealmPresence(email);
+          if (presence.inAccountHolder) return "/login?error=not_authorized";
+
           const cookieStore = await cookies();
           const intentValue = cookieStore.get(SIGNUP_INTENT_COOKIE)?.value;
           const hasSignupIntent = await isValidSignupIntentToken(

@@ -53,7 +53,8 @@ Notes:
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
-| #7 | First-party instrumentation | @ [`5facc00f`](https://github.com/Arangarx/tutoring-notes/commit/5facc00f) — **re-verify in flight** |
+| #7 | First-party instrumentation | **DONE** chunk 1 — merged [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (`ProductEvent` tutor funnel). Chunk 2 later (no PostHog). |
+| #3 leftover | Waitlist REJECTED + revoke | **In flight** — `feat/tutor-waitlist-rejected-revoke` |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -69,4 +70,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Through #5 + Composer-sized #6 shipped. Agents on **#7** ProductEvent tutor funnel. Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Through #7 ProductEvent chunk 1 shipped. Agents on **#3 leftover** (waitlist reject/revoke). Your open work = calendar callback URI + **one** Google verification when live.

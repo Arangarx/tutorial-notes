@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#7 ProductEvent — call-site tests pushed, re-verify in flight.** Branch `feat/product-events-chunk-1-tutor-funnel` @ [`5facc00f`](https://github.com/Arangarx/tutoring-notes/commit/5facc00f). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#7 ProductEvent chunk 1 MERGED** [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4). **#3 leftover IN FLIGHT** — waitlist REJECTED + revoke (`feat/tutor-waitlist-rejected-revoke`). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb) (SMOKE-PRIV-1 merge).
+**Tip:** `master` @ [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (ProductEvent chunk 1 merge).
 
-**Last action:** [Fix ProductEvent call-site tests](c2e2a033-1c45-4947-a74f-8e0b038affb2) pushed `5facc00f`. Dispatched [Re-verify ProductEvent tests](dd775be7-4af3-4a80-8b1e-c840639549d3).
+**Last action:** [Re-verify ProductEvent tests](dd775be7-4af3-4a80-8b1e-c840639549d3) **APPROVE** → merge [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4). Dispatched [Ship waitlist REJECTED + revoke](d0086977-3d36-48d2-80b1-d7bf8a4fa8cf).
 
-**In-flight:** independent re-verify of `feat/product-events-chunk-1-tutor-funnel` @ `5facc00f` (do not merge).
+**In-flight:** `feat/tutor-waitlist-rejected-revoke` executor (do not merge). `tutoring-notes-master-ops` stays on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
-**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; VERIFY-ACCT-1; api-test hard-404; SMOKE-PRIV-1.
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

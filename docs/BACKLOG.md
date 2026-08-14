@@ -8,11 +8,11 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 
 1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
 2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
-3. **Tutor signup / self-serve auth** — **first chunk DONE** 2026-08-14 (`2f54459f`): Google on `/signup` → WAITLISTED + operator notify; `/login` Google still no-provision without signup-intent. Leftover: pagination, REJECTED UI, invite links.
+3. **Tutor signup / self-serve auth** — **first chunk DONE** 2026-08-14 (`2f54459f`). Leftover: pagination, REJECTED UI (**in flight** `feat/tutor-waitlist-rejected-revoke`), invite links.
 4. **2FA pilots will finish** — email OTP **DONE** (`ab70f002` enroll + `529f619e` TOTP login email-alt). SMS later; TOTP stays as upgrade.
 5. **Finish scheduling** — **native CRUD DONE** 2026-08-14 ([`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216)). Google outbound event write later (after Console verification). Two-way sync still P3.
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.
-7. **Comprehensive instrumentation** — first-party analytics on COPPA-risk surfaces; third-party (e.g. PostHog) only on non-COPPA (marketing/logged-out). **Terms/Privacy stay 100% honest.** Archived reference: `docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md`.
+7. **Comprehensive instrumentation** — **chunk 1 DONE** 2026-08-14 ([`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4)): first-party `ProductEvent` tutor funnel (signup/login/approval/session). No PostHog. No COPPA-path events yet. **Terms/Privacy stay 100% honest.**
 
 **Background (not blocking the ordered list):** Wave C/D dedupe (fragile WB/A/V — Opus-grade); agenticPipeline Phase 2; NativeSelect; design-system gallery. Dedupe Wave A/B + tokens already done — new work still = zero new duplication ([`docs/DEDUPE-PLAN.md`](DEDUPE-PLAN.md)).
 

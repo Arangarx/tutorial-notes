@@ -47,8 +47,9 @@ Notes:
 |----------|------|--------|
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
 | #1 next | Calendar OAuth MVP (after Console path clearer) | Queued — needs your Console rows above before submit |
-| #2 | Student-detail Start / consent / claim findability | Branch [`feat/student-detail-start-claim-findability`](https://github.com/Arangarx/tutoring-notes/tree/feat/student-detail-start-claim-findability) @ [`fe5a77eb`](https://github.com/Arangarx/tutoring-notes/commit/fe5a77eb) — **independent verify in flight** |
-| #3–7 | Tutor signup, email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
+| #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
+| #3 | Tutor signup / self-serve auth | **In flight** — Google signup → WAITLISTED + operator notify (`feat/google-signup-waitlisted`). `/login` Google stays existing-users-only. |
+| #4–7 | Email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -64,4 +65,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. **Google Sign-In UI shipped.** Agents on **Priority #2 student-detail Start/claim**. Your open work = **Console checklist above** (needed for live Google smoke + later calendar verify).
+> Release track option B. Sign-In UI + student-detail Start/claim **shipped**. Agents on **#3 Google signup → WAITLISTED**. Your open work = **Console checklist above**.

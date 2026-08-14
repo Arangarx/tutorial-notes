@@ -7,7 +7,7 @@ Living document for open work, pilot feedback, reliability gaps, and deferred pr
 We are on the **release track**: expand beyond Sarah to unsupervised new pilots. **Re-ranked after Sarah 2026-07-29 meeting** (Andrew chose **B**: Google external before student-detail UX). Ordered priorities:
 
 1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
-2. **Student-detail Start / consent / claim findability (P0)** — Sarah could not find Start; claim link buried in Parent section; `ConsentRequiredCallout` replaces Start with low salience. Epic: top-level claim affordance + clearer gated-Start CTA + “what the other party does next.” (Backlog: Unclaimed student claim link buried; BL-A.)
+2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
 3. **Tutor signup / self-serve auth** — waitlist → real signup; Google sign-in on login surfaces (depends on #1 Sign-In wiring).
 4. **2FA pilots will finish** — email OTP first; SMS later; keep TOTP as upgrade (Sarah authenticator-on-Apple friction).
 5. **Finish scheduling** (depends on #1 calendar scopes + sync).

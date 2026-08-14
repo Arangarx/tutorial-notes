@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 VERIFY-ACCT-1 MERGED** [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7). **#6 chunk 3 IN FLIGHT** — `/api/test/*` hard-404 (`feat/api-test-route-hard-404`). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 `/api/test/*` hard-404 — executor done, independent verify in flight.** Branch `feat/api-test-route-hard-404` @ [`de6a85ff`](https://github.com/Arangarx/tutoring-notes/commit/de6a85ff). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7) (VERIFY-ACCT-1 merge).
 
-**Last action:** [Re-verify VERIFY-ACCT-1](3e5bec8a-955c-4237-b0f7-521716ea0d96) **APPROVE** → merge [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7). Dispatched [Harden /api/test route gates](690bef1b-9bea-4f3a-8100-ba6e254c0ba1).
+**Last action:** [Harden /api/test route gates](690bef1b-9bea-4f3a-8100-ba6e254c0ba1) pushed `de6a85ff`. Dispatched [Verify api-test hard-404](279c594f-4089-4323-8440-861a698cbef9).
 
-**In-flight:** `feat/api-test-route-hard-404` executor (do not merge).
+**In-flight:** independent verify of `feat/api-test-route-hard-404` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; #6 VERIFY-ACCT-1.
 

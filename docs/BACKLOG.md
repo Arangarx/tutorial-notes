@@ -43,15 +43,15 @@ Audit 2026-07-10; **elevated to #1** (Andrew option B, 2026-07-30). Long externa
 **Andrew (Google Cloud Console — no code):**
 - **Confirm consent-screen status** at [console](https://console.cloud.google.com/apis/credentials/consent): Published/In-production? `gmail.send` verified? (docs claim verified 2026-05-30 — confirm still true; INDEX was stale.)
 - **`usemynk.com`** — verify in Google Search Console + re-submit branding if pending ([`LEGAL-SYNC.md`](LEGAL-SYNC.md) re-verification to-do).
-- **Redirect URIs** for `usemynk.com` (+ legacy Vercel): `/api/auth/callback/google` (sign-in), `/api/auth/gmail/callback` (existing).
-- **Calendar scope model — DECIDED (Andrew 2026-07-10): TWO-WAY sync.** Request `calendar.events` + `calendar.readonly` (+ change-watch/webhook infra) in the bundled verification round. Bigger build + review, but full two-way is the target.
-- **Submit ONE bundled verification round** for calendar scopes (+ any net-new) — screencast + justification; enable Google Calendar API in the project.
+- **Redirect URIs** for `usemynk.com` (+ legacy Vercel): `/api/auth/callback/google` (sign-in), `/api/auth/gmail/callback` (existing), **`/api/auth/calendar/callback`** (Calendar connect — add now).
+- **Calendar scope model — DECIDED (Andrew 2026-07-10): TWO-WAY sync.** Request `calendar.events` + `calendar.readonly` in the bundled verification. Watch/webhooks later.
+- **ONE bundled verification (Andrew 2026-08-14):** hook up Calendar OAuth **now** (connect + token store + honest stub) even if sync is not implemented, so Andrew does **not** re-verify later when sync lands. Do **not** put calendar scopes on NextAuth Sign-In/Sign-Up (`openid email profile` only). Submit review only after the Connect demo is crawlable.
 
 **Sequencing (Andrew 2026-07-10):** Calendar verification = **hybrid** — Console prep **NOW** + MVP demo build, **then** submit bundled verification. **Apple Calendar** = CalDAV / no Google-style app review — **defer**. **Sign in with Apple** = optional (Apple Developer enrollment only if pursued). **Skip Facebook.** **Microsoft** = optional.
 
-**Our code (parallel prep):** `/login` "Sign in with Google" — **DONE** 2026-08-14 (`122bf761`, verified). Calendar OAuth routes + DB models + sync (replaces mock) after Console path is clear; scheduling backend (Priority #5) depends on calendar; umbrella privacy additive copy for calendar data before reviewers see new scopes.
+**Our code (parallel prep):** `/login` Sign in with Google — **DONE** 2026-08-14 (`122bf761`). Calendar **connect+stub IN FLIGHT** (Gmail-clone routes; no two-way sync yet) so scopes exist for the one verification. Scheduling backend (Priority #5) is real sync later. Umbrella + local privacy/terms calendar copy **in the same PR** as Connect (honest: connection saved, sync not live).
 
-**State:** Gmail send = shipped + likely verified. Google Sign-In = **UI shipped** (server-gated; existing `AdminUser` only). Calendar = mock only, **long pole**. Andrew Console checklist: [`docs/handoff/ANDREW-FOLLOW-UPS.md`](handoff/ANDREW-FOLLOW-UPS.md). Instrumentation (Priority #7) is gated on umbrella analytics legal draft ([`docs/legal-drafts/umbrella-pending-2026-05-18.md`](legal-drafts/umbrella-pending-2026-05-18.md)) — or go first-party to avoid the DPA gate.
+**State:** Gmail send = shipped. Google Sign-In UI = shipped. Calendar = connect+stub (not mock-only anymore once that branch merges). Andrew Console: [`docs/handoff/ANDREW-FOLLOW-UPS.md`](handoff/ANDREW-FOLLOW-UPS.md).
 
 **Optional follow-ups (non-blocking, from Sign-In verify):** update `login.png` visual baseline; Playwright DOM-order assert (Mortensen notice above button); negative test when Google env unset; pre-existing login `page-has-heading-one` a11y.
 

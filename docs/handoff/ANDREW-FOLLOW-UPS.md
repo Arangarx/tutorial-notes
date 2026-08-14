@@ -18,7 +18,8 @@ These are **Andrew-only** (no agent can finish them). They do **not** block the 
 | 2 | Confirm redirect URIs include `{host}/api/auth/callback/google` for **prod** (`usemynk.com`) and **localhost** (and any preview hosts you care about) | Sign-In button will 302 to Google; bad URI → `oauth_error` on `/login` | No for UI merge; **yes for live Sign-In smoke** |
 | 3 | Confirm `{host}/api/auth/gmail/callback` still listed (existing Gmail connect) | Don’t break Sarah’s Gmail | No |
 | 4 | [Search Console](https://search.google.com/search-console) — `usemynk.com` verified? Branding re-submit if pending ([`LEGAL-SYNC.md`](../LEGAL-SYNC.md)) | Needed before bundled calendar verification | No |
-| 5 | Later: enable Google Calendar API + prepare ONE bundled verification round (`calendar.events` + `calendar.readonly`) — **hybrid**: Console prep now, submit after MVP demo exists | Long pole for scheduling | Yes for calendar feature submit |
+| 5 | **Add** `{host}/api/auth/calendar/callback` (prod + localhost) — **do not submit verification yet** | Agents are wiring Calendar connect (scopes only; sync stubbed) so this URI will be live | No for code; **yes for live Calendar connect smoke** |
+| 6 | Enable **Google Calendar API** on the Mortensen Apps client. Add scopes `calendar.events` + `calendar.readonly` to the consent screen. **Submit ONE bundled verification** only after the Connect-Calendar demo is on a crawlable URL (honest stub is enough — no two-way sync required for the screencast) | Andrew 2026-08-14: **one re-verify only** when scopes change | Yes for Google review submit |
 
 **Paste status here when done** (agents will fold into BACKLOG/STATE):
 
@@ -46,8 +47,9 @@ Notes:
 | Priority | Work | Status |
 |----------|------|--------|
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
-| #1 next | Calendar OAuth MVP (after Console path clearer) | Queued — needs your Console rows above before submit |
+| #1 next | Calendar OAuth **connect + stub** (scopes in the one verification bundle; sync not live) | **Starting** — `feat/calendar-oauth-connect-stub`. Do **not** add calendar scopes to Sign-In/Sign-Up |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
+<<<<<<< Updated upstream
 | #3 | Tutor signup / self-serve auth | Branch [`feat/google-signup-waitlisted`](https://github.com/Arangarx/tutoring-notes/tree/feat/google-signup-waitlisted) @ [`bc89bb0c`](https://github.com/Arangarx/tutoring-notes/commit/bc89bb0c) — **independent verify in flight** (auth-boundary) |
 | #4–7 | Email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
 
@@ -65,4 +67,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In UI + student-detail Start/claim **shipped**. Agents on **#3 Google signup → WAITLISTED**. Your open work = **Console checklist above**.
+> Release track option B. Sign-In + Start/claim shipped. **#3 Google signup** verifying. **Calendar OAuth connect+stub** starting so you only submit **one** Google scope verification. Add `/api/auth/calendar/callback` when you have 5 minutes — don’t submit review until the demo is up.

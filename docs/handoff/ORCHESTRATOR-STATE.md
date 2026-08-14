@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Priority #3 Google signup WAITLISTED — executor done, independent verify in flight.** Branch `feat/google-signup-waitlisted` @ [`bc89bb0c`](https://github.com/Arangarx/tutoring-notes/commit/bc89bb0c). Auth-boundary — do not merge until verifier APPROVE. Remaining #1 calendar MVP queued. Andrew checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** (1) **#3 Google signup** — verify in flight (`feat/google-signup-waitlisted` @ `bc89bb0c`); merge only on APPROVE. (2) **#1 Calendar OAuth connect+stub** — starting `feat/calendar-oauth-connect-stub` so Andrew submits **one** Google scope verification (`calendar.events` + `calendar.readonly`). Sign-In/Sign-Up stay `openid email profile`. Andrew: add `/api/auth/calendar/callback` URI; **do not submit review** until demo is up. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,15 +51,15 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `2e6b5bd3`.
+**Tip:** `master` @ `45ef2bf5`.
 
-**Last action:** [Google signup WAITLISTED provision](2c200cec-54fc-445a-9bcd-425b2a9c3135) pushed `feat/google-signup-waitlisted` @ `bc89bb0c`. Dispatched [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d).
+**Last action:** Andrew 2026-08-14: hook Calendar OAuth **now** for **one** Google re-verify. [Explore calendar OAuth hookup](f960155d-77db-4c6d-b330-f02e25d428e6) = Gmail-clone connect+stub. Dispatching calendar branch (file-disjoint from signup).
 
-**In-flight:** independent verify of Google signup (auth-boundary — do not merge yet).
+**In-flight:** (1) [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d). (2) Calendar connect+stub executor.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console. Optional #2 leftovers: flag-off Playwright, mobile banner, desktop double mint.
 **Cleared:** Sign-In UI; Priority #2 findability.
 
-**Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
+**Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 
 **Waive record:** BACKLOG **MASTER-CUT-2026-07-09**. Green at cut: `next build` + `test:regression`. Red accepted: 9 REAL-FAIL / 2 ENV-FLAKE.
 

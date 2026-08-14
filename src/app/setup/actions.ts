@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { hasAdminUsers, createAdmin } from "@/lib/auth-db";
+import { findEmailRealmPresence } from "@/lib/cross-realm-email";
 import { sendMail } from "@/lib/email";
 import { getPublicBaseUrl } from "@/lib/public-url";
 import { setupBlockedNoSecretInProduction, setupTokenValid } from "@/lib/setup-guard";
@@ -36,6 +37,19 @@ export async function createFirstAdmin(
       error:
         strengthCheck.feedback ||
         `Password must be at least ${MIN_PASSWORD_LENGTH} characters and not too simple.`,
+    };
+  }
+
+  const presence = await findEmailRealmPresence(email);
+  if (presence.inAccountHolder) {
+    return {
+      error:
+        "This email is already registered as a parent account. Sign in at /login or use a different email.",
+    };
+  }
+  if (presence.inAdmin) {
+    return {
+      error: "An account with this email already exists. Sign in at /login.",
     };
   }
 

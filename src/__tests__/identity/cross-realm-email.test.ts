@@ -113,6 +113,24 @@ describe("VERIFY-ACCT-1 — cross-realm email squatting", () => {
       const adminAfter = await db.adminUser.count({ where: { email } });
       expect(adminAfter).toBe(0);
     });
+
+    it("blocks case-variant email when parent owns canonical form (0 AdminUser rows)", async () => {
+      const email = uniqueEmail("case-variant");
+      await seedAccountHolder(email);
+
+      const [local, domain] = email.split("@");
+      const variantEmail = ` ${local.toUpperCase()}@${domain.toUpperCase()} `;
+
+      const adminBefore = await db.adminUser.count({ where: { email } });
+      expect(adminBefore).toBe(0);
+
+      await expect(tutorSignupAction(null, tutorSignupForm(variantEmail))).rejects.toThrow(
+        "NEXT_REDIRECT:/login?registered=1"
+      );
+
+      const adminAfter = await db.adminUser.count({ where: { email } });
+      expect(adminAfter).toBe(0);
+    });
   });
 
   describe("same-realm duplicate behavior unchanged", () => {
@@ -243,5 +261,46 @@ describe("Google signIn — cross-realm block", () => {
     expect(String(result)).toContain("not_authorized");
     expect(mockCreateAdminFromGoogle).not.toHaveBeenCalled();
     expect(mockNotify).not.toHaveBeenCalled();
+  });
+});
+
+describe("createFirstAdmin — cross-realm guard", () => {
+  it("returns error and does not create AdminUser when AccountHolder owns email", async () => {
+    jest.resetModules();
+
+    const mockCreateAdmin = jest.fn();
+    const mockFindEmailRealmPresence = jest.fn().mockResolvedValue({
+      normalizedEmail: "parent@example.com",
+      inAdmin: false,
+      inAccountHolder: true,
+    });
+
+    jest.doMock("@/lib/cross-realm-email", () => ({
+      findEmailRealmPresence: mockFindEmailRealmPresence,
+    }));
+    jest.doMock("@/lib/auth-db", () => ({
+      hasAdminUsers: jest.fn().mockResolvedValue(false),
+      createAdmin: mockCreateAdmin,
+    }));
+    jest.doMock("@/lib/setup-guard", () => ({
+      setupBlockedNoSecretInProduction: jest.fn().mockReturnValue(false),
+      setupTokenValid: jest.fn().mockReturnValue(true),
+    }));
+    jest.doMock("@/lib/email", () => ({ sendMail: jest.fn() }));
+    jest.doMock("@/lib/public-url", () => ({
+      getPublicBaseUrl: jest.fn().mockReturnValue("https://app.example.com"),
+    }));
+
+    const { createFirstAdmin } = await import("@/app/setup/actions");
+    const form = new FormData();
+    form.set("setupToken", "secret");
+    form.set("email", "parent@example.com");
+    form.set("password", STRONG_PASSWORD);
+    form.set("passwordConfirm", STRONG_PASSWORD);
+
+    const result = await createFirstAdmin(null, form);
+
+    expect(result?.error).toMatch(/parent account/i);
+    expect(mockCreateAdmin).not.toHaveBeenCalled();
   });
 });

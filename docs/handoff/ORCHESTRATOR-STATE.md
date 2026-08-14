@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#4 email OTP 2FA — re-verify in flight** after test-gap fix [`40ea957d`](https://github.com/Arangarx/tutoring-notes/commit/40ea957d). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#4 chunk 2 IN FLIGHT** — email OTP as login alternative for existing TOTP tutors (Sarah). Chunk 1 **merged** [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) (re-verify APPROVE). Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `ec9351e1`.
+**Tip:** `master` @ `ab70f002`.
 
-**Last action:** [Fix email OTP auth-boundary tests](e455e965-00d5-4c22-8b1c-564b2de8dc54) pushed `40ea957d` (7 new Jest tests, no prod change). Dispatched [Re-verify email OTP 2FA](009c0d34-9897-46c2-acc7-283a3151acd6).
+**Last action:** [Re-verify email OTP 2FA](009c0d34-9897-46c2-acc7-283a3151acd6) **APPROVE** → merge [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002). Starting chunk 2 (TOTP login email-alt).
 
-**In-flight:** re-verify email OTP (do not merge).
+**In-flight:** [Email OTP at TOTP login](2ff7f5a4-86c0-4bdb-bd76-70d738d73e08) (`feat/email-otp-totp-login-alt`).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Optional leftovers: Gmail/Calendar OAuth helper extract; SessionSyncBadge honesty; #2 flag-off/mobile.
-**Cleared:** Sign-In UI; #2 findability; #3 Google signup WAITLISTED; Calendar connect+stub.
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP enroll (chunk 1).
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

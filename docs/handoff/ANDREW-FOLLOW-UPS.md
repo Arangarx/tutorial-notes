@@ -51,7 +51,7 @@ Notes:
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 <<<<<<< Updated upstream
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
-| #4 | Email OTP 2FA (TOTP stays) | Branch [`feat/email-otp-2fa-enroll`](https://github.com/Arangarx/tutoring-notes/tree/feat/email-otp-2fa-enroll) @ [`40ea957d`](https://github.com/Arangarx/tutoring-notes/commit/40ea957d) — **re-verify in flight** |
+| #4 | Email OTP 2FA (TOTP stays) | **Chunk 1 DONE** [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002). **Chunk 2 in flight** — email code at login for existing TOTP (Sarah) |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -67,4 +67,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect+stub **shipped**. Agents on **#4 email OTP 2FA**. Your open work = add `/api/auth/calendar/callback` + enable Calendar API, then **one** verification submit when the merge is live.
+> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect+stub, email-OTP enroll **shipped**. Agents on **Sarah’s TOTP login email-alt**. Your open work = calendar callback URI + **one** Google verification when live.

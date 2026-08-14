@@ -54,7 +54,7 @@ Notes:
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
 | #7 | First-party instrumentation | **DONE** chunk 1 — merged [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (`ProductEvent` tutor funnel). Chunk 2 later (no PostHog). |
-| #3 leftover | Waitlist REJECTED + revoke | **In flight** — `feat/tutor-waitlist-rejected-revoke` |
+| #3 leftover | Waitlist REJECTED + revoke | Branch [`feat/tutor-waitlist-rejected-revoke`](https://github.com/Arangarx/tutoring-notes/tree/feat/tutor-waitlist-rejected-revoke) @ [`fe664590`](https://github.com/Arangarx/tutoring-notes/commit/fe664590) — **independent verify in flight** |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 

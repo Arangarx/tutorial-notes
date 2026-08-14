@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#7 ProductEvent chunk 1 MERGED** [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4). **#3 leftover IN FLIGHT** — waitlist REJECTED + revoke (`feat/tutor-waitlist-rejected-revoke`). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#3 leftover reject/revoke — executor done, independent verify in flight.** Branch `feat/tutor-waitlist-rejected-revoke` @ [`fe664590`](https://github.com/Arangarx/tutoring-notes/commit/fe664590). Watch migration timestamp vs `20260814140000_product_event`. Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (ProductEvent chunk 1 merge).
 
-**Last action:** [Re-verify ProductEvent tests](dd775be7-4af3-4a80-8b1e-c840639549d3) **APPROVE** → merge [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4). Dispatched [Ship waitlist REJECTED + revoke](d0086977-3d36-48d2-80b1-d7bf8a4fa8cf).
+**Last action:** [Ship waitlist REJECTED + revoke](d0086977-3d36-48d2-80b1-d7bf8a4fa8cf) pushed `fe664590`. Dispatched [Verify waitlist reject/revoke](5f0bbce0-56f9-4902-9ed8-8af00834f61b).
 
-**In-flight:** `feat/tutor-waitlist-rejected-revoke` executor (do not merge). `tutoring-notes-master-ops` stays on master.
+**In-flight:** independent verify of `feat/tutor-waitlist-rejected-revoke` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 

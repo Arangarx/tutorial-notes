@@ -77,7 +77,10 @@ export async function isTutorApproved(adminUserId: string): Promise<boolean> {
  *
  * @param adminUserId - AdminUser.id of the tutor initiating the cost
  */
-export async function assertTutorApproved(adminUserId: string): Promise<void> {
+export async function assertTutorApproved(
+  adminUserId: string,
+  options?: { surface?: string }
+): Promise<void> {
   const status = await getTutorApprovalStatus(adminUserId);
 
   if (status === "APPROVED") return;
@@ -87,6 +90,13 @@ export async function assertTutorApproved(adminUserId: string): Promise<void> {
   console.log(
     `[tap] tap=${adminUserId} action=assert_rejected status=${effectiveStatus}`
   );
+
+  const { logProductEvent } = await import("@/lib/observability/product-events");
+  await logProductEvent({
+    kind: "TUTOR_WAITLIST_BLOCKED",
+    adminUserId,
+    metadata: { surface: options?.surface ?? "tutor_approval_gate" },
+  });
 
   throw new TutorNotApprovedError(adminUserId, effectiveStatus);
 }
@@ -120,6 +130,13 @@ export async function approveTutor(
   console.log(
     `[tap] tap=${adminUserId} action=approved byOperator=${operatorId}`
   );
+
+  const { logProductEvent } = await import("@/lib/observability/product-events");
+  await logProductEvent({
+    kind: "TUTOR_APPROVED",
+    adminUserId,
+    metadata: { operatorId },
+  });
 }
 
 // ---------------------------------------------------------------------------

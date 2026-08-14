@@ -36,6 +36,17 @@ enum CostEventKind {
   NEON_COMPUTE
 }
 
+/// First-party product funnel events (tutor signup → approval → session).
+enum ProductEventKind {
+  TUTOR_SIGNUP
+  TUTOR_LOGIN
+  TUTOR_APPROVED
+  TUTOR_WAITLIST_BLOCKED
+  SESSION_CREATED
+  SESSION_STARTED
+  SESSION_ENDED
+}
+
 /// Purpose values for one-time email tokens issued to AccountHolders.
 enum AccountHolderEmailTokenPurpose {
   SIGNUP_VERIFY
@@ -138,6 +149,7 @@ model Student {
   recordings              SessionRecording[]
   whiteboardSessions      WhiteboardSession[]
   costEvents              CostEvent[]
+  productEvents           ProductEvent[]
   scheduledSessions       ScheduledSession[]
 
   /// Identity Phase 2 / IAC-2: nullable FK to LearnerProfile.
@@ -463,6 +475,7 @@ model WhiteboardSession {
 
   createdAt  DateTime    @default(now())
   costEvents CostEvent[]
+  productEvents ProductEvent[]
 
   @@index([adminUserId])
   @@index([studentId])
@@ -731,6 +744,7 @@ model AdminUser {
   recordings              SessionRecording[]     @relation("AdminRecordings")
   whiteboardSessions      WhiteboardSession[]    @relation("AdminWhiteboards")
   costEvents              CostEvent[]
+  productEvents           ProductEvent[]
   initiatedImpersonations ImpersonationLog[]     @relation("AdminImpersonations")
   wasImpersonatedIn       ImpersonationLog[]     @relation("ImpersonatedBy")
   /// TOTP 2FA enrollment. Null = not enrolled; populated after enrollment.
@@ -977,6 +991,28 @@ model CostEvent {
   @@index([createdAt])
   @@index([whiteboardSessionId, createdAt])
   @@index([sessionId, createdAt])
+}
+
+model ProductEvent {
+  id    String           @id @default(uuid())
+  kind  ProductEventKind
+
+  adminUserId         String?
+  adminUser           AdminUser?         @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  studentId           String?
+  student             Student?           @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  whiteboardSessionId String?
+  whiteboardSession   WhiteboardSession? @relation(fields: [whiteboardSessionId], references: [id], onDelete: SetNull)
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([studentId, createdAt])
+  @@index([createdAt])
+  @@index([whiteboardSessionId, createdAt])
 }
 
 // =============================================================================

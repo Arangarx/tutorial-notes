@@ -66,6 +66,13 @@ jest.mock("@/lib/db", () => ({
   withDbRetry: <T,>(fn: () => Promise<T>) => fn(),
 }));
 
+const mockLogProductEvent = jest.fn();
+
+jest.mock("@/lib/observability/product-events", () => ({
+  __esModule: true,
+  logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+}));
+
 const requireStudentScopeMock = jest.fn();
 const assertOwnsStudentMock = jest.fn(async (..._args: unknown[]) => {});
 jest.mock("@/lib/student-scope", () => ({
@@ -147,6 +154,7 @@ beforeEach(() => {
   requireStudentScopeMock.mockReset();
   assertOwnsStudentMock.mockClear();
   redirectMock.mockClear();
+  mockLogProductEvent.mockReset();
 
   mockClaimedWithRecord();
 });
@@ -164,6 +172,13 @@ describe("createWhiteboardSession — CC-1 consent record gate", () => {
     expect(redirectMock).toHaveBeenCalledWith(
       "/admin/students/student-1/whiteboard/wb-session-xyz/workspace"
     );
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "SESSION_CREATED",
+      adminUserId: "admin-1",
+      studentId: "student-1",
+      whiteboardSessionId: "wb-session-xyz",
+      metadata: { claimed: true },
+    });
   });
 
   test("T-new-A / T1: claimed minor + no ConsentRecord → ConsentError, no Blob, no row", async () => {

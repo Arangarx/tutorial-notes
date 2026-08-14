@@ -68,7 +68,13 @@ export async function signup(
     redirect("/login?registered=1");
   }
 
-  await createAdmin(email, password, displayName ?? null);
+  const created = await createAdmin(email, password, displayName ?? null);
+  const { logProductEvent } = await import("@/lib/observability/product-events");
+  await logProductEvent({
+    kind: "TUTOR_SIGNUP",
+    adminUserId: created.id,
+    metadata: { method: "credentials" },
+  });
   await notifyOperatorsOfNewSignup({
     email: email.trim().toLowerCase(),
     displayName: displayName ?? null,

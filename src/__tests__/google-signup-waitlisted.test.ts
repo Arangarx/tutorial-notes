@@ -189,6 +189,7 @@ describe("Google signIn — signup intent dual path", () => {
   const mockNotify = jest.fn();
   const mockClearIntent = jest.fn();
   const mockCookiesGet = jest.fn();
+  const mockLogProductEvent = jest.fn();
 
   beforeEach(() => {
     jest.resetModules();
@@ -198,6 +199,7 @@ describe("Google signIn — signup intent dual path", () => {
     mockNotify.mockReset();
     mockClearIntent.mockReset();
     mockCookiesGet.mockReset();
+    mockLogProductEvent.mockReset();
 
     mockFindEmailRealmPresence.mockImplementation(async (email: string) => ({
       normalizedEmail: email.trim().toLowerCase(),
@@ -255,6 +257,10 @@ describe("Google signIn — signup intent dual path", () => {
         clearSignupIntentCookie: mockClearIntent,
       };
     });
+
+    jest.doMock("@/lib/observability/product-events", () => ({
+      logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+    }));
   });
 
   async function getSignInCallback() {
@@ -314,6 +320,11 @@ describe("Google signIn — signup intent dual path", () => {
       expect.objectContaining({ email: "new@gmail.com", method: "google" })
     );
     expect(mockClearIntent).toHaveBeenCalled();
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_SIGNUP",
+      adminUserId: "new-google",
+      metadata: { method: "google" },
+    });
   });
 
   it("rejects test-account email even when row exists", async () => {

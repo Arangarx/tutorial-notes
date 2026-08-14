@@ -53,6 +53,7 @@ import {
   DEFAULT_ROUNDING_MODE,
 } from "@/lib/billing/defaults";
 import { computeBillingFreezeFields } from "@/lib/billing/freeze-at-close";
+import { logProductEvent } from "@/lib/observability/product-events";
 
 /**
  * Whiteboard session lifecycle server actions.
@@ -272,6 +273,14 @@ export async function createWhiteboardSession(
     `[createWhiteboardSession] rid=${rid} wbsid=${session.id} studentId=${studentId} adminUserId=${scope.adminId} created`
   );
 
+  await logProductEvent({
+    kind: "SESSION_CREATED",
+    adminUserId: scope.adminId,
+    studentId,
+    whiteboardSessionId: session.id,
+    metadata: { claimed: Boolean(learnerProfileId) },
+  });
+
   // redirect() throws a NEXT_REDIRECT internally; the calling form
   // path treats that as "navigate" rather than as an error. Place it
   // last so the row is durable before navigation.
@@ -381,6 +390,17 @@ export async function startWhiteboardSession(
       `[slc] wbsid=${whiteboardSessionId} action=session_start_noop`
     );
   }
+
+  await logProductEvent({
+    kind: "SESSION_STARTED",
+    adminUserId: session.adminUserId,
+    studentId: session.studentId,
+    whiteboardSessionId,
+    metadata: {
+      mode: sessionMode ?? "LIVE",
+      noop: result.count === 0,
+    },
+  });
 
   return { ok: true, phase: "active" };
 }
@@ -1196,6 +1216,18 @@ export async function endWhiteboardSession(
   console.log(
     `[endWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} endedAt=${updated.endedAt?.toISOString()} duration=${updated.durationSeconds}s segmentsInPayload=${segments.length} newSegments=${registeredSegments}`
   );
+
+  await logProductEvent({
+    kind: "SESSION_ENDED",
+    adminUserId: session.adminUserId,
+    studentId: session.studentId,
+    whiteboardSessionId,
+    metadata: {
+      priorPhase,
+      path: "normal",
+    },
+  });
+
   if (billingFreeze) {
     console.log(
       `[endWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} billing_frozen billedDurationMin=${billingFreeze.billedDurationMin} mode=${billingFreeze.roundingMode} increment=${billingFreeze.roundingIncrementMin} tz=${billingFreeze.tutorTimezone} sessionDateLocal=${billingFreeze.sessionDateLocal}`
@@ -1342,6 +1374,17 @@ export async function endStaleWhiteboardSession(
   console.log(
     `[endStaleWhiteboardSession] rid=${rid} wbsid=${whiteboardSessionId} endedAt=${updated.endedAt?.toISOString()} duration=${updated.durationSeconds}s`
   );
+
+  await logProductEvent({
+    kind: "SESSION_ENDED",
+    adminUserId: session.adminUserId,
+    studentId: session.studentId,
+    whiteboardSessionId,
+    metadata: {
+      priorPhase,
+      path: "stale",
+    },
+  });
 
   // Student detail lists open sessions + the resume-gate "End" path
   // should both see the list update without a full router refresh;

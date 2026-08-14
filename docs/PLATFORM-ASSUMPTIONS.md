@@ -572,6 +572,12 @@
   - Pricing-table drift: when OpenAI changes prices, cost estimates drift. Acceptance criterion per master plan: reconcile within 5% of OpenAI's monthly invoice.
   - Migration to a different AI provider: requires new `CostEvent.model` enum entries + new estimate logic.
 
+### 10.2a First-party ProductEvent funnel (tutor signup → session)
+
+- **Assumption**: `ProductEvent` rows in Neon record the tutor funnel (`TUTOR_SIGNUP`, `TUTOR_LOGIN`, `TUTOR_APPROVED`, `TUTOR_WAITLIST_BLOCKED`, `SESSION_CREATED`, `SESSION_STARTED`, `SESSION_ENDED`) via `src/lib/observability/product-events.ts`. First-party only — no PostHog, no client beacons, no third-party analytics egress.
+- **Where baked in**: `prisma/schema.prisma:ProductEvent`, call sites in signup/auth/tutor-approval/whiteboard actions.
+- **What breaks if violated**: funnel analytics queries drift or silently miss steps; privacy posture breaks if PII (email, IP, UA) is written to metadata or logs.
+
 ### 10.3 Per-session ID logging mandatory
 
 - **Assumption**: Every state transition logs a 3-letter prefix + session-scoped ID per AGENTS.md. Registry: `rid` (audio), `wbsid` (whiteboard), `obx` (outbox), `snp` (snapshot), `pvw` (preview), `pvs` (per-page view state), `avx` (live A/V), `cev` (cost event), `blb` (blob cleanup CLI), `brs` (branch sweep CLI).

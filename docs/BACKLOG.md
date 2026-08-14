@@ -10,7 +10,7 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
 3. **Tutor signup / self-serve auth** — **first chunk DONE** 2026-08-14 (`2f54459f`): Google on `/signup` → WAITLISTED + operator notify; `/login` Google still no-provision without signup-intent. Leftover: pagination, REJECTED UI, invite links.
 4. **2FA pilots will finish** — email OTP **DONE** (`ab70f002` enroll + `529f619e` TOTP login email-alt). SMS later; TOTP stays as upgrade.
-5. **Finish scheduling** (depends on #1 calendar scopes + sync).
+5. **Finish scheduling** — **native CRUD in flight** (`feat/schedule-native-crud`). Google outbound sync later (after Console verification). Two-way sync still P3.
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.
 7. **Comprehensive instrumentation** — first-party analytics on COPPA-risk surfaces; third-party (e.g. PostHog) only on non-COPPA (marketing/logged-out). **Terms/Privacy stay 100% honest.** Archived reference: `docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md`.
 

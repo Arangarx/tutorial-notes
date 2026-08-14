@@ -2,12 +2,25 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import type { AdminRole, TutorApprovalStatus } from "@prisma/client";
+import { cookies } from "next/headers";
 import { env } from "@/lib/env";
-import { getAdminByEmail, getAdminById, hasAdminUsers, verifyPassword } from "@/lib/auth-db";
+import {
+  createAdminFromGoogle,
+  getAdminByEmail,
+  getAdminById,
+  hasAdminUsers,
+  verifyPassword,
+} from "@/lib/auth-db";
+import { notifyOperatorsOfNewSignup } from "@/lib/notify-operator-new-signup";
 import {
   isPlaywrightHarnessActive,
   isPlaywrightHarnessAdminEmail,
 } from "@/lib/playwright-harness";
+import {
+  SIGNUP_INTENT_COOKIE,
+  clearSignupIntentCookie,
+  isValidSignupIntentToken,
+} from "@/lib/signup-intent";
 
 // Re-check role + isTestAccount from DB at most once per this interval per active session.
 // Tradeoff: a role change in the DB propagates to active tokens within 5 min.
@@ -97,12 +110,29 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Blocker #3 + #4: Google sign-in is restricted to existing DB rows
-      // that are real admins. No auto-provisioning.
+      // Google sign-in: existing DB rows may log in from /login or /signup.
+      // Unknown emails auto-provision ONLY with a valid /signup intent cookie.
       if (account?.provider === "google") {
         if (!user.email) return false;
-        const admin = await getAdminByEmail(user.email);
-        if (!admin) return "/login?error=not_authorized";
+        const email = user.email.trim().toLowerCase();
+        let admin = await getAdminByEmail(email);
+        if (!admin) {
+          const cookieStore = await cookies();
+          const intentValue = cookieStore.get(SIGNUP_INTENT_COOKIE)?.value;
+          const hasSignupIntent = await isValidSignupIntentToken(
+            intentValue,
+            env.NEXTAUTH_SECRET
+          );
+          if (!hasSignupIntent) return "/login?error=not_authorized";
+
+          admin = await createAdminFromGoogle(email, user.name ?? null);
+          await notifyOperatorsOfNewSignup({
+            email: admin.email,
+            displayName: admin.displayName,
+            method: "google",
+          });
+          await clearSignupIntentCookie();
+        }
         // Test accounts cannot authenticate via Google OAuth.
         if (admin.isTestAccount) return "/login?error=not_authorized";
         return true;

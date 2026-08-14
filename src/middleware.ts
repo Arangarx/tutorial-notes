@@ -15,6 +15,9 @@ import {
   realAdminHomePath,
   tutorExperienceLandingPath,
 } from "@/lib/admin-routing";
+import {
+  applySignupIntentCookieToResponse,
+} from "@/lib/signup-intent";
 import { isPlaywrightHarnessActive } from "@/lib/playwright-harness";
 
 // ---------------------------------------------------------------------------
@@ -322,7 +325,17 @@ export async function middleware(req: NextRequest) {
   }
 
   // --- All other routes: pass through with security headers ---
-  return addSecurityHeaders(NextResponse.next(), pathname);
+  const response = addSecurityHeaders(NextResponse.next(), pathname);
+
+  // Signup-intent cookie: proves OAuth started from /signup (not /login).
+  if (pathname === "/signup") {
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (secret) {
+      await applySignupIntentCookieToResponse(response, secret);
+    }
+  }
+
+  return response;
 }
 
 // Paths that are publicly accessible under /account/* without a session cookie.

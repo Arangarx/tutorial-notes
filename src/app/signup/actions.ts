@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdmin, getAdminByEmail } from "@/lib/auth-db";
+import { notifyOperatorsOfNewSignup } from "@/lib/notify-operator-new-signup";
 import { validatePasswordStrength, MIN_PASSWORD_LENGTH } from "@/lib/password-strength";
 
 const SignupSchema = z
@@ -67,5 +68,10 @@ export async function signup(
   }
 
   await createAdmin(email, password, displayName ?? null);
+  await notifyOperatorsOfNewSignup({
+    email: email.trim().toLowerCase(),
+    displayName: displayName ?? null,
+    method: "credentials",
+  });
   redirect("/login?registered=1");
 }

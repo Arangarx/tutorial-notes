@@ -156,6 +156,7 @@ first, then re-submit. The consent screen will continue to display
 | How we use your data | **Umbrella** — includes the "do not sell Google user data" and "do not sell personal information to data brokers" language verbatim |
 | Sharing, disclosure, and recipients | **Umbrella** — full bulleted enumeration (Google / Infrastructure / People you direct / Legal / Business transfers). Product-specific subprocessors (Vercel, Neon, Vercel Blob, OpenAI) listed under Infrastructure. |
 | Google account and Gmail | **Hybrid** — umbrella's Limited Use / scope / token-storage / disconnect language + product-specific scope details (`gmail.send`, `userinfo.email`) and Settings → Email instruction |
+| Google Calendar (Connect Google Calendar) | **Hybrid** — umbrella Limited Use / token-storage / disconnect framing + product-specific scope details (`calendar.events`, `calendar.readonly`, `userinfo.email`), honest no-sync-yet stub, Settings → Calendar integrations instruction |
 | AI note generation (OpenAI) | Product |
 | Session audio recordings (Vercel Blob) | Product |
 | Where data is stored | Product |
@@ -175,6 +176,7 @@ first, then re-submit. The consent screen will continue to display
 | Acceptable use | **Hybrid** — umbrella's bulleted list verbatim + 2 tutoring-specific bullets (consent for student data; consent for recording/replay sharing) |
 | Your content | Product |
 | Gmail integration | Product |
+| Google Calendar integration | Product |
 | Third-party services | **Hybrid** — umbrella's framing, product-specific subprocessor list with link to privacy policy |
 | Children and parental consent | **Hybrid** — umbrella now has this section (added 2026-05-31 on `coppa-312-10-disclosure` branch); product facade adds Tutoring-Notes-specific COPPA language (COPPA applicability, representation-of-consent, cross-reference to privacy policy COPPA section). |
 | Availability and changes | Product (combines umbrella's posture with product-specific notification language) |

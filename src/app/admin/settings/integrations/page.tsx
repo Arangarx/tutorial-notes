@@ -2,13 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/PageShell";
 import { CalendarIntegrationsPanel } from "@/components/admin/schedule/CalendarIntegrationsPanel";
-import { mockCalendarConnections } from "@/lib/schedule/mock-data";
+import { env } from "@/lib/env";
+import {
+  buildCalendarPanelConnections,
+  getGoogleCalendarConnectionForTutor,
+} from "@/lib/calendar-oauth";
 import { getStudentScope } from "@/lib/student-scope";
 
 export const dynamic = "force-dynamic";
 
 type IntegrationsSettingsPageProps = {
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; connected?: string; error?: string }>;
 };
 
 export default async function IntegrationsSettingsPage({
@@ -17,7 +21,14 @@ export default async function IntegrationsSettingsPage({
   const scope = await getStudentScope();
   if (scope.kind === "none") redirect("/login");
 
-  const { from } = await searchParams;
+  const adminUserId = scope.kind === "admin" ? scope.adminId : null;
+  const googleConnection = await getGoogleCalendarConnectionForTutor(adminUserId);
+  const connections = buildCalendarPanelConnections(
+    googleConnection ? { email: googleConnection.email } : null
+  );
+  const googleOAuthAvailable = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+
+  const { from, connected, error } = await searchParams;
   const fromSchedule = from === "schedule";
   const backHref = fromSchedule ? "/admin/schedule" : "/admin/settings";
   const backLabel = fromSchedule ? "← Schedule" : "← Settings";
@@ -25,7 +36,7 @@ export default async function IntegrationsSettingsPage({
   return (
     <PageShell realm="admin"
       title="Calendar integrations"
-      description="Connect external calendars so sessions you schedule in Mynk also appear on Apple Calendar or Google Calendar. This page is visual-only tonight — no OAuth wiring."
+      description="Connect Google Calendar to prepare for upcoming scheduling. Calendar sync is not live yet — connecting saves your account for the next release."
       eyebrow={
         <Link
           href={backHref}
@@ -35,13 +46,15 @@ export default async function IntegrationsSettingsPage({
         </Link>
       }
     >
-      <div className="rounded-[10px] border border-warning/30 bg-warning/10 px-4 py-3">
-        <p className="text-sm text-warning">
-          Visual preview — Connect and Disconnect buttons do not call OAuth or persist state.
-        </p>
-      </div>
-
-      <CalendarIntegrationsPanel connections={mockCalendarConnections} compact={false} showSettingsLink={false} />
+      <CalendarIntegrationsPanel
+        connections={connections}
+        googleOAuthAvailable={googleOAuthAvailable}
+        googleCalendarCount={googleConnection?.calendarCount ?? null}
+        connectError={error}
+        connectSuccess={connected}
+        compact={false}
+        showSettingsLink={false}
+      />
     </PageShell>
   );
 }

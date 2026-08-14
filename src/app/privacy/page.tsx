@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
  *
  * SYNCED FROM https://www.mortensenapps.com/privacy as of 2026-05-31.
  * Product-specific retention + inventory copy updated 2026-07-09 (SEC-POLICY-TRUTH interim).
+ * Google Calendar connect section added 2026-08-14 (honest stub — no sync claim).
  *
  * The Mortensen Apps umbrella policy at www.mortensenapps.com/privacy is
  * the CANONICAL legal source and the URL registered in the shared
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalDocumentShell title="Privacy Policy" lastUpdated="July 27, 2026">
+    <LegalDocumentShell title="Privacy Policy" lastUpdated="August 14, 2026">
         <p className="text-sm leading-relaxed text-muted-foreground">
           This policy applies to <strong>Tutoring Notes</strong>, a web application operated
           by Andrew Mortensen under the Mortensen Apps umbrella. It supplements the
@@ -73,6 +74,7 @@ export default function PrivacyPage() {
               <li><strong>Feedback submissions</strong> (message, optional contact email, and submitter IP address retained for abuse prevention on the public form).</li>
               <li><strong>Waitlist entries</strong> (email and optional name) submitted through interest forms or contact, retained for outreach.</li>
               <li><strong>Gmail OAuth tokens</strong> if you use &ldquo;Connect Gmail&rdquo; (see Google account and Gmail below).</li>
+              <li><strong>Google Calendar OAuth tokens</strong> if you use &ldquo;Connect Google Calendar&rdquo; (see Google Calendar below).</li>
               <li><strong>Standard technical logs</strong> (IP address, user agent, timestamps) collected by our hosting provider for security and reliability.</li>
               <li><strong>LearnerProfile information:</strong> a student&rsquo;s name entered when creating a student profile. For students under 13, this is personal information subject to COPPA protections.</li>
               <li><strong>Session transcripts</strong> automatically generated from session audio by the OpenAI transcription service (see below). Transcripts are derived from and linked to the session audio recording.</li>
@@ -159,6 +161,30 @@ export default function PrivacyPage() {
               web pages or public repositories. You can disconnect Gmail at any time
               from Settings → Email, which deletes the stored token; you can also revoke
               access directly from your Google Account security settings.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="heading m-0 text-lg font-normal">Google Calendar (Connect Google Calendar)</h2>
+            <p style={{ margin: "8px 0 0" }}>
+              When you click &ldquo;Connect Google Calendar,&rdquo; the app requests permission to
+              access your Google Calendar using the <strong>Google Calendar API</strong>{" "}
+              (<code>calendar.events</code> and <code>calendar.readonly</code> scopes) and to read your
+              email address (<code>userinfo.email</code> scope). These permissions are used to store
+              a connection for upcoming scheduling features. <strong>Calendar sync is not live yet</strong>
+              — we do not currently create, update, delete, or watch calendar events on your behalf.
+              At connect time we may perform a one-time read of your calendar list to show how many
+              calendars are on the account (for your confirmation). Google user data we receive
+              through Calendar APIs is used only to provide the connection feature you asked for,
+              consistent with Google&apos;s applicable API and Limited Use requirements.
+            </p>
+            <p style={{ margin: "8px 0 0" }}>
+              We store a refresh token so the app can use your connection when scheduling ships,
+              without asking you to sign in each time. OAuth tokens and related credentials are kept
+              in server-side configuration or secure database storage, never embedded in web pages or
+              public repositories. You can disconnect Google Calendar at any time from Settings →
+              Calendar integrations, which deletes the stored token; you can also revoke access
+              directly from your Google Account security settings.
             </p>
           </div>
 

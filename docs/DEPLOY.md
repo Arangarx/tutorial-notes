@@ -184,7 +184,7 @@ Each **student** row is tied to the signed-in **database admin** (`Student.admin
 
 1. **Deployed URL** with `NEXTAUTH_URL` = that URL; `NEXTAUTH_SECRET` strong and unique.
 2. **Persistent DB** (volume or Postgres) — not disposable SQLite on serverless.
-3. **Google:** Gmail API enabled; OAuth client has **production redirect URI**; test users added **or** verification path started.
+3. **Google:** Gmail API + Google Calendar API enabled; OAuth client has **production redirect URIs** (`/api/auth/gmail/callback` and `/api/auth/calendar/callback`); test users added **or** verification path started.
 4. **You** set **Profile** name on the deployed instance (or ask pilot to set after setup).
 5. **Pilot brief:** one-pager — “Create account → add student → note → send update → parent opens link.”
 6. **Support channel:** your email or Calendly for **15‑min feedback** calls.
@@ -200,7 +200,25 @@ Each **student** row is tied to the signed-in **database admin** (`Student.admin
 4. **First admin:** Set `SETUP_SECRET` in Vercel, redeploy, then visit `https://your-app.vercel.app/setup?token=<same secret>` and create the admin. **Or** set `ADMIN_EMAIL` + `ADMIN_PASSWORD` and sign in at `/login` (no `/setup`). The public `/setup` form is **disabled** in production until `SETUP_SECRET` is set, so nobody can squat the first account.
 5. Go to `https://your-app.vercel.app/admin/settings/email` → configure email.
 6. Send a test "Send update" to confirm email delivery.
-7. Add OAuth **test users** (or complete Google verification) if using Connect Gmail — see `docs/pilot-ops-playbook.md`.
+7. Add OAuth **test users** (or complete Google verification) if using Connect Gmail or Connect Google Calendar — see `docs/pilot-ops-playbook.md`.
+
+### Google OAuth redirect URIs (add in Google Cloud Console)
+
+For each deployment host (`NEXTAUTH_URL`), register **all** of these authorized redirect URIs on the shared OAuth client:
+
+| Flow | Redirect URI path |
+|------|-------------------|
+| NextAuth sign-in | `/api/auth/callback/google` |
+| Connect Gmail | `/api/auth/gmail/callback` |
+| Connect Google Calendar | `/api/auth/calendar/callback` |
+
+Example production set for `https://usemynk.com`:
+
+- `https://usemynk.com/api/auth/callback/google`
+- `https://usemynk.com/api/auth/gmail/callback`
+- `https://usemynk.com/api/auth/calendar/callback`
+
+Enable **Gmail API** and **Google Calendar API** on the same Google Cloud project before requesting Calendar scopes in verification.
 
 ---
 

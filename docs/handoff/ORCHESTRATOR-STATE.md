@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#3 leftover reject/revoke — executor done, independent verify in flight.** Branch `feat/tutor-waitlist-rejected-revoke` @ [`fe664590`](https://github.com/Arangarx/tutoring-notes/commit/fe664590). Watch migration timestamp vs `20260814140000_product_event`. Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#3 leftover reject/revoke — verify REJECT, fix in flight.** Branch `feat/tutor-waitlist-rejected-revoke` @ [`fe664590`](https://github.com/Arangarx/tutoring-notes/commit/fe664590). Blocker: migration timestamp collides with `20260814140000_product_event`. Also refuse re-approve of REJECTED. Do not merge. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (ProductEvent chunk 1 merge).
 
-**Last action:** [Ship waitlist REJECTED + revoke](d0086977-3d36-48d2-80b1-d7bf8a4fa8cf) pushed `fe664590`. Dispatched [Verify waitlist reject/revoke](5f0bbce0-56f9-4902-9ed8-8af00834f61b).
+**Last action:** [Verify waitlist reject/revoke](5f0bbce0-56f9-4902-9ed8-8af00834f61b) **REJECT** — duplicate `20260814140000_*` migration. Dispatched [Fix reject/revoke migration stamp](a8e5a076-0940-4958-8d34-9e79a3d61423).
 
-**In-flight:** independent verify of `feat/tutor-waitlist-rejected-revoke` (do not merge).
+**In-flight:** migration rename + REJECTED-terminal approve guard (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 

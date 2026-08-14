@@ -197,7 +197,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **SEC — /api/test/whiteboard/* gate hardening** — /api/test/whiteboard/* gate hardening (§6)
 - **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
 - **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device (§1)
-- **VERIFY-ACCT-1** — duplicate-account creation block (§6)
+- **VERIFY-ACCT-1** — duplicate-account creation block — **in flight** (implemented on `feat/verify-acct-cross-realm-email`; pending adjacent-suite green + re-verify APPROVE)
 - **WB-ADULT-JOIN-ENABLEMENT B2-signup / B3 / B4** —  (§6)
 - **WB-PARENT-JOIN-AS-CHILD** — parent_session_select picker (§6)
 
@@ -1397,7 +1397,7 @@ Interim `ParentJoinGapCallout` shipped.
 Notes path has `/account/not-my-notes`; join still `notFound()`.
 
 **[P1][AUTH] VERIFY-ACCT-1 — duplicate-account creation block**  
-Same email parent + tutor.
+Same email parent + tutor. **In flight** on `feat/verify-acct-cross-realm-email` (2026-08-14): shared `findEmailRealmPresence` blocks cross-realm signup (tutor credentials, parent API, Google tutor provision with signup-intent, `/setup` bootstrap). Jest: `src/__tests__/identity/cross-realm-email.test.ts`; Playwright: `tests/integration/identity/cross-realm-email.spec.ts`. Pending adjacent-suite green + verifier APPROVE before DONE. Google OAuth cross-realm round-trip remains **PLAYWRIGHT-GAP** (Jest surrogate on `signIn` callback).
 
 **[P2][AUTH] BL-RESET-DOMAIN — reset email respects originating host**  
 `getPublicBaseUrl` vs request Host.
@@ -1823,7 +1823,7 @@ Dual-device takeover; waiting-room A/V.
 Signup on preview lands on production.
 
 **[P2][TEST] PLAYWRIGHT-GAP — hermetic Google OAuth signup round-trip**  
-No IdP in the identity harness. Surrogate: jest `google-signup-waitlisted.test.ts` (signup-intent + `signIn` provision/reject) + Playwright `/signup` Google UI. Named gap: `tests/integration/identity/tutor-signup-waitlisted.spec.ts`.
+No IdP in the identity harness. Surrogate: jest `google-signup-waitlisted.test.ts` (signup-intent + `signIn` provision/reject) + `cross-realm-email.test.ts` (cross-realm `signIn` deny) + Playwright `/signup` Google UI. Named gap: `tests/integration/identity/tutor-signup-waitlisted.spec.ts`, `cross-realm-email.spec.ts` (Google cross-realm block).
 
 ### PLAYWRIGHT-GAP hardware oracles (summary)
 

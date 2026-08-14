@@ -185,6 +185,7 @@ describe("Google signIn — signup intent dual path", () => {
 
   const mockGetAdminByEmail = jest.fn();
   const mockCreateAdminFromGoogle = jest.fn();
+  const mockFindEmailRealmPresence = jest.fn();
   const mockNotify = jest.fn();
   const mockClearIntent = jest.fn();
   const mockCookiesGet = jest.fn();
@@ -193,9 +194,16 @@ describe("Google signIn — signup intent dual path", () => {
     jest.resetModules();
     mockGetAdminByEmail.mockReset();
     mockCreateAdminFromGoogle.mockReset();
+    mockFindEmailRealmPresence.mockReset();
     mockNotify.mockReset();
     mockClearIntent.mockReset();
     mockCookiesGet.mockReset();
+
+    mockFindEmailRealmPresence.mockImplementation(async (email: string) => ({
+      normalizedEmail: email.trim().toLowerCase(),
+      inAdmin: false,
+      inAccountHolder: false,
+    }));
 
     process.env.ADMIN_EMAIL = "admin@example.com";
     process.env.ADMIN_PASSWORD = "replace-me";
@@ -228,6 +236,12 @@ describe("Google signIn — signup intent dual path", () => {
       getAdminById: jest.fn(),
       verifyPassword: jest.fn().mockResolvedValue(false),
       createAdminFromGoogle: mockCreateAdminFromGoogle,
+    }));
+
+    jest.doMock("@/lib/cross-realm-email", () => ({
+      findEmailRealmPresence: mockFindEmailRealmPresence,
+      isEmailTakenInOtherRealm: jest.requireActual("@/lib/cross-realm-email")
+        .isEmailTakenInOtherRealm,
     }));
 
     jest.doMock("@/lib/notify-operator-new-signup", () => ({
@@ -345,10 +359,18 @@ describe("signup server action — operator notification", () => {
     const notify = jest.fn().mockResolvedValue(undefined);
     const createAdmin = jest.fn().mockResolvedValue({ id: "u1" });
     const getAdminByEmail = jest.fn().mockResolvedValue(null);
+    const findEmailRealmPresence = jest.fn().mockResolvedValue({
+      normalizedEmail: "brand-new@example.com",
+      inAdmin: false,
+      inAccountHolder: false,
+    });
 
     jest.doMock("@/lib/auth-db", () => ({
       createAdmin,
       getAdminByEmail,
+    }));
+    jest.doMock("@/lib/cross-realm-email", () => ({
+      findEmailRealmPresence,
     }));
     jest.doMock("@/lib/notify-operator-new-signup", () => ({
       notifyOperatorsOfNewSignup: notify,

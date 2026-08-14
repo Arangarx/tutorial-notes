@@ -13,6 +13,11 @@ import {
 } from "@/lib/auth-db";
 import { notifyOperatorsOfNewSignup } from "@/lib/notify-operator-new-signup";
 import {
+  findEmailRealmPresence,
+  isEmailTakenInOtherRealm,
+} from "@/lib/cross-realm-email";
+import { normalizeEmail } from "@/lib/normalize-email";
+import {
   isPlaywrightHarnessActive,
   isPlaywrightHarnessAdminEmail,
 } from "@/lib/playwright-harness";
@@ -114,9 +119,14 @@ export const authOptions: NextAuthOptions = {
       // Unknown emails auto-provision ONLY with a valid /signup intent cookie.
       if (account?.provider === "google") {
         if (!user.email) return false;
-        const email = user.email.trim().toLowerCase();
+        const email = normalizeEmail(user.email);
         let admin = await getAdminByEmail(email);
         if (!admin) {
+          const presence = await findEmailRealmPresence(email);
+          if (isEmailTakenInOtherRealm(presence, "admin")) {
+            return "/login?error=not_authorized";
+          }
+
           const cookieStore = await cookies();
           const intentValue = cookieStore.get(SIGNUP_INTENT_COOKIE)?.value;
           const hasSignupIntent = await isValidSignupIntentToken(

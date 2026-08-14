@@ -7,6 +7,7 @@
 
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
+import { isPlaywrightTestProductionLocked } from "@/lib/playwright-test-route";
 
 /** Vercel Blob hostname guard — production shape. */
 export const ALLOWED_BLOB_HOST_RE =
@@ -67,7 +68,7 @@ export function consumeHarnessPutToken(pathname: string, token: string | null): 
 }
 
 export function isBlobHarnessActive(): boolean {
-  if (process.env.NODE_ENV === "production") {
+  if (isPlaywrightTestProductionLocked()) {
     return false;
   }
   return (

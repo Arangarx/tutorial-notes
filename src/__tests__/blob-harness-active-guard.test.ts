@@ -58,6 +58,19 @@ describe("blob harness active guard", () => {
     env.NODE_ENV = prev;
   });
 
+  test("isBlobHarnessActive is false when VERCEL_ENV=production even with both sentinels", async () => {
+    const env = process.env as NodeJS.ProcessEnv & {
+      NODE_ENV?: string;
+      VERCEL_ENV?: string;
+    };
+    env.NODE_ENV = "development";
+    env.VERCEL_ENV = "production";
+    process.env.PLAYWRIGHT_TEST = "1";
+    process.env.BLOB_HARNESS_LOCAL = "1";
+    const { isBlobHarnessActive } = await import("@/lib/blob-harness");
+    expect(isBlobHarnessActive()).toBe(false);
+  });
+
   test("isAllowedBlobUrl rejects harness URLs on foreign origin when harness active", async () => {
     process.env.PLAYWRIGHT_TEST = "1";
     process.env.BLOB_HARNESS_LOCAL = "1";

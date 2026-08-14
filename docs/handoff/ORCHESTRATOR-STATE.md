@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 chunk 1 MERGED** (wb-asset origin pin [`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)). **#6 chunk 2 IN FLIGHT** — VERIFY-ACCT-1 cross-realm email (`feat/verify-acct-cross-realm-email`). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 VERIFY-ACCT-1 — executor done, independent verify in flight.** Branch `feat/verify-acct-cross-realm-email` @ [`553fa9d0`](https://github.com/Arangarx/tutoring-notes/commit/553fa9d0). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889) (wb-asset origin pin merge).
 
-**Last action:** [Verify wb-asset origin pin](1697dbcf-7674-49e5-b112-51589764d998) **APPROVE** → merge [`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889). Dispatched [Block cross-realm email squat](97637c12-9125-4443-8cb4-d2957195287a).
+**Last action:** [Block cross-realm email squat](97637c12-9125-4443-8cb4-d2957195287a) pushed `553fa9d0`. Dispatched [Verify cross-realm email block](7f83dc00-8168-42d9-b3eb-7f4d004422e4).
 
-**In-flight:** VERIFY-ACCT-1 executor (do not merge).
+**In-flight:** independent verify of `feat/verify-acct-cross-realm-email` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 wb-asset origin pin.
 

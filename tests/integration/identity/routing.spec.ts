@@ -137,3 +137,47 @@ test.describe("JoinAuthGate persona redirect", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("Join wrong-principal denial page", () => {
+  test.use({ storageState: PARENT_STATE });
+
+  test("logged-in parent on child session join link sees not-my-session denial + CTAs", async ({
+    page,
+  }) => {
+    await seedParentAccountHolder();
+    const session = await seedWbLiveSyncSession();
+
+    await page.goto(`/join/${session.whiteboardSessionId}`);
+    await page.waitForURL(
+      (url) => url.pathname === "/account/not-my-session",
+      { timeout: 15_000 }
+    );
+
+    await expect(
+      page.getByText("Session not linked to your account", { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Go to your dashboard" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Sign in with a different account" })
+    ).toBeVisible();
+  });
+
+  test("logged-in parent on another adult self-learner session sees not-my-session denial", async ({
+    page,
+  }) => {
+    await seedParentAccountHolder();
+    const session = await seedSelfLearnerWbSession();
+
+    await page.goto(`/join/${session.whiteboardSessionId}`);
+    await page.waitForURL(
+      (url) => url.pathname === "/account/not-my-session",
+      { timeout: 15_000 }
+    );
+
+    await expect(
+      page.getByText("This session link isn't associated with your account.")
+    ).toBeVisible();
+  });
+});

@@ -11,40 +11,10 @@
  * produced a generic 404 that gave no actionable guidance.
  */
 
-import type { Metadata } from "next";
-import Link from "next/link";
-import { AuthShell } from "@/components/auth/AuthShell";
-import { Button } from "@/components/ui/button";
+import { AccountAccessDenialPage, accountAccessDenialMetadata } from "@/components/account/AccountAccessDenialPage";
 
-export const metadata: Metadata = {
-  title: "Notes not linked to your account",
-  robots: { index: false, follow: false },
-};
+export const metadata = accountAccessDenialMetadata("notes");
 
 export default function NotMyNotesPage() {
-  return (
-    <AuthShell
-      title="Notes not linked to your account"
-      description="This notes link isn&apos;t associated with your account."
-    >
-      <p className="mb-6 text-sm text-muted-foreground">
-        If you think this is a mistake, ask the tutor to resend the link to
-        your registered email address, or check that you&apos;re signed in with
-        the correct account.
-      </p>
-
-      <Button asChild variant="accent" className="min-h-11 w-full text-base">
-        <Link href="/account/dashboard">Go to your dashboard</Link>
-      </Button>
-
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        <Link
-          href="/account/login"
-          className="text-brand underline-offset-2 hover:underline"
-        >
-          Sign in with a different account
-        </Link>
-      </p>
-    </AuthShell>
-  );
+  return <AccountAccessDenialPage variant="notes" />;
 }

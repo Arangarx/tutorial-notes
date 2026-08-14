@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 SMOKE-PRIV-1 MERGED** [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb). Exploring leftover unblocked #6 / next numbered work. Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 Composer-sized security DONE** (4 chunks). **#7 instrumentation** — scoping first-party events slice (no PostHog; no COPPA-path egress). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb) (SMOKE-PRIV-1 merge).
 
-**Last action:** [Verify SMOKE-PRIV-1 logout](2de50bbc-80ff-48d2-9a24-0fbd703de084) **APPROVE** → merge [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb). Dispatched [Explore leftover #6 MUST](60f38311-4b50-4281-bd05-85e042df732a).
+**Last action:** [Explore leftover #6 MUST](60f38311-4b50-4281-bd05-85e042df732a) — no remaining Composer-sized stranger-pilot ownership holes. Dispatched [Scope #7 first-party events](ee3e3565-1ae9-413f-b502-5c93b89c38ea).
 
-**In-flight:** explore leftover unblocked #6 / next priority. `tutoring-notes-master-ops` stays on master.
+**In-flight:** #7 first-chunk design (read-only). `tutoring-notes-master-ops` stays on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; VERIFY-ACCT-1; api-test hard-404; SMOKE-PRIV-1.
 

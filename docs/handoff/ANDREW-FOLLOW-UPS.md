@@ -52,7 +52,8 @@ Notes:
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
-| #6 | Security MUST for strangers | Origin pin + VERIFY-ACCT-1 + test-route hard-404 + SMOKE-PRIV-1 **DONE** [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb). Exploring leftover MUST / next numbered work. |
+| #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
+| #7 | First-party instrumentation | Scoping first slice (tutor/admin events only; no PostHog; no learner/COPPA egress) |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -68,4 +69,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Through #5 + four #6 security chunks shipped (incl. shared-device logout). Agents picking leftover MUST. Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Through #5 + Composer-sized #6 shipped. Agents scoping **#7** first-party events. Your open work = calendar callback URI + **one** Google verification when live.

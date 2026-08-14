@@ -45,12 +45,20 @@ Notes:
 
 | Priority | Work | Status |
 |----------|------|--------|
-| **#1** | `/login` Sign in with Google + Playwright | **In flight** (2026-08-14) |
+| **#1** | `/login` Sign in with Google + Playwright | Branch [`feat/google-signin-login-ui`](https://github.com/Arangarx/tutoring-notes/tree/feat/google-signin-login-ui) @ [`1a51159c`](https://github.com/Arangarx/tutoring-notes/commit/1a51159c) — **independent verify in flight** (not merged) |
 | #1 next | Calendar OAuth MVP (after Console path clearer) | Queued |
 | #2 | Student-detail Start / consent / claim findability | Queued after Google Sign-In UI lands |
 | #3–7 | Tutor signup, email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
 
-**You do not need to smoke** Sign-In UI until feature DONE (Playwright green + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
+**You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
+
+**Live Sign-In smoke (after merge) also needs:**
+- Redirect URI: `https://<host>/api/auth/callback/google` (prod `usemynk.com`) and `http://localhost:3100/api/auth/callback/google` (or your local port)
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set on the Vercel env for that deployment
+- Same Mortensen Apps umbrella OAuth client as Gmail; scopes `openid email profile` only
+- Google does **not** auto-provision — email must already be an `AdminUser`
+
+**Known leftover (not this PR):** visual `login.png` baseline + pre-existing login `page-has-heading-one` a11y (`AuthShell` title is a `<div>`). Follow-up, not a Sign-In blocker.
 
 ---
 

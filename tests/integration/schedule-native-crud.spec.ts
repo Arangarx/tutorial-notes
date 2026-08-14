@@ -7,17 +7,11 @@
 
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
+import { localDateToInputValue } from "../../src/lib/schedule/mock-data";
 import { TEST_ADMIN, seedTestAdmin, seedTestStudent } from "../visual/helpers";
 
-function localDateInputValue(date: Date): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 function todayLocalDateInput(): string {
-  return localDateInputValue(new Date());
+  return localDateToInputValue(new Date());
 }
 
 async function clearScheduledSessions(adminUserId: string) {
@@ -40,7 +34,6 @@ test.describe("Native schedule CRUD", () => {
   }) => {
     const adminUserId = await seedTestAdmin();
     const { studentId } = await seedTestStudent(adminUserId);
-    const sessionDate = todayLocalDateInput();
     const subject = `PW Schedule ${Date.now()}`;
     const editedSubject = `${subject} Updated`;
 
@@ -53,10 +46,12 @@ test.describe("Native schedule CRUD", () => {
     await page.getByTestId("schedule-new-session").first().click();
     await expect(page.getByTestId("schedule-create-form")).toBeVisible();
 
+    const sessionDate = todayLocalDateInput();
+    await expect(page.locator("#schedule-date")).toHaveValue(sessionDate);
+
     await page.locator("#schedule-student").click();
     await page.getByRole("option", { name: "Playwright Student" }).click();
     await page.locator("#schedule-subject").fill(subject);
-    await page.locator("#schedule-date").fill(sessionDate);
     await page.locator("#schedule-start").fill("15:00");
     await page.locator("#schedule-end").fill("16:00");
     await page.locator("#schedule-notes").fill("Bring worksheet");

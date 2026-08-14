@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
-import { formatDateOnlyInput, parseDateOnlyInput } from "@/lib/date-only";
+import { parseDateOnlyInput } from "@/lib/date-only";
 import { db, withDbRetry } from "@/lib/db";
 import { toScheduledSessionView } from "@/lib/schedule/scheduled-session-mapper";
 import type { ScheduleStudentOption, ScheduledSessionView } from "@/lib/schedule/types";
@@ -63,6 +63,7 @@ async function assertOwnsScheduledSession(sessionId: string) {
   return session;
 }
 
+/** Lists sessions for the authenticated tutor only (`adminUserId` = scope.adminId). */
 export async function listScheduledSessionsForTutor(
   googleConnected: boolean
 ): Promise<ScheduledSessionView[]> {
@@ -147,18 +148,4 @@ export async function deleteScheduledSession(sessionId: string): Promise<void> {
     { label: "deleteScheduledSession" }
   );
   revalidatePath("/admin/schedule");
-}
-
-/** Test/oracle helper: read back stored DATE as YYYY-MM-DD. */
-export async function getScheduledSessionDateInput(sessionId: string): Promise<string | null> {
-  await assertOwnsScheduledSession(sessionId);
-  const row = await withDbRetry(
-    () =>
-      db.scheduledSession.findUnique({
-        where: { id: sessionId },
-        select: { date: true },
-      }),
-    { label: "getScheduledSessionDateInput" }
-  );
-  return row ? formatDateOnlyInput(row.date) : null;
 }

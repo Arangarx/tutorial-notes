@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -72,6 +72,13 @@ export function CreateSessionDialog({
 
   const [studentId, setStudentId] = useState(initialStudentId);
   const [plannedDurationMinutes, setPlannedDurationMinutes] = useState(initialDuration);
+
+  useEffect(() => {
+    if (!open) return;
+    setStudentId(initialStudentId);
+    setPlannedDurationMinutes(initialDuration);
+    setError(null);
+  }, [open, initialStudentId, initialDuration]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

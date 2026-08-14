@@ -34,12 +34,12 @@ import { db } from "@/lib/db";
 import {
   createScheduledSession,
   deleteScheduledSession,
-  getScheduledSessionDateInput,
   listScheduledSessionsForTutor,
   updateScheduledSession,
 } from "@/app/admin/schedule/actions";
 import { formatDateOnlyInput } from "@/lib/date-only";
 import { uniq } from "../helpers/unique-test-token";
+import { getScheduledSessionDateInputForTest } from "./scheduled-session-test-helpers";
 
 async function createTutor() {
   return db.adminUser.create({
@@ -138,7 +138,7 @@ describe("scheduled session actions", () => {
       subject: "Chemistry",
     });
 
-    const stored = await getScheduledSessionDateInput(id);
+    const stored = await getScheduledSessionDateInputForTest(id);
     expect(stored).toBe("2026-04-22");
 
     const row = await db.scheduledSession.findUnique({ where: { id }, select: { date: true } });
@@ -194,6 +194,45 @@ describe("scheduled session actions", () => {
     expect(stillThere[0].subject).toBe("Physics");
 
     await deleteScheduledSession(id);
+  });
+
+  it("denies another tutor from creating a session for someone else's student", async () => {
+    const tutor1 = await createTutor();
+    const tutor2 = await createTutor();
+    const student = await createStudentForTutor(tutor1.id);
+
+    assertOwnsStudentMock.mockImplementation(async (studentId: string) => {
+      const scope = await requireStudentScopeMock();
+      const row = await db.student.findUnique({
+        where: { id: studentId },
+        select: { adminUserId: true },
+      });
+      if (!row || scope.kind !== "admin" || row.adminUserId !== scope.adminId) {
+        throw new Error("NEXT_NOT_FOUND");
+      }
+    });
+
+    requireStudentScopeMock.mockResolvedValue({
+      kind: "admin",
+      adminId: tutor2.id,
+      email: tutor2.email,
+    });
+
+    await expect(
+      createScheduledSession({
+        studentId: student.id,
+        date: "2026-08-27",
+        startTime: "14:00",
+        endTime: "15:00",
+        plannedDurationMinutes: 60,
+        subject: "Unauthorized create",
+      })
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(assertOwnsStudentMock).toHaveBeenCalledWith(student.id);
+
+    const rows = await db.scheduledSession.findMany({ where: { studentId: student.id } });
+    expect(rows).toHaveLength(0);
   });
 
   it("shows honest not-synced badge only when Google is connected", async () => {

@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#3 leftover reject/revoke MERGED** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Exploring next leftover (pagination vs invite links vs pause). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#3 leftovers deferred** (pagination premature; invite links need Andrew). **#6 Join denial UX IN FLIGHT** (`feat/join-denial-not-my-session`). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111) (waitlist reject/revoke merge).
 
-**Last action:** [Re-verify waitlist reject/revoke](19d14d33-a985-4613-817b-4232dec4c76a) **APPROVE** → merge [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Dispatched [Explore next leftover after B1](ce61b4f5-5610-40c0-a141-ddf8a2cbe35a).
+**Last action:** [Explore next leftover after B1](ce61b4f5-5610-40c0-a141-ddf8a2cbe35a) — #3 leftovers deferred; recommended Join denial UX. Dispatched [Join denial not-my-session](dda95d4e-3d42-4906-b66a-c83b5b720bc6).
 
-**In-flight:** explore next leftover. `tutoring-notes-master-ops` stays on master.
+**In-flight:** `feat/join-denial-not-my-session` executor (do not merge). Preserve fail-closed join 404 / G6.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 

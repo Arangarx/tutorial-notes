@@ -54,7 +54,8 @@ Notes:
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
 | #7 | First-party instrumentation | **DONE** chunk 1 — merged [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (`ProductEvent` tutor funnel). Chunk 2 later (no PostHog). |
-| #3 leftover | Waitlist REJECTED + revoke | **DONE** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Remaining: pagination, invite links. |
+| #3 leftover | Waitlist REJECTED + revoke | **DONE** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Pagination deferred. Invite links need your call (operator-invite vs open signup). |
+| #6 leftover | Join denial UX | **In flight** — `feat/join-denial-not-my-session` (friendly page for authenticated wrong principal; fail-closed 404 preserved) |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -70,4 +71,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Through #7 ProductEvent + waitlist reject/revoke shipped. Agents picking next leftover. Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Through waitlist reject/revoke shipped. Agents on **join denial UX**. Your open work = calendar callback URI + **one** Google verification when live. Optional later: tutor invite-link vs open signup.

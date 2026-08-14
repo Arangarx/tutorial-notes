@@ -8,7 +8,7 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 
 1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
 2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
-3. **Tutor signup / self-serve auth** — first chunk DONE (`2f54459f`). REJECTED + revoke **DONE** 2026-08-14 ([`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111)). Leftover: pagination, invite links.
+3. **Tutor signup / self-serve auth** — first chunk + REJECTED/revoke **DONE** ([`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111)). Pagination **deferred** (list won’t exceed one screen at pilot scale). Invite links **deferred** (needs Andrew: operator-invite vs open `/signup`).
 4. **2FA pilots will finish** — email OTP **DONE** (`ab70f002` enroll + `529f619e` TOTP login email-alt). SMS later; TOTP stays as upgrade.
 5. **Finish scheduling** — **native CRUD DONE** 2026-08-14 ([`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216)). Google outbound event write later (after Console verification). Two-way sync still P3.
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.

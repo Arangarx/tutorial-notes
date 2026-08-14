@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { MockCalendarConnection } from "@/lib/schedule/mock-data";
+import type { CalendarConnectionView } from "@/lib/schedule/types";
 
 export type GoogleCalendarConnection = {
   refreshToken: string;
@@ -36,7 +36,7 @@ export async function getGoogleCalendarConnectionForTutor(
 /** Panel rows: real Google state + static Apple/other placeholders. */
 export function buildCalendarPanelConnections(
   googleConnection: Pick<GoogleCalendarConnection, "email"> | null
-): MockCalendarConnection[] {
+): CalendarConnectionView[] {
   return [
     {
       provider: "google",

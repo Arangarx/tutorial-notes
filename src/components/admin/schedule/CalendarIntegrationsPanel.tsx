@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionCard } from "@/components/SectionCard";
 import { disconnectGoogleCalendar } from "@/app/admin/settings/integrations/actions";
-import type { MockCalendarConnection } from "@/lib/schedule/mock-data";
+import type { CalendarConnectionView } from "@/lib/schedule/types";
 import { CalendarIcon, CheckIcon, PlusIcon } from "lucide-react";
 
 type CalendarIntegrationsPanelProps = {
-  connections: MockCalendarConnection[];
+  connections: CalendarConnectionView[];
   googleOAuthAvailable: boolean;
   googleCalendarCount?: number | null;
   connectError?: string;
@@ -22,7 +22,7 @@ type CalendarIntegrationsPanelProps = {
   settingsHref?: string;
 };
 
-function ProviderIcon({ provider }: { provider: MockCalendarConnection["provider"] }) {
+function ProviderIcon({ provider }: { provider: CalendarConnectionView["provider"] }) {
   if (provider === "google") {
     return (
       <span

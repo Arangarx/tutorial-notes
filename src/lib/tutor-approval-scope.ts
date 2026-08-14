@@ -15,7 +15,7 @@ import "server-only";
  * assertOwnsWhiteboardSession) so the ownership error surfaces first
  * and the approval error only fires for the session owner.
  *
- * Deferred: REJECTED status, email notifications, self-service revocation.
+ * Deferred: email notifications, self-service revocation.
  * See feat/signup-waitlist smokebook for full TODO list.
  */
 
@@ -62,7 +62,7 @@ export async function getTutorApprovalStatus(
 
 /**
  * Returns true iff the tutor's approvalStatus is APPROVED.
- * Returns false for WAITLISTED or non-existent rows.
+ * Returns false for WAITLISTED, REJECTED, or non-existent rows.
  */
 export async function isTutorApproved(adminUserId: string): Promise<boolean> {
   const status = await getTutorApprovalStatus(adminUserId);
@@ -71,7 +71,7 @@ export async function isTutorApproved(adminUserId: string): Promise<boolean> {
 
 /**
  * Asserts the tutor is APPROVED.
- * Throws TutorNotApprovedError if WAITLISTED (or row missing).
+ * Throws TutorNotApprovedError if not APPROVED (WAITLISTED, REJECTED, or row missing).
  *
  * MUST be called on every external-cost chokepoint, after ownership assertion.
  *
@@ -139,6 +139,71 @@ export async function approveTutor(
   });
 }
 
+/**
+ * Reject a WAITLISTED tutor.
+ * Sets approvalStatus=REJECTED. Idempotent if already REJECTED.
+ *
+ * Caller MUST run requireOperator() before calling this.
+ */
+export async function rejectTutor(
+  adminUserId: string,
+  operatorId: string
+): Promise<void> {
+  const existing = await db.adminUser.findUnique({
+    where: { id: adminUserId },
+    select: { approvalStatus: true },
+  });
+
+  if (!existing) {
+    throw new Error(`Tutor account not found: ${adminUserId}`);
+  }
+
+  if (existing.approvalStatus === "REJECTED") {
+    console.log(
+      `[tap] tap=${adminUserId} action=reject_idempotent byOperator=${operatorId}`
+    );
+    return;
+  }
+
+  await db.adminUser.update({
+    where: { id: adminUserId },
+    data: {
+      approvalStatus: "REJECTED",
+      approvedAt: null,
+      approvedByAdminId: null,
+    },
+  });
+
+  console.log(
+    `[tap] tap=${adminUserId} action=rejected byOperator=${operatorId}`
+  );
+}
+
+/**
+ * Revoke an APPROVED tutor's access.
+ * Sets approvalStatus=WAITLISTED so the operator can re-approve later.
+ * Does not delete the AdminUser row.
+ *
+ * Caller MUST run requireOperator() before calling this.
+ */
+export async function revokeTutorApproval(
+  adminUserId: string,
+  operatorId: string
+): Promise<void> {
+  await db.adminUser.update({
+    where: { id: adminUserId },
+    data: {
+      approvalStatus: "WAITLISTED",
+      approvedAt: null,
+      approvedByAdminId: null,
+    },
+  });
+
+  console.log(
+    `[tap] tap=${adminUserId} action=revoked to=WAITLISTED byOperator=${operatorId}`
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Operator query: list WAITLISTED tutors
 // ---------------------------------------------------------------------------
@@ -153,6 +218,21 @@ export type WaitlistedTutor = {
 export async function listWaitlistedTutors(): Promise<WaitlistedTutor[]> {
   return db.adminUser.findMany({
     where: { approvalStatus: "WAITLISTED", isTestAccount: false },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export type ApprovedTutor = WaitlistedTutor;
+
+export async function listApprovedTutors(): Promise<ApprovedTutor[]> {
+  return db.adminUser.findMany({
+    where: { approvalStatus: "APPROVED", isTestAccount: false },
     select: {
       id: true,
       email: true,

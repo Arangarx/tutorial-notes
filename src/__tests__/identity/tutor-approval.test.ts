@@ -13,6 +13,13 @@
  *   TAP-9: grandfathered/existing row with APPROVED status passes assertTutorApproved
  *   TAP-10: transcription worker skips WAITLISTED session (Layer B gate)
  *   TAP-11: notes worker skips WAITLISTED session (Layer B gate)
+ *   TAP-12: rejectTutor updates WAITLISTED → REJECTED
+ *   TAP-13: rejectTutor is idempotent when already REJECTED
+ *   TAP-14: assertTutorApproved throws for REJECTED
+ *   TAP-15: isTutorApproved returns false for REJECTED
+ *   TAP-16: revokeTutorApproval updates APPROVED → WAITLISTED
+ *   TAP-17: approveTutorAction refuses REJECTED (terminal)
+ *   TAP-7: non-operator cannot call approve/reject/revoke actions
  *
  * Mocks: @/lib/db via jest.mock — no real DB connection needed.
  */
@@ -110,6 +117,12 @@ jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
 }));
 
+const mockIsOperatorEmail = jest.fn();
+
+jest.mock("@/lib/operator", () => ({
+  isOperatorEmail: (...args: unknown[]) => mockIsOperatorEmail(...args),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
@@ -119,8 +132,16 @@ import {
   isTutorApproved,
   getTutorApprovalStatus,
   approveTutor,
+  rejectTutor,
+  revokeTutorApproval,
   TutorNotApprovedError,
 } from "@/lib/tutor-approval-scope";
+import {
+  approveTutorAction,
+  rejectTutorAction,
+  revokeTutorApprovalAction,
+} from "@/app/admin/tutor-approvals/actions";
+import { getServerSession } from "next-auth";
 import { processChunkTranscribeJob } from "@/lib/recording/transcription-worker";
 import { processNotesReduceJob } from "@/lib/recording/notes-worker";
 
@@ -130,7 +151,9 @@ import { processNotesReduceJob } from "@/lib/recording/notes-worker";
 
 const APPROVED_ADMIN_ID = "admin-approved-001";
 const WAITLISTED_ADMIN_ID = "admin-waitlisted-001";
+const REJECTED_ADMIN_ID = "admin-rejected-001";
 const OPERATOR_ID = "admin-operator-001";
+const OPERATOR_EMAIL = "ops@example.com";
 const SESSION_ID = "wbsid-approval-test";
 const CHUNK_URL = "https://blob.vercel-storage.com/chunk-test.webm";
 
@@ -144,6 +167,16 @@ function mockWaitlistedAdmin(id = WAITLISTED_ADMIN_ID) {
 
 function mockMissingAdmin() {
   mockAdminUserFindUnique.mockResolvedValueOnce(null);
+}
+
+function mockRejectedAdmin(id = REJECTED_ADMIN_ID) {
+  mockAdminUserFindUnique.mockResolvedValueOnce({ id, approvalStatus: "REJECTED" });
+}
+
+function mockOperatorSession() {
+  (getServerSession as jest.Mock).mockResolvedValue({
+    user: { id: OPERATOR_ID, email: OPERATOR_EMAIL },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -380,5 +413,217 @@ describe("TAP-11 — processNotesReduceJob skips WAITLISTED session", () => {
     const result = await processNotesReduceJob(SESSION_ID);
 
     expect(result).toEqual({ outcome: "skipped", reason: "tutor_not_approved" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-12: rejectTutor updates WAITLISTED → REJECTED
+// ---------------------------------------------------------------------------
+describe("TAP-12 — rejectTutor updates WAITLISTED → REJECTED", () => {
+  it("calls db.adminUser.update with REJECTED and clears approval metadata", async () => {
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: WAITLISTED_ADMIN_ID,
+      approvalStatus: "WAITLISTED",
+    });
+    mockAdminUserUpdate.mockResolvedValueOnce({});
+
+    await rejectTutor(WAITLISTED_ADMIN_ID, OPERATOR_ID);
+
+    expect(mockAdminUserUpdate).toHaveBeenCalledWith({
+      where: { id: WAITLISTED_ADMIN_ID },
+      data: {
+        approvalStatus: "REJECTED",
+        approvedAt: null,
+        approvedByAdminId: null,
+      },
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-13: rejectTutor idempotent when already REJECTED
+// ---------------------------------------------------------------------------
+describe("TAP-13 — rejectTutor idempotent for REJECTED", () => {
+  beforeEach(() => {
+    mockAdminUserUpdate.mockClear();
+  });
+
+  it("does not call update when already REJECTED", async () => {
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: REJECTED_ADMIN_ID,
+      approvalStatus: "REJECTED",
+    });
+
+    await rejectTutor(REJECTED_ADMIN_ID, OPERATOR_ID);
+
+    expect(mockAdminUserUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-14: assertTutorApproved throws for REJECTED
+// ---------------------------------------------------------------------------
+describe("TAP-14 — assertTutorApproved throws for REJECTED", () => {
+  beforeEach(() => {
+    mockLogProductEvent.mockReset();
+  });
+
+  it("throws TutorNotApprovedError with status REJECTED", async () => {
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: REJECTED_ADMIN_ID,
+      approvalStatus: "REJECTED",
+    });
+
+    await expect(assertTutorApproved(REJECTED_ADMIN_ID)).rejects.toMatchObject({
+      name: "TutorNotApprovedError",
+      code: "TUTOR_NOT_APPROVED",
+      adminUserId: REJECTED_ADMIN_ID,
+      status: "REJECTED",
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-15: isTutorApproved returns false for REJECTED
+// ---------------------------------------------------------------------------
+describe("TAP-15 — isTutorApproved returns false for REJECTED", () => {
+  it("returns false", async () => {
+    mockRejectedAdmin();
+    const result = await isTutorApproved(REJECTED_ADMIN_ID);
+    expect(result).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-16: revokeTutorApproval updates APPROVED → WAITLISTED
+// ---------------------------------------------------------------------------
+describe("TAP-16 — revokeTutorApproval updates APPROVED → WAITLISTED", () => {
+  it("calls db.adminUser.update with WAITLISTED and clears approval metadata", async () => {
+    mockAdminUserUpdate.mockResolvedValueOnce({});
+
+    await revokeTutorApproval(APPROVED_ADMIN_ID, OPERATOR_ID);
+
+    expect(mockAdminUserUpdate).toHaveBeenCalledWith({
+      where: { id: APPROVED_ADMIN_ID },
+      data: {
+        approvalStatus: "WAITLISTED",
+        approvedAt: null,
+        approvedByAdminId: null,
+      },
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-17: approveTutorAction refuses REJECTED (terminal)
+// ---------------------------------------------------------------------------
+describe("TAP-17 — approveTutorAction refuses REJECTED", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsOperatorEmail.mockReturnValue(true);
+    mockOperatorSession();
+  });
+
+  it("returns error and does not call approveTutor when status is REJECTED", async () => {
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: REJECTED_ADMIN_ID,
+      approvalStatus: "REJECTED",
+      email: "rejected@example.com",
+    });
+
+    const result = await approveTutorAction(REJECTED_ADMIN_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Rejected tutors cannot be approved.",
+    });
+    expect(mockAdminUserUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TAP-7: non-operator cannot call approve/reject/revoke actions
+// ---------------------------------------------------------------------------
+describe("TAP-7 — operator-only server actions", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsOperatorEmail.mockReset();
+  });
+
+  it("approveTutorAction calls notFound for non-operator", async () => {
+    mockIsOperatorEmail.mockReturnValue(false);
+    (getServerSession as jest.Mock).mockResolvedValue({
+      user: { id: "tutor-1", email: "tutor@example.com" },
+    });
+
+    await expect(approveTutorAction(WAITLISTED_ADMIN_ID)).rejects.toThrow(
+      "NEXT_NOT_FOUND"
+    );
+  });
+
+  it("rejectTutorAction calls notFound for non-operator", async () => {
+    mockIsOperatorEmail.mockReturnValue(false);
+    (getServerSession as jest.Mock).mockResolvedValue({
+      user: { id: "tutor-1", email: "tutor@example.com" },
+    });
+
+    await expect(rejectTutorAction(WAITLISTED_ADMIN_ID)).rejects.toThrow(
+      "NEXT_NOT_FOUND"
+    );
+  });
+
+  it("revokeTutorApprovalAction calls notFound for non-operator", async () => {
+    mockIsOperatorEmail.mockReturnValue(false);
+    (getServerSession as jest.Mock).mockResolvedValue({
+      user: { id: "tutor-1", email: "tutor@example.com" },
+    });
+
+    await expect(revokeTutorApprovalAction(APPROVED_ADMIN_ID)).rejects.toThrow(
+      "NEXT_NOT_FOUND"
+    );
+  });
+
+  it("rejectTutorAction rejects WAITLISTED tutor for operator", async () => {
+    mockIsOperatorEmail.mockReturnValue(true);
+    mockOperatorSession();
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: WAITLISTED_ADMIN_ID,
+      approvalStatus: "WAITLISTED",
+    });
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: WAITLISTED_ADMIN_ID,
+      approvalStatus: "WAITLISTED",
+    });
+    mockAdminUserUpdate.mockResolvedValueOnce({});
+
+    const result = await rejectTutorAction(WAITLISTED_ADMIN_ID);
+
+    expect(result).toEqual({ ok: true });
+    expect(mockAdminUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: WAITLISTED_ADMIN_ID },
+        data: expect.objectContaining({ approvalStatus: "REJECTED" }),
+      })
+    );
+  });
+
+  it("revokeTutorApprovalAction revokes APPROVED tutor for operator", async () => {
+    mockIsOperatorEmail.mockReturnValue(true);
+    mockOperatorSession();
+    mockAdminUserFindUnique.mockResolvedValueOnce({
+      id: APPROVED_ADMIN_ID,
+      approvalStatus: "APPROVED",
+    });
+    mockAdminUserUpdate.mockResolvedValueOnce({});
+
+    const result = await revokeTutorApprovalAction(APPROVED_ADMIN_ID);
+
+    expect(result).toEqual({ ok: true });
+    expect(mockAdminUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: APPROVED_ADMIN_ID },
+        data: expect.objectContaining({ approvalStatus: "WAITLISTED" }),
+      })
+    );
   });
 });

@@ -38,6 +38,34 @@ async function seedWaitlistedTutor(email: string, password: string): Promise<voi
   }
 }
 
+async function seedRejectedTutor(email: string, password: string): Promise<void> {
+  assertLocalDatabaseUrlForHarness();
+  const prisma = new PrismaClient();
+  const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    await prisma.adminUser.upsert({
+      where: { email },
+      create: {
+        email,
+        passwordHash,
+        displayName: "PW Rejected Tutor",
+        role: "TUTOR",
+        approvalStatus: "REJECTED",
+        isTestAccount: false,
+      },
+      update: {
+        passwordHash,
+        approvalStatus: "REJECTED",
+        isTestAccount: false,
+        approvedAt: null,
+        approvedByAdminId: null,
+      },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 test.describe("P1-ID-SIGNUP — tutor signup WAITLISTED gate", () => {
   test.use({ storageState: EMPTY_STATE });
 
@@ -95,6 +123,18 @@ test.describe("P1-ID-SIGNUP — tutor signup WAITLISTED gate", () => {
     await page.goto("/admin/students");
     await page.waitForURL(/\/admin\/pending-approval/, { timeout: 30_000 });
     await expect(page.getByText("Account pending approval")).toBeVisible();
+  });
+
+  test("REJECTED tutor login shows Account not approved copy", async ({
+    page,
+  }) => {
+    const email = uniqueSignupEmail();
+    const password = "RejectedGate!99";
+    await seedRejectedTutor(email, password);
+
+    await loginTutorWithPassword(page, { email, password });
+    await page.waitForURL(/\/admin\/pending-approval/, { timeout: 30_000 });
+    await expect(page.getByText("Account not approved")).toBeVisible();
   });
 
   // PLAYWRIGHT-GAP: Full Google OAuth round-trip cannot run hermetically — no mock

@@ -91,10 +91,11 @@ enum AdminUser2FAEmailChallengePurpose {
 /// Existing rows are backfilled to APPROVED via the migration (grandfather).
 /// WAITLISTED: cannot incur external cost (Blob, OpenAI, Whisper).
 /// APPROVED: full cost access granted.
-/// (REJECTED is deferred — see feat/signup-waitlist smokebook TODOs.)
+/// REJECTED: terminal — operator rejection; cannot incur cost or be re-approved.
 enum TutorApprovalStatus {
   WAITLISTED
   APPROVED
+  REJECTED
 }
 
 enum SessionPhase {

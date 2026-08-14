@@ -19,21 +19,27 @@ export default async function PendingApprovalPage() {
   }
 
   const email = session.user.email ?? "your account";
+  const isRejected = approvalStatus === "REJECTED";
 
   return (
     <div className="flex flex-col items-center justify-center py-12">
       <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Account pending approval</CardTitle>
+            <CardTitle className="text-xl">
+              {isRejected ? "Account not approved" : "Account pending approval"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Your tutor account (<span className="font-medium text-foreground">{email}</span>)
-              has been created and is pending operator approval.
+              {isRejected
+                ? " was not approved for platform access."
+                : " has been created and is pending operator approval."}
             </p>
             <p className="text-sm text-muted-foreground">
-              Once approved you will have full access to the platform. If you are expecting
-              faster access, please contact your administrator.
+              {isRejected
+                ? "If you believe this is an error, please contact your administrator."
+                : "Once approved you will have full access to the platform. If you are expecting faster access, please contact your administrator."}
             </p>
             <div className="pt-2">
               <PendingApprovalSignOut />

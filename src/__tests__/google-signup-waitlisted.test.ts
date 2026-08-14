@@ -375,6 +375,7 @@ describe("signup server action — operator notification", () => {
       inAdmin: false,
       inAccountHolder: false,
     });
+    const logProductEvent = jest.fn().mockResolvedValue(undefined);
 
     jest.doMock("@/lib/auth-db", () => ({
       createAdmin,
@@ -385,6 +386,9 @@ describe("signup server action — operator notification", () => {
     }));
     jest.doMock("@/lib/notify-operator-new-signup", () => ({
       notifyOperatorsOfNewSignup: notify,
+    }));
+    jest.doMock("@/lib/observability/product-events", () => ({
+      logProductEvent,
     }));
     jest.doMock("next/navigation", () => ({
       redirect: jest.fn(() => {
@@ -407,6 +411,11 @@ describe("signup server action — operator notification", () => {
       email: "brand-new@example.com",
       displayName: "Brand New",
       method: "credentials",
+    });
+    expect(logProductEvent).toHaveBeenCalledWith({
+      kind: "TUTOR_SIGNUP",
+      adminUserId: "u1",
+      metadata: { method: "credentials" },
     });
   });
 });

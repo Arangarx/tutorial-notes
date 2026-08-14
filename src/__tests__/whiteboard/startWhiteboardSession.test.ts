@@ -40,6 +40,12 @@ jest.mock("@/lib/whiteboard-scope", () => ({
   assertOwnsWhiteboardSession: (id: string) => assertOwnsWhiteboardSessionMock(id),
 }));
 
+const mockLogProductEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/observability/product-events", () => ({
+  __esModule: true,
+  logProductEvent: (...args: unknown[]) => mockLogProductEvent(...args),
+}));
+
 import { startWhiteboardSession } from "@/app/admin/students/[id]/whiteboard/actions";
 import { ConsentError } from "@/lib/consent-scope";
 
@@ -70,6 +76,7 @@ function mockConsentRecordExists() {
 
 beforeEach(() => {
   dbUpdateManyMock.mockReset();
+  mockLogProductEvent.mockReset();
   assertOwnsWhiteboardSessionMock.mockReset();
   dbStudentFindUniqueMock.mockReset();
   dbErasureJobFindFirstMock.mockReset();
@@ -111,6 +118,13 @@ describe("startWhiteboardSession", () => {
       })
     );
     expect(result).toEqual({ ok: true, phase: "active" });
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "SESSION_STARTED",
+      adminUserId: ownedSession.adminUserId,
+      studentId: ownedSession.studentId,
+      whiteboardSessionId: ownedSession.id,
+      metadata: { mode: "LIVE", noop: false },
+    });
   });
 
   it("is idempotent when already active or ended", async () => {
@@ -123,6 +137,13 @@ describe("startWhiteboardSession", () => {
     const result = await startWhiteboardSession("wb_42");
 
     expect(result).toEqual({ ok: true, phase: "active" });
+    expect(mockLogProductEvent).toHaveBeenCalledWith({
+      kind: "SESSION_STARTED",
+      adminUserId: ownedSession.adminUserId,
+      studentId: ownedSession.studentId,
+      whiteboardSessionId: ownedSession.id,
+      metadata: { mode: "LIVE", noop: true },
+    });
   });
 
   it("T-new-B / T4: legacy PENDING row, claimed, no record → ConsentError, phase stays PENDING", async () => {

@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 VERIFY-ACCT-1 — verify REJECT, fix in flight.** Branch `feat/verify-acct-cross-realm-email` @ [`553fa9d0`](https://github.com/Arangarx/tutoring-notes/commit/553fa9d0). Blocker: `google-signup-waitlisted.test.ts` 3 red (unmocked `findEmailRealmPresence`). Do not merge. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 VERIFY-ACCT-1 — adjacent-suite fix pushed, re-verify in flight.** Branch `feat/verify-acct-cross-realm-email` @ [`2ad1fa0b`](https://github.com/Arangarx/tutoring-notes/commit/2ad1fa0b). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889) (wb-asset origin pin merge).
 
-**Last action:** [Verify cross-realm email block](7f83dc00-8168-42d9-b3eb-7f4d004422e4) **REJECT** — `google-signup-waitlisted.test.ts` 3 failures. Dispatched [Fix VERIFY-ACCT-1 Jest regression](657dee00-a775-4774-805f-d7f7c56cbacb).
+**Last action:** [Fix VERIFY-ACCT-1 Jest regression](657dee00-a775-4774-805f-d7f7c56cbacb) pushed `2ad1fa0b` (waitlisted mock + setup guard + case-variant). Dispatched [Re-verify VERIFY-ACCT-1](3e5bec8a-955c-4237-b0f7-521716ea0d96).
 
-**In-flight:** adjacent-suite fix on `feat/verify-acct-cross-realm-email` (do not merge).
+**In-flight:** independent re-verify of `feat/verify-acct-cross-realm-email` @ `2ad1fa0b` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 wb-asset origin pin.
 

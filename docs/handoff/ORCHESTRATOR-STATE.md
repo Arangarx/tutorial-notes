@@ -51,7 +51,7 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `35dd4c00` (update after this docs commit).
+**Tip:** `master` @ `4d50604c`.
 
 **Last action:** [Implement Google Sign-In UI](ff3c3a4b-9ad0-4b4a-abfb-3a8c84e6b53c) pushed `feat/google-signin-login-ui` @ `1a51159c` (gated Google section + identity Playwright 4/4). Visual `login.png` owed (pre-existing heading a11y). Dispatched [Verify Google Sign-In UI](fd0f8170-8ad9-47ba-a2f7-133a4bb18f36).
 

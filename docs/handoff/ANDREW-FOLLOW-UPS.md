@@ -52,7 +52,7 @@ Notes:
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
-| #6 | Security MUST for strangers | Origin pin + VERIFY-ACCT-1 + test-route hard-404 **DONE**. **In flight:** SMOKE-PRIV-1 learner logout clears parent session (`feat/smoke-priv-1-learner-logout`). |
+| #6 | Security MUST for strangers | Origin pin + VERIFY-ACCT-1 + test-route hard-404 **DONE**. SMOKE-PRIV-1 branch [`feat/smoke-priv-1-learner-logout`](https://github.com/Arangarx/tutoring-notes/tree/feat/smoke-priv-1-learner-logout) @ [`f115fddd`](https://github.com/Arangarx/tutoring-notes/commit/f115fddd) — **independent verify in flight** |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 

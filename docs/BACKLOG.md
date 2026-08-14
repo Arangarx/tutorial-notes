@@ -197,7 +197,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **SEC — /api/test/whiteboard/* gate hardening** — /api/test/whiteboard/* gate hardening (§6)
 - **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
 - **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device (§1)
-- **VERIFY-ACCT-1** — duplicate-account creation block — **in flight** (implemented on `feat/verify-acct-cross-realm-email`; pending adjacent-suite green + re-verify APPROVE)
+- **VERIFY-ACCT-1** — duplicate-account creation block — **DONE** 2026-08-14 ([`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7)). Google OAuth cross-realm round-trip remains PLAYWRIGHT-GAP (Jest surrogate).
 - **WB-ADULT-JOIN-ENABLEMENT B2-signup / B3 / B4** —  (§6)
 - **WB-PARENT-JOIN-AS-CHILD** — parent_session_select picker (§6)
 
@@ -1397,7 +1397,7 @@ Interim `ParentJoinGapCallout` shipped.
 Notes path has `/account/not-my-notes`; join still `notFound()`.
 
 **[P1][AUTH] VERIFY-ACCT-1 — duplicate-account creation block**  
-Same email parent + tutor. **In flight** on `feat/verify-acct-cross-realm-email` (2026-08-14): shared `findEmailRealmPresence` blocks cross-realm signup (tutor credentials, parent API, Google tutor provision with signup-intent, `/setup` bootstrap). Jest: `src/__tests__/identity/cross-realm-email.test.ts`; Playwright: `tests/integration/identity/cross-realm-email.spec.ts`. Pending adjacent-suite green + verifier APPROVE before DONE. Google OAuth cross-realm round-trip remains **PLAYWRIGHT-GAP** (Jest surrogate on `signIn` callback).
+**DONE** 2026-08-14 ([`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7)): shared `findEmailRealmPresence` blocks cross-realm signup (tutor credentials, parent API, Google tutor provision with signup-intent, `/setup` bootstrap). Google OAuth cross-realm round-trip remains **PLAYWRIGHT-GAP** (Jest surrogate).
 
 **[P2][AUTH] BL-RESET-DOMAIN — reset email respects originating host**  
 `getPublicBaseUrl` vs request Host.

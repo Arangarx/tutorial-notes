@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 VERIFY-ACCT-1 — adjacent-suite fix pushed, re-verify in flight.** Branch `feat/verify-acct-cross-realm-email` @ [`2ad1fa0b`](https://github.com/Arangarx/tutoring-notes/commit/2ad1fa0b). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 VERIFY-ACCT-1 MERGED** [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7). **#6 chunk 3 IN FLIGHT** — `/api/test/*` hard-404 (`feat/api-test-route-hard-404`). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ [`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889) (wb-asset origin pin merge).
+**Tip:** `master` @ [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7) (VERIFY-ACCT-1 merge).
 
-**Last action:** [Fix VERIFY-ACCT-1 Jest regression](657dee00-a775-4774-805f-d7f7c56cbacb) pushed `2ad1fa0b` (waitlisted mock + setup guard + case-variant). Dispatched [Re-verify VERIFY-ACCT-1](3e5bec8a-955c-4237-b0f7-521716ea0d96).
+**Last action:** [Re-verify VERIFY-ACCT-1](3e5bec8a-955c-4237-b0f7-521716ea0d96) **APPROVE** → merge [`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7). Dispatched [Harden /api/test route gates](690bef1b-9bea-4f3a-8100-ba6e254c0ba1).
 
-**In-flight:** independent re-verify of `feat/verify-acct-cross-realm-email` @ `2ad1fa0b` (do not merge).
+**In-flight:** `feat/api-test-route-hard-404` executor (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
-**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 wb-asset origin pin.
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; #6 VERIFY-ACCT-1.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

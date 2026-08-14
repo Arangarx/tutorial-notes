@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 `/api/test/*` hard-404 MERGED** [`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095). Exploring next #6 MUST chunk (origin pin + VERIFY-ACCT-1 + test-route gate all shipped). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 SMOKE-PRIV-1 IN FLIGHT** — learner logout must clear parent AH session (`feat/smoke-priv-1-learner-logout`). Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095) (api-test hard-404 merge).
 
-**Last action:** [Verify api-test hard-404](279c594f-4089-4323-8440-861a698cbef9) **APPROVE** → merge [`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095). Dispatched [Explore next #6 security chunk](3522c572-d652-4ab9-afae-64a21db126a7).
+**Last action:** [Explore next #6 security chunk](3522c572-d652-4ab9-afae-64a21db126a7) recommended SMOKE-PRIV-1. Dispatched [Fix learner logout dual-cookie](ff8df5f0-9536-4a37-ba1a-6c227ebde9cb).
 
-**In-flight:** explore next #6 MUST item.
+**In-flight:** `feat/smoke-priv-1-learner-logout` executor (do not merge). Do not checkout feature branches in `tutoring-notes-master-ops`.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; #6 VERIFY-ACCT-1; #6 api-test hard-404.
 

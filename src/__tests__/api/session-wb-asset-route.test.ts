@@ -184,6 +184,21 @@ describe("GET /api/sessions/[sessionId]/wb-asset — learner-session asset proxy
     expect(mockBlobGet).not.toHaveBeenCalled();
   });
 
+  it("evil-host u with in-scope path → 404 and does not fetch blob", async () => {
+    const { student, session, learnerProfile } = await seedSessionAssetFixture();
+    getLearnerSessionMock.mockResolvedValue({
+      learnerProfileId: learnerProfile.id,
+    });
+    const evilUrl = `https://evil.example/whiteboard-sessions/${student.id}/${session.id}/asset.png`;
+
+    const res = await GET(makeGetRequest(session.id, evilUrl), {
+      params: Promise.resolve({ sessionId: session.id }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(mockBlobGet).not.toHaveBeenCalled();
+  });
+
   it("out-of-scope u → 404 and does not fetch blob", async () => {
     const { student, session, learnerProfile } = await seedSessionAssetFixture();
     getLearnerSessionMock.mockResolvedValue({

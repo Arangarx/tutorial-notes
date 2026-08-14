@@ -82,6 +82,18 @@ describe("isWbAssetUrlInSessionScope — SSRF guard", () => {
     ).toBe(true);
   });
 
+  it("in-scope path on non-allowlisted host → false (SSRF origin pin)", () => {
+    const url =
+      "https://evil.example/whiteboard-sessions/stu_a/wb_b/asset.png";
+    expect(
+      isWbAssetUrlInSessionScope(url, {
+        studentId: "stu_a",
+        whiteboardSessionId: "wb_b",
+      })
+    ).toBe(false);
+    expect(mockBlobGet).not.toHaveBeenCalled();
+  });
+
   it("foreign session namespace → false (no blob fetch)", async () => {
     const url = inScopeAssetUrl("stu_a", "wb_other");
     expect(

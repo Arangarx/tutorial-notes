@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#4 email OTP 2FA — executor done, independent verify in flight.** Branch `feat/email-otp-2fa-enroll` @ [`501e4be7`](https://github.com/Arangarx/tutoring-notes/commit/501e4be7). Auth-boundary + migration — do not merge until verifier APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#4 email OTP 2FA — VERIFY REJECT.** Fixing auth-boundary Jest gaps (enroll rollback, email step-up, verify rate-limit on actions). Do not merge. Then re-verify. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `ec9351e1`.
 
-**Last action:** [Email OTP 2FA first chunk](d493c791-bd1a-40cd-bea9-b01f0340ba96) pushed `feat/email-otp-2fa-enroll` @ `501e4be7`. Dispatched [Verify email OTP 2FA chunk](089370c8-923c-4a56-bd55-bfc8c3952ed9).
+**Last action:** [Verify email OTP 2FA chunk](089370c8-923c-4a56-bd55-bfc8c3952ed9) **REJECT** — missing action-level rollback/step-up/rate-limit tests. Dispatched [Fix email OTP auth-boundary tests](e455e965-00d5-4c22-8b1c-564b2de8dc54).
 
-**In-flight:** independent verify of email OTP 2FA (do not merge yet).
+**In-flight:** email OTP test-gap fix (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Optional leftovers: Gmail/Calendar OAuth helper extract; SessionSyncBadge honesty; #2 flag-off/mobile.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup WAITLISTED; Calendar connect+stub.
 

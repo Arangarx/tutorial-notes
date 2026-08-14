@@ -47,7 +47,7 @@ Notes:
 |----------|------|--------|
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
 | #1 next | Calendar OAuth MVP (after Console path clearer) | Queued — needs your Console rows above before submit |
-| #2 | Student-detail Start / consent / claim findability | **In flight** (2026-08-14) |
+| #2 | Student-detail Start / consent / claim findability | Branch [`feat/student-detail-start-claim-findability`](https://github.com/Arangarx/tutoring-notes/tree/feat/student-detail-start-claim-findability) @ [`fe5a77eb`](https://github.com/Arangarx/tutoring-notes/commit/fe5a77eb) — **independent verify in flight** |
 | #3–7 | Tutor signup, email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.

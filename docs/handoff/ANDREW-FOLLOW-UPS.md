@@ -49,9 +49,10 @@ Notes:
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
 | #1 next | Calendar OAuth **connect + stub** | **DONE** — merged [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Add callback URI + enable Calendar API; **submit one bundled verification** when this is on prod/preview |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
-<<<<<<< Updated upstream
-| #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
-| #4 | Email OTP 2FA (TOTP stays) | Chunk 1 DONE [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002). Chunk 2 branch [`feat/email-otp-totp-login-alt`](https://github.com/Arangarx/tutoring-notes/tree/feat/email-otp-totp-login-alt) @ [`74ae6498`](https://github.com/Arangarx/tutoring-notes/commit/74ae6498) — **independent verify in flight** |
+| #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
+| #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
+| #5 | Native schedule CRUD | **In flight** — `feat/schedule-native-crud` (plan in-app; no Google write yet) |
+| #6–7 | Security MUST, instrumentation | Queued |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -67,4 +68,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect+stub, email-OTP enroll **shipped**. Agents on **Sarah’s TOTP login email-alt**. Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect, email OTP (incl. Sarah login alt) **shipped**. Agents on **#5 native schedule CRUD**. Your open work = calendar callback URI + **one** Google verification when live.

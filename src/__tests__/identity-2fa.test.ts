@@ -764,9 +764,9 @@ describe("auth-flow redirect mechanics", () => {
       expect(backupSection).not.toContain("router.refresh");
     });
 
-    it("TwoFactorSetupForm handleConfirm does not call router navigation (only sets client state)", () => {
+    it("TwoFactorSetupForm handleConfirmTotp does not call router navigation (only sets client state)", () => {
       const content = fs.readFileSync(formPath, "utf-8");
-      const handleConfirmIdx = content.indexOf("function handleConfirm");
+      const handleConfirmIdx = content.indexOf("function handleConfirmTotp");
       expect(handleConfirmIdx).toBeGreaterThan(-1);
       // Find next top-level function after handleConfirm (used to isolate the function body).
       const nextFnIdx = content.indexOf("\n  function ", handleConfirmIdx + 1);

@@ -34,7 +34,7 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
     });
     const mockDbFindUnique = jest.fn().mockImplementation(async () => {
       callOrder.push("dbQuery");
-      return { id: "tfa-row", totpSecretEnc: "enc" };
+      return { id: "tfa-row", method: "TOTP", totpSecretEnc: "enc" };
     });
 
     jest.mock("@/lib/auth-rate-limit", () => ({
@@ -62,6 +62,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       redeemBackupCode: jest.fn().mockResolvedValue(null),
     }));
 
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
     await verifyTotpStepUp("admin-td10a", "123456");
 
@@ -87,6 +91,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
       },
     }));
 
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
+    }));
+
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");
     const result = await verifyTotpStepUp("admin-td15a", "123456");
 
@@ -106,6 +114,10 @@ describe("TD-10-A / TD-15-A: verifyTotpStepUp rate limit first (B3)", () => {
 
     jest.mock("@/lib/db", () => ({
       db: { adminUser2FA: { findUnique: jest.fn() } },
+    }));
+
+    jest.mock("@/lib/email-otp-challenge", () => ({
+      verifyEmailOtpChallenge: jest.fn(),
     }));
 
     const { verifyTotpStepUp } = await import("@/lib/two-factor-step-up");

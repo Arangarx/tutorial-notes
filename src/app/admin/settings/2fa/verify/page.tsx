@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { authOptions } from "@/auth-options";
+import { db } from "@/lib/db";
 import { TwoFactorVerifyForm } from "./TwoFactorVerifyForm";
 import { ADMIN_TFA_DEVICE_COOKIE } from "@/lib/admin-trusted-device";
 
@@ -57,13 +58,29 @@ export default async function TwoFactorVerifyPage({ searchParams }: Props) {
 
   const safe = safeReturnTo(callbackUrl);
 
+  let verifyMethod: "EMAIL_OTP" | "TOTP" = "TOTP";
+  if (session.user.id) {
+    const admin = await db.adminUser.findUnique({
+      where: { id: session.user.id },
+      select: {
+        email: true,
+        twoFactor: { select: { method: true, enrolledAt: true } },
+      },
+    });
+    if (admin?.twoFactor?.enrolledAt) {
+      verifyMethod = admin.twoFactor.method;
+    }
+  }
+
   return (
     <div className="card" style={{ maxWidth: 480 }}>
       <h1 style={{ marginTop: 0 }}>Two-Factor Verification</h1>
       <p className="muted" style={{ marginBottom: 20 }}>
-        Enter the code from your authenticator app to continue.
+        {verifyMethod === "EMAIL_OTP"
+          ? "Enter the verification code we email to your account."
+          : "Enter the code from your authenticator app to continue."}
       </p>
-      <TwoFactorVerifyForm callbackUrl={safe} />
+      <TwoFactorVerifyForm callbackUrl={safe} method={verifyMethod} />
     </div>
   );
 }

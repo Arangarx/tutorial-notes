@@ -108,7 +108,9 @@ export async function seedEnrolled2faTutor(): Promise<{
     const twoFa = await prisma.adminUser2FA.create({
       data: {
         adminUserId: user.id,
+        method: "TOTP",
         totpSecretEnc,
+        enrolledAt: new Date(),
       },
       select: { id: true },
     });
@@ -162,11 +164,23 @@ export async function loginTutorWithPassword(
   page: Page,
   creds: { email: string; password: string }
 ): Promise<void> {
-  await page.goto("/login");
-  await page.locator("#email").waitFor({ state: "visible", timeout: 30_000 });
-  await page.locator("#email").fill(creds.email);
-  await page.locator("#password").fill(creds.password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto("/login");
+    await page.locator("#email").waitFor({ state: "visible", timeout: 30_000 });
+    await page.locator("#email").fill(creds.email);
+    await page.locator("#password").fill(creds.password);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    try {
+      await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
+        timeout: 20_000,
+      });
+      return;
+    } catch {
+      if (attempt === 1) {
+        throw new Error(`Login failed for ${creds.email} — still on /login`);
+      }
+    }
+  }
 }
 
 export async function waitFor2faVerifyChallenge(page: Page): Promise<void> {

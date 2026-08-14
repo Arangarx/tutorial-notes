@@ -40,6 +40,10 @@ import {
   type TrustedDeviceListItem,
 } from "@/lib/admin-trusted-device";
 import { verifyTotpStepUp } from "@/lib/two-factor-step-up";
+import {
+  sendEmailOtpChallenge,
+  verifyEmailOtpChallenge,
+} from "@/lib/email-otp-challenge";
 
 const APP_ISSUER = "Mynk";
 const TOTP_DIGITS = 6;
@@ -126,7 +130,9 @@ export async function startTotpEnrollment(): Promise<StartEnrollmentResult> {
   await db.adminUser2FA.create({
     data: {
       adminUserId: adminId,
+      method: "TOTP",
       totpSecretEnc: enc,
+      enrolledAt: null,
     },
   });
 
@@ -198,7 +204,7 @@ export async function confirmTotpEnrollment(
   // Mark enrollment confirmed.
   await db.adminUser2FA.update({
     where: { id: row.id },
-    data: { enrolledAt: new Date() },
+    data: { method: "TOTP", enrolledAt: new Date() },
   });
 
   console.log(`[tfa] tfa=${row.id} adminUserId=${adminId} action=enroll-confirm`);
@@ -291,6 +297,12 @@ export async function verifyTotpCode(
   });
   if (!row) {
     return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
+  }
+  if (!row.totpSecretEnc) {
+    return {
+      ok: false,
+      error: "This account uses email verification codes. Use the email code form instead.",
+    };
   }
 
   const input = codeInput.replace(/\s/g, "").toUpperCase();
@@ -405,6 +417,329 @@ export async function verifyTotpCode(
     } catch (e) {
       // Non-critical — verify succeeded even if trust cookie mint fails.
       console.error("[tfa] mintAdminTrustedDevice failed (non-critical):", e);
+    }
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Email OTP enrollment + login verify (chunk 1 — default for new tutors)
+// ---------------------------------------------------------------------------
+
+export type StartEmailOtpEnrollmentResult =
+  | { ok: true; maskedEmail: string }
+  | { ok: false; error: string };
+
+/**
+ * Starts email OTP enrollment: creates a pending AdminUser2FA row (method=EMAIL_OTP)
+ * and sends the first 6-digit code. No silent enroll on send failure.
+ */
+export async function startEmailOtpEnrollment(): Promise<StartEmailOtpEnrollmentResult> {
+  let adminId: string;
+  let email: string;
+  try {
+    const result = await getCurrentAdminId();
+    if (result.isTestAccount) {
+      return { ok: false, error: "Test accounts do not require 2FA." };
+    }
+    adminId = result.adminId;
+    const adminUser = await db.adminUser.findUnique({
+      where: { id: adminId },
+      select: { email: true },
+    });
+    email = adminUser?.email?.trim().toLowerCase() ?? "";
+    if (!email) return { ok: false, error: "Account email is missing." };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+
+  console.log(`[tfa] adminUserId=${adminId} action=email-enroll-start`);
+
+  await db.adminUser2FA.deleteMany({ where: { adminUserId: adminId } });
+  const twoFa = await db.adminUser2FA.create({
+    data: {
+      adminUserId: adminId,
+      method: "EMAIL_OTP",
+      totpSecretEnc: null,
+      enrolledAt: null,
+    },
+    select: { id: true },
+  });
+
+  const sent = await sendEmailOtpChallenge({
+    adminUserId: adminId,
+    email,
+    purpose: "ENROLL",
+    twoFaId: twoFa.id,
+  });
+  if (!sent.ok) {
+    await db.adminUser2FA.deleteMany({ where: { adminUserId: adminId } });
+    return sent;
+  }
+
+  const at = email.indexOf("@");
+  const maskedEmail =
+    at > 1 ? `${email[0]}***${email.slice(at - 1)}` : `${email[0]}***`;
+
+  return { ok: true, maskedEmail };
+}
+
+export type ResendEmailOtpEnrollmentResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function resendEmailOtpEnrollment(): Promise<ResendEmailOtpEnrollmentResult> {
+  let adminId: string;
+  let email: string;
+  try {
+    const result = await getCurrentAdminId();
+    if (result.isTestAccount) return { ok: false, error: "Test accounts do not require 2FA." };
+    adminId = result.adminId;
+    const adminUser = await db.adminUser.findUnique({
+      where: { id: adminId },
+      select: { email: true },
+    });
+    email = adminUser?.email?.trim().toLowerCase() ?? "";
+    if (!email) return { ok: false, error: "Account email is missing." };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+
+  const row = await db.adminUser2FA.findUnique({
+    where: { adminUserId: adminId },
+    select: { id: true, method: true, enrolledAt: true },
+  });
+  if (!row || row.method !== "EMAIL_OTP" || row.enrolledAt) {
+    return { ok: false, error: "No pending email enrollment found. Start setup first." };
+  }
+
+  return sendEmailOtpChallenge({
+    adminUserId: adminId,
+    email,
+    purpose: "ENROLL",
+    twoFaId: row.id,
+  });
+}
+
+export type ConfirmEmailOtpEnrollmentResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function confirmEmailOtpEnrollment(
+  code: string
+): Promise<ConfirmEmailOtpEnrollmentResult> {
+  let adminId: string;
+  try {
+    const result = await getCurrentAdminId();
+    if (result.isTestAccount) return { ok: false, error: "Test accounts do not require 2FA." };
+    adminId = result.adminId;
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+
+  const rl = await check2faVerifyRateLimit(adminId);
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      error: `Too many verification attempts. Try again in ${Math.ceil(rl.retryAfterMs / 1000)} seconds.`,
+    };
+  }
+
+  const row = await db.adminUser2FA.findUnique({
+    where: { adminUserId: adminId },
+    select: { id: true, method: true, enrolledAt: true },
+  });
+  if (!row || row.method !== "EMAIL_OTP") {
+    return { ok: false, error: "No pending email enrollment found. Start setup first." };
+  }
+  if (row.enrolledAt) {
+    return { ok: false, error: "2FA is already enrolled." };
+  }
+
+  const verified = await verifyEmailOtpChallenge({
+    adminUserId: adminId,
+    code,
+    purpose: "ENROLL",
+  });
+  if (!verified.ok) return verified;
+
+  await db.adminUser2FA.update({
+    where: { id: row.id },
+    data: { enrolledAt: new Date() },
+  });
+
+  console.log(`[tfa] tfa=${row.id} adminUserId=${adminId} action=email-enroll-confirm`);
+
+  try {
+    const cookieName =
+      process.env.NODE_ENV === "production"
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token";
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get(cookieName)?.value;
+    if (sessionToken) {
+      const currentToken = await decode({
+        token: sessionToken,
+        secret: process.env.NEXTAUTH_SECRET!,
+      });
+      if (currentToken) {
+        await mintTwoFactorVerifiedSession(currentToken as Record<string, unknown>);
+      }
+    }
+  } catch (e) {
+    console.error("[tfa] mintTwoFactorVerifiedSession after email-enroll-confirm failed:", e);
+  }
+
+  return { ok: true };
+}
+
+export type SendLoginEmailOtpResult =
+  | { ok: true; maskedEmail: string }
+  | { ok: false; error: string };
+
+export async function sendLoginEmailOtp(): Promise<SendLoginEmailOtpResult> {
+  let adminId: string;
+  let email: string;
+  try {
+    const result = await getCurrentAdminId();
+    adminId = result.adminId;
+    const adminUser = await db.adminUser.findUnique({
+      where: { id: adminId },
+      select: { email: true },
+    });
+    email = adminUser?.email?.trim().toLowerCase() ?? "";
+    if (!email) return { ok: false, error: "Account email is missing." };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+
+  const row = await db.adminUser2FA.findUnique({
+    where: { adminUserId: adminId },
+    select: { id: true, method: true, enrolledAt: true },
+  });
+  if (!row?.enrolledAt || row.method !== "EMAIL_OTP") {
+    return { ok: false, error: "Email verification is not enabled for this account." };
+  }
+
+  const sent = await sendEmailOtpChallenge({
+    adminUserId: adminId,
+    email,
+    purpose: "LOGIN",
+    twoFaId: row.id,
+  });
+  if (!sent.ok) return sent;
+
+  const at = email.indexOf("@");
+  const maskedEmail =
+    at > 1 ? `${email[0]}***${email.slice(at - 1)}` : `${email[0]}***`;
+  return { ok: true, maskedEmail };
+}
+
+export type VerifyEmailOtpResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function verifyEmailOtpCode(
+  codeInput: string,
+  opts?: { rememberDevice?: boolean; purpose?: "LOGIN" | "ENROLL" }
+): Promise<VerifyEmailOtpResult> {
+  let adminId: string;
+  try {
+    const result = await getCurrentAdminId();
+    adminId = result.adminId;
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+
+  const rl = await check2faVerifyRateLimit(adminId);
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      error: `Too many verification attempts. Try again in ${Math.ceil(rl.retryAfterMs / 1000)} seconds.`,
+    };
+  }
+
+  const row = await db.adminUser2FA.findUnique({
+    where: { adminUserId: adminId },
+    select: { id: true, method: true, enrolledAt: true },
+  });
+  if (!row || row.method !== "EMAIL_OTP") {
+    return { ok: false, error: "Email verification is not enabled for this account." };
+  }
+
+  const purpose = opts?.purpose ?? "LOGIN";
+  if (purpose === "LOGIN" && !row.enrolledAt) {
+    return { ok: false, error: "2FA not enrolled. Complete enrollment first." };
+  }
+
+  const verified = await verifyEmailOtpChallenge({
+    adminUserId: adminId,
+    code: codeInput,
+    purpose,
+  });
+  if (!verified.ok) return verified;
+
+  if (purpose === "LOGIN") {
+    await db.adminUser2FA.update({
+      where: { id: row.id },
+      data: { lastVerifiedAt: new Date() },
+    });
+  }
+
+  if (purpose === "LOGIN") {
+    try {
+      const cookieName =
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token";
+      const cookieStore = await cookies();
+      const sessionToken = cookieStore.get(cookieName)?.value;
+      if (sessionToken) {
+        const currentToken = await decode({
+          token: sessionToken,
+          secret: process.env.NEXTAUTH_SECRET!,
+        });
+        if (currentToken) {
+          await mintTwoFactorVerifiedSession(currentToken as Record<string, unknown>);
+        }
+      }
+    } catch (e) {
+      console.error("[tfa] mintTwoFactorVerifiedSession failed:", e);
+    }
+
+    if (opts?.rememberDevice === true) {
+      try {
+        const isDev = process.env.NODE_ENV !== "production";
+        const headerStore = await headers();
+        const userAgent = headerStore.get("user-agent") ?? undefined;
+        const cookieStore = await cookies();
+
+        const existingRawToken = cookieStore.get(ADMIN_TFA_DEVICE_COOKIE)?.value;
+        if (existingRawToken) {
+          const existing = await validateAdminTrustedDevice(existingRawToken, adminId);
+          if (existing) {
+            console.log(
+              `[tfa] tfa=${existing.deviceId} adminUserId=${adminId} action=device_trust_noop_existing type=email-otp`
+            );
+            return { ok: true };
+          }
+        }
+
+        const { rawToken, deviceId, expiresAt } = await mintAdminTrustedDevice(adminId, userAgent);
+        cookieStore.set(ADMIN_TFA_DEVICE_COOKIE, rawToken, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: !isDev,
+          path: "/",
+          maxAge: Math.floor((expiresAt.getTime() - Date.now()) / 1000),
+        });
+        console.log(
+          `[tfa] tfa=${deviceId} adminUserId=${adminId} action=device_trusted type=email-otp`
+        );
+      } catch (e) {
+        console.error("[tfa] mintAdminTrustedDevice failed (non-critical):", e);
+      }
     }
   }
 

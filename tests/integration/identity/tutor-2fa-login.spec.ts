@@ -65,7 +65,7 @@ test.describe("P1-ID-2 — tutor 2FA login→land + QR local-gen", () => {
       { timeout: 30_000 }
     );
 
-    await page.getByRole("button", { name: "Set up 2FA" }).click();
+    await page.getByRole("button", { name: "Use authenticator app instead" }).click();
 
     const qrImg = page.getByRole("img", { name: "TOTP QR code" });
     await expect(qrImg).toBeVisible({ timeout: 30_000 });

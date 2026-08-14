@@ -55,7 +55,7 @@ Notes:
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
 | #7 | First-party instrumentation | **DONE** chunk 1 — merged [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (`ProductEvent` tutor funnel). Chunk 2 later (no PostHog). |
 | #3 leftover | Waitlist REJECTED + revoke | **DONE** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Pagination deferred. Invite links need your call (operator-invite vs open signup). |
-| #6 leftover | Join denial UX | Branch [`feat/join-denial-not-my-session`](https://github.com/Arangarx/tutoring-notes/tree/feat/join-denial-not-my-session) @ [`e1b797d6`](https://github.com/Arangarx/tutoring-notes/commit/e1b797d6) — **independent verify in flight** |
+| #6 leftover | Join denial UX | **DONE** [`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24). Wrong AH on `/join` → `/account/not-my-session`. |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -71,4 +71,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Through waitlist reject/revoke shipped. Agents on **join denial UX**. Your open work = calendar callback URI + **one** Google verification when live. Optional later: tutor invite-link vs open signup.
+> Release track option B. Composer-sized #1–#7 slices + join denial shipped. Agents idle on unblocked security/auth holes. Your open work = calendar callback URI + **one** Google verification when live. Optional: tutor invite-link vs open signup.

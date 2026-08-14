@@ -192,7 +192,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **Account-takeover gap on existing-email signup** —  (§6)
 - **Email-infrastructure prerequisite (Resend on usemynk.com)** —  (§6)
 - **Gate B2** — parent privacy consent lattice + management UI (§6)
-- **Join denial UX** — authenticated wrong principal gets bare 404 (§6)
+- **Join denial UX** — **DONE** 2026-08-14 ([`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24)): authenticated wrong AH → `/account/not-my-session`; child non-participant still 404 (G6).
 - **npm audit Tier B (SHOULD-FIX-4)** —  (§6)
 - **SEC — /api/test/whiteboard/* gate hardening** — **DONE** 2026-08-14 ([`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095)): `guardPlaywrightTestRoute` hard-404s in production even if `PLAYWRIGHT_TEST=1`.
 - **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
@@ -1394,7 +1394,7 @@ B1 won't-fix. B2-signup `isSelfLearner`; B3 child-only claim PIN; B4 parent→se
 Interim `ParentJoinGapCallout` shipped.
 
 **[P1][AUTH] Join denial UX — authenticated wrong principal gets bare 404**  
-Notes path has `/account/not-my-notes`; join still `notFound()`.
+**DONE** 2026-08-14 ([`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24)): shared `AccountAccessDenialPage`; join wrong-AH → `/account/not-my-session`. Child non-participant still fail-closed 404.
 
 **[P1][AUTH] VERIFY-ACCT-1 — duplicate-account creation block**  
 **DONE** 2026-08-14 ([`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7)): shared `findEmailRealmPresence` blocks cross-realm signup (tutor credentials, parent API, Google tutor provision with signup-intent, `/setup` bootstrap). Google OAuth cross-realm round-trip remains **PLAYWRIGHT-GAP** (Jest surrogate).

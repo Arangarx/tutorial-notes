@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#3 leftover reject/revoke — migration fix pushed, re-verify in flight.** Branch `feat/tutor-waitlist-rejected-revoke` @ [`49d34754`](https://github.com/Arangarx/tutoring-notes/commit/49d34754). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#3 leftover reject/revoke MERGED** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Exploring next leftover (pagination vs invite links vs pause). Remaining #5 Google write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (ProductEvent chunk 1 merge).
+**Tip:** `master` @ [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111) (waitlist reject/revoke merge).
 
-**Last action:** [Fix reject/revoke migration stamp](a8e5a076-0940-4958-8d34-9e79a3d61423) pushed `49d34754` (migration `20260814150000_*` + REJECTED-terminal approve). Dispatched [Re-verify waitlist reject/revoke](19d14d33-a985-4613-817b-4232dec4c76a).
+**Last action:** [Re-verify waitlist reject/revoke](19d14d33-a985-4613-817b-4232dec4c76a) **APPROVE** → merge [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Dispatched [Explore next leftover after B1](ce61b4f5-5610-40c0-a141-ddf8a2cbe35a).
 
-**In-flight:** independent re-verify of `feat/tutor-waitlist-rejected-revoke` @ `49d34754` (do not merge).
+**In-flight:** explore next leftover. `tutoring-notes-master-ops` stays on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 four security chunks; #7 ProductEvent tutor funnel.
 

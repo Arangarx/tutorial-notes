@@ -8,7 +8,7 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 
 1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
 2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
-3. **Tutor signup / self-serve auth** — **first chunk DONE** 2026-08-14 (`2f54459f`). Leftover: pagination, REJECTED UI (**in flight** `feat/tutor-waitlist-rejected-revoke`), invite links.
+3. **Tutor signup / self-serve auth** — first chunk DONE (`2f54459f`). REJECTED + revoke **DONE** 2026-08-14 ([`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111)). Leftover: pagination, invite links.
 4. **2FA pilots will finish** — email OTP **DONE** (`ab70f002` enroll + `529f619e` TOTP login email-alt). SMS later; TOTP stays as upgrade.
 5. **Finish scheduling** — **native CRUD DONE** 2026-08-14 ([`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216)). Google outbound event write later (after Console verification). Two-way sync still P3.
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.
@@ -1430,7 +1430,7 @@ Waiting-polish item 7.
 Adult self-learner claim UX.
 
 **[P2][AUTH] Signup waitlist REJECTED + revocation UI**  
-B1 approval gating shipped; operator revocation not built.
+**DONE** 2026-08-14 ([`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111)): reject WAITLISTED→REJECTED (terminal); revoke APPROVED→WAITLISTED.
 
 **[P2][AUTH] Signup waitlist pagination + Google OAuth auto-provision**  
 Google signup → WAITLISTED **first chunk shipped** (`feat/google-signup-waitlisted`). Pagination + REJECTED UI still deferred.
@@ -1480,7 +1480,7 @@ Ajax refresh parent block after claim.
 ### Gate B fast-follow
 
 **[P1][AUTH] Gate B1 — approval-gating / waitlist**  
-**Shipped** `TutorApprovalStatus`, pending-approval. REJECTED path + revocation UI open.
+**Shipped** including REJECTED + revoke ([`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111)). Leftover: pagination, invite links.
 
 **[P2][AUTH] Gate B3 — security checks + final cleanups**  
 Tier B audit remainder.

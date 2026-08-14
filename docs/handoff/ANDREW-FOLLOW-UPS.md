@@ -49,12 +49,12 @@ Notes:
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
 | #1 next | Calendar OAuth **connect + stub** | **DONE** — merged [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Add callback URI + enable Calendar API; **submit one bundled verification** when this is on prod/preview |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
-| #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
+| #3 | Tutor signup / self-serve auth | **DONE** first chunk + REJECTED/revoke [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Leftover: pagination, invite links. |
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
 | #7 | First-party instrumentation | **DONE** chunk 1 — merged [`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4) (`ProductEvent` tutor funnel). Chunk 2 later (no PostHog). |
-| #3 leftover | Waitlist REJECTED + revoke | @ [`49d34754`](https://github.com/Arangarx/tutoring-notes/commit/49d34754) — **re-verify in flight** |
+| #3 leftover | Waitlist REJECTED + revoke | **DONE** [`99da0111`](https://github.com/Arangarx/tutoring-notes/commit/99da0111). Remaining: pagination, invite links. |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -70,4 +70,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Through #7 ProductEvent chunk 1 shipped. Agents on **#3 leftover** (waitlist reject/revoke). Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Through #7 ProductEvent + waitlist reject/revoke shipped. Agents picking next leftover. Your open work = calendar callback URI + **one** Google verification when live.

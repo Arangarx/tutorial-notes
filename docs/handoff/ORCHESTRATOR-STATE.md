@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 security MUST chunk 1 IN FLIGHT** — wb-asset blob origin pinning (`feat/wb-asset-origin-pin`). Remaining #5 Google outbound write blocked on Console. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 wb-asset origin pin — executor done, independent verify in flight.** Branch `feat/wb-asset-origin-pin` @ [`6a10e6f9`](https://github.com/Arangarx/tutoring-notes/commit/6a10e6f9). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216) (schedule CRUD merge).
 
-**Last action:** [Explore #6 security MUST](3eec73d7-ad25-40c6-aa5b-1e9a743cb1a3) recommended wb-asset origin pin first. Dispatched [Pin wb-asset blob origin](f7cbf808-b5e0-4714-9f6c-888196a213d8).
+**Last action:** [Pin wb-asset blob origin](f7cbf808-b5e0-4714-9f6c-888196a213d8) pushed `6a10e6f9`. Dispatched [Verify wb-asset origin pin](1697dbcf-7674-49e5-b112-51589764d998).
 
-**In-flight:** `feat/wb-asset-origin-pin` executor (do not merge).
+**In-flight:** independent verify of `feat/wb-asset-origin-pin` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt); #5 native schedule CRUD.
 

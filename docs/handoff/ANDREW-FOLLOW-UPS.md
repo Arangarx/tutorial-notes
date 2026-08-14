@@ -52,7 +52,7 @@ Notes:
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
-| #6 | Security MUST for strangers | **In flight** — wb-asset blob origin pinning (`feat/wb-asset-origin-pin`). Next after that: cross-realm email block, then `/api/test/whiteboard/*` hard-404. |
+| #6 | Security MUST for strangers | Branch [`feat/wb-asset-origin-pin`](https://github.com/Arangarx/tutoring-notes/tree/feat/wb-asset-origin-pin) @ [`6a10e6f9`](https://github.com/Arangarx/tutoring-notes/commit/6a10e6f9) — **independent verify in flight** |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 

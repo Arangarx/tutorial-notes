@@ -55,7 +55,7 @@
 
 **Last action:** Andrew 2026-08-14: hook Calendar OAuth **now** for **one** Google re-verify. [Explore calendar OAuth hookup](f960155d-77db-4c6d-b330-f02e25d428e6) = Gmail-clone connect+stub. Dispatching calendar branch (file-disjoint from signup).
 
-**In-flight:** (1) [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d). (2) Calendar connect+stub executor.
+**In-flight:** (1) [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d). (2) [Calendar OAuth connect stub](30566df8-6a0f-4d04-8a19-24f50fe00d97).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console. Optional #2 leftovers: flag-off Playwright, mobile banner, desktop double mint.
 **Cleared:** Sign-In UI; Priority #2 findability.
 

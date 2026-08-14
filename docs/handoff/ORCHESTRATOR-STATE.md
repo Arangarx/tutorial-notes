@@ -51,15 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `db081324` (update after docs commit).
+**Tip:** `master` @ `8cca1981`.
 
-**Last action:** Andrew 2026-08-14: document follow-ups + start features. Created [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md); dispatched Google Sign-In UI executor.
+**Last action:** Andrew 2026-08-14: document follow-ups + start features. Created [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md); dispatched Google Sign-In UI executor ([Implement Google Sign-In UI](ff3c3a4b-9ad0-4b4a-abfb-3a8c84e6b53c)).
 
-**In-flight:** Google Sign-In `/login` UI + Playwright (`feat/google-signin-login-ui`).
-**Open Andrew-confirms / human work:**
-1. [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console checklist (consent screen, redirect URIs, Search Console) — **not** blocking UI merge.
-2. Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md) when convenient.
-**Cleared:** waiting-on-go for Sign-In UI — Andrew said start moving.
+**In-flight:** Google Sign-In `/login` UI + Playwright — branch `feat/google-signin-login-ui` (executor running).
+**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) (Console checklist — not blocking UI merge). Background: [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
+**Cleared:** waiting-on-go for Sign-In UI.
 
 **Durable decisions (2026-07-10):** Calendar verification = hybrid (Console prep now + MVP demo then submit). Apple Calendar = CalDAV/defer (no Google-style review). Social login shortlist: Sign in with Apple optional (Dev enrollment only); skip Facebook; Microsoft optional. Eyeball tracker: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

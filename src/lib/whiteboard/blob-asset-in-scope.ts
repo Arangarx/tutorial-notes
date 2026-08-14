@@ -3,7 +3,7 @@
  * Prevents a joiner from proxying other sessions' files via a stolen token.
  */
 
-import { pathnameFromHarnessUrl } from "@/lib/blob-harness";
+import { isAllowedBlobUrl, pathnameFromHarnessUrl } from "@/lib/blob-harness";
 
 export type ParsedInScope = {
   studentId: string;
@@ -37,6 +37,7 @@ export function isBlobUrlForSession(
   publicUrl: string,
   expect: { studentId: string; whiteboardSessionId: string }
 ): boolean {
+  if (!isAllowedBlobUrl(publicUrl)) return false;
   const parsed = parseWhiteboardSessionIdsFromPublicUrl(publicUrl);
   if (!parsed) return false;
   return (

@@ -139,6 +139,18 @@ describe("GET /api/w/[joinToken]/wb-asset — join-token asset proxy contract (P
     expect(mockBlobGet).not.toHaveBeenCalled();
   });
 
+  it("evil-host u with in-scope path → 404 and does not fetch blob", async () => {
+    const { student, session, joinToken } = await seedJoinAssetFixture();
+    const evilUrl = `https://evil.example/whiteboard-sessions/${student.id}/${session.id}/asset.png`;
+
+    const res = await GET(makeGetRequest(joinToken, evilUrl), {
+      params: Promise.resolve({ joinToken }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(mockBlobGet).not.toHaveBeenCalled();
+  });
+
   it("out-of-scope u (different session namespace) → 404 and does not fetch blob", async () => {
     const { student, session, joinToken } = await seedJoinAssetFixture();
     const foreignUrl = inScopeAssetUrl(student.id, "wb_other_session");

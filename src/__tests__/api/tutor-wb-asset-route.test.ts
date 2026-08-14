@@ -62,6 +62,20 @@ afterAll(() => {
 });
 
 describe("GET /api/whiteboard/[sessionId]/tutor-asset — tutor proxy SSRF contract", () => {
+  it("evil-host u with in-scope path → 404 and does not fetch blob", async () => {
+    const assetUrl =
+      "https://evil.example/whiteboard-sessions/stu_a/wb_sess/asset.png";
+    const res = await GET(
+      new Request(
+        `http://localhost/api/whiteboard/wb_sess/tutor-asset?u=${encodeURIComponent(assetUrl)}`
+      ),
+      { params: Promise.resolve({ sessionId: "wb_sess" }) }
+    );
+
+    expect(res.status).toBe(404);
+    expect(mockBlobGet).not.toHaveBeenCalled();
+  });
+
   it("out-of-scope u → 404 and does not fetch blob", async () => {
     const assetUrl = inScopeAssetUrl("stu_a", "wb_other");
     const res = await GET(

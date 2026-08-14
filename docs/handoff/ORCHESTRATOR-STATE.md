@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#5 native schedule CRUD — verify REJECT, fix in flight.** Branch `feat/schedule-native-crud` @ [`5442d401`](https://github.com/Arangarx/tutoring-notes/commit/5442d401). Blocker: Jest `assertOwnsStudent` always succeeds — create-path ownership denial missing. Do not merge. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#5 native schedule CRUD — ownership fix pushed, re-verify in flight.** Branch `feat/schedule-native-crud` @ [`7c398c2c`](https://github.com/Arangarx/tutoring-notes/commit/7c398c2c). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `529f619e`.
 
-**Last action:** [Verify native schedule CRUD](a9752500-6ff7-4ce9-a93d-868e908a2a94) **REJECT** — create-path ownership Jest incomplete (`assertOwnsStudent` mocked always-succeed). Dispatched [Fix schedule ownership Jest](cbe1a2c6-9f9e-4235-8082-cba5950f0f57).
+**Last action:** [Fix schedule ownership Jest](cbe1a2c6-9f9e-4235-8082-cba5950f0f57) pushed `7c398c2c` (create-path denial + helper move + Playwright today default + dialog reset). Dispatched [Re-verify schedule CRUD](4d07272d-467a-4d34-9dd3-233c08fc4b11).
 
-**In-flight:** ownership-test fix on `feat/schedule-native-crud` (do not merge).
+**In-flight:** independent re-verify of `feat/schedule-native-crud` @ `7c398c2c` (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt).
 

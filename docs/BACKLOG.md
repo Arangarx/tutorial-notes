@@ -195,7 +195,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **Join denial UX** — authenticated wrong principal gets bare 404 (§6)
 - **npm audit Tier B (SHOULD-FIX-4)** —  (§6)
 - **SEC — /api/test/whiteboard/* gate hardening** — /api/test/whiteboard/* gate hardening (§6)
-- **SEC — tutor-asset/route.ts any-origin blob URL** — tutor-asset/route.ts any-origin blob URL (§6)
+- **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
 - **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device (§1)
 - **VERIFY-ACCT-1** — duplicate-account creation block (§6)
 - **WB-ADULT-JOIN-ENABLEMENT B2-signup / B3 / B4** —  (§6)
@@ -1517,7 +1517,7 @@ Defense in depth.
 `api:<ip>`, `setup:<ip>` remain. Learner PIN + auth + 2FA **shipped** durable.
 
 **[P2][SEC] SEC — tutor-asset/route.ts any-origin blob URL**  
-SSRF-adjacent; pin allowed origin.
+**DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): origin pin in `isBlobUrlForSession` via `isAllowedBlobUrl`.
 
 **[P2][SEC] SEC — /api/test/whiteboard/* gate hardening**  
 Pin `PLAYWRIGHT_TEST_SECRET` in prod.

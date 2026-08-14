@@ -53,7 +53,7 @@ Notes:
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
 | #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
 | #6 | Security MUST for strangers | Composer-sized holes **DONE** (origin pin, VERIFY-ACCT-1, test-route hard-404, SMOKE-PRIV-1). Leftovers: npm audit (blast radius), join-404 UX (intentional), Resend/legal-blocked. |
-| #7 | First-party instrumentation | **In flight** — `ProductEvent` tutor funnel (`feat/product-events-chunk-1-tutor-funnel`). No PostHog; no learner/COPPA egress. |
+| #7 | First-party instrumentation | Branch [`feat/product-events-chunk-1-tutor-funnel`](https://github.com/Arangarx/tutoring-notes/tree/feat/product-events-chunk-1-tutor-funnel) @ [`6f845d48`](https://github.com/Arangarx/tutoring-notes/commit/6f845d48) — **independent verify in flight** |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 

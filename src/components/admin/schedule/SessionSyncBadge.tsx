@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { CalendarSyncState } from "@/lib/schedule/mock-data";
+import type { CalendarSyncState } from "@/lib/schedule/types";
 import { CheckIcon, CloudOffIcon, Loader2Icon } from "lucide-react";
 
 const syncConfig: Record<

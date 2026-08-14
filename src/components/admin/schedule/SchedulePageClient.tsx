@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ComponentProps } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,11 +13,13 @@ import { CreateSessionDialog } from "@/components/admin/schedule/CreateSessionDi
 import { SessionSyncBadge } from "@/components/admin/schedule/SessionSyncBadge";
 import {
   datesWithSessions,
-  mockScheduledSessions,
+  localDateToInputValue,
   parseSessionDate,
   sessionsOnDate,
-  type MockCalendarConnection,
-  type MockScheduledSession,
+  todayLocalDate,
+  type CalendarConnectionView,
+  type ScheduledSessionView,
+  type ScheduleStudentOption,
 } from "@/lib/schedule/mock-data";
 import { SCHEDULE_INTEGRATIONS_SETTINGS_HREF } from "@/lib/schedule/navigation";
 import { cn } from "@/lib/utils";
@@ -44,6 +47,7 @@ function ScheduleDayButton({
           <span
             className="size-2.5 shrink-0 rounded-full bg-[color:var(--calendar-event-dot)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--calendar-event-dot)_55%,transparent)]"
             aria-hidden
+            data-testid="schedule-day-dot"
           />
         ) : null}
       </span>
@@ -51,18 +55,32 @@ function ScheduleDayButton({
   );
 }
 
-function DayDetailSessionItem({ session }: { session: MockScheduledSession }) {
+type SessionItemProps = {
+  session: ScheduledSessionView;
+  studentOptions: ScheduleStudentOption[];
+  googleConnected: boolean;
+  onSaved: () => void;
+};
+
+function DayDetailSessionItem({
+  session,
+  studentOptions,
+  googleConnected,
+  onSaved,
+}: SessionItemProps) {
   return (
-    <li className="rounded-[10px] border border-border bg-card p-4">
+    <li className="rounded-[10px] border border-border bg-card p-4" data-testid="schedule-session-item">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <StudentAvatar name={session.studentName} size="md" />
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-foreground">{session.studentName}</p>
-              <SessionSyncBadge state={session.syncState} />
+              {session.showSyncBadge ? <SessionSyncBadge state={session.syncState} /> : null}
             </div>
-            <p className="text-sm text-muted-foreground">{session.subject}</p>
+            <p className="text-sm text-muted-foreground" data-testid="schedule-session-subject">
+              {session.subject}
+            </p>
             <p className="text-sm text-foreground">
               <span className="whitespace-nowrap">
                 {session.startTime}&ndash;{session.endTime}
@@ -79,15 +97,19 @@ function DayDetailSessionItem({ session }: { session: MockScheduledSession }) {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch lg:flex-row lg:items-center">
           <CreateSessionDialog
+            studentOptions={studentOptions}
+            googleConnected={googleConnected}
+            session={session}
             defaultDate={session.date}
+            onSaved={onSaved}
             trigger={
-              <Button type="button" variant="outline" size="sm" className="min-h-9">
+              <Button type="button" variant="outline" size="sm" className="min-h-9" data-testid="schedule-edit-session">
                 Edit
               </Button>
             }
           />
           <Button type="button" variant="accent" size="sm" className="min-h-9" asChild>
-            <Link href="/admin/students">
+            <Link href={`/admin/students/${session.studentId}`} data-testid="schedule-start-session">
               <PlayIcon aria-hidden />
               Start session
             </Link>
@@ -98,7 +120,7 @@ function DayDetailSessionItem({ session }: { session: MockScheduledSession }) {
   );
 }
 
-function SessionRow({ session }: { session: MockScheduledSession }) {
+function SessionRow({ session, studentOptions, googleConnected, onSaved }: SessionItemProps) {
   const sessionDate = parseSessionDate(session.date);
   const dateLabel = sessionDate.toLocaleDateString(undefined, {
     weekday: "short",
@@ -107,13 +129,16 @@ function SessionRow({ session }: { session: MockScheduledSession }) {
   });
 
   return (
-    <li className="flex flex-col gap-3 rounded-[10px] border border-border bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      className="flex flex-col gap-3 rounded-[10px] border border-border bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+      data-testid="schedule-agenda-row"
+    >
       <div className="flex min-w-0 items-start gap-3">
         <StudentAvatar name={session.studentName} size="md" />
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-foreground">{session.studentName}</p>
-            <SessionSyncBadge state={session.syncState} />
+            {session.showSyncBadge ? <SessionSyncBadge state={session.syncState} /> : null}
           </div>
           <p className="text-sm text-muted-foreground">
             {session.subject} · {dateLabel} ·{" "}
@@ -132,7 +157,11 @@ function SessionRow({ session }: { session: MockScheduledSession }) {
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
         <CreateSessionDialog
+          studentOptions={studentOptions}
+          googleConnected={googleConnected}
+          session={session}
           defaultDate={session.date}
+          onSaved={onSaved}
           trigger={
             <Button type="button" variant="outline" size="sm" className="min-h-9">
               Edit
@@ -140,7 +169,7 @@ function SessionRow({ session }: { session: MockScheduledSession }) {
           }
         />
         <Button type="button" variant="accent" size="sm" className="min-h-9" asChild>
-          <Link href="/admin/students">
+          <Link href={`/admin/students/${session.studentId}`}>
             <PlayIcon aria-hidden />
             Start session
           </Link>
@@ -153,9 +182,15 @@ function SessionRow({ session }: { session: MockScheduledSession }) {
 function DaySessionsPanel({
   selectedDate,
   sessions,
+  studentOptions,
+  googleConnected,
+  onSaved,
 }: {
   selectedDate: Date | undefined;
-  sessions: MockScheduledSession[];
+  sessions: ScheduledSessionView[];
+  studentOptions: ScheduleStudentOption[];
+  googleConnected: boolean;
+  onSaved: () => void;
 }) {
   if (!selectedDate) {
     return (
@@ -175,7 +210,12 @@ function DaySessionsPanel({
       <div className="space-y-3">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-sm text-muted-foreground">No sessions on this day.</p>
-        <CreateSessionDialog defaultDate={selectedDate.toISOString().slice(0, 10)} />
+        <CreateSessionDialog
+          studentOptions={studentOptions}
+          googleConnected={googleConnected}
+          defaultDate={localDateToInputValue(selectedDate)}
+          onSaved={onSaved}
+        />
       </div>
     );
   }
@@ -185,7 +225,13 @@ function DaySessionsPanel({
       <p className="text-sm font-medium text-foreground">{label}</p>
       <ul className="space-y-4" role="list">
         {daySessions.map((s) => (
-          <DayDetailSessionItem key={s.id} session={s} />
+          <DayDetailSessionItem
+            key={s.id}
+            session={s}
+            studentOptions={studentOptions}
+            googleConnected={googleConnected}
+            onSaved={onSaved}
+          />
         ))}
       </ul>
     </div>
@@ -193,23 +239,32 @@ function DaySessionsPanel({
 }
 
 export function SchedulePageClient({
+  sessions,
+  studentOptions,
   calendarConnections,
   googleOAuthAvailable,
   googleCalendarCount = null,
+  googleConnected,
 }: {
-  calendarConnections: MockCalendarConnection[];
+  sessions: ScheduledSessionView[];
+  studentOptions: ScheduleStudentOption[];
+  calendarConnections: CalendarConnectionView[];
   googleOAuthAvailable: boolean;
   googleCalendarCount?: number | null;
+  googleConnected: boolean;
 }) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    parseSessionDate("2026-06-11")
-  );
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(todayLocalDate());
 
-  const sessionDates = useMemo(() => datesWithSessions(mockScheduledSessions), []);
+  const sessionDates = useMemo(() => datesWithSessions(sessions), [sessions]);
 
   const upcomingSessions = useMemo(() => {
-    return [...mockScheduledSessions].sort((a, b) => a.date.localeCompare(b.date));
-  }, []);
+    return [...sessions].sort((a, b) => {
+      const dateCmp = a.date.localeCompare(b.date);
+      if (dateCmp !== 0) return dateCmp;
+      return a.startTimeInput.localeCompare(b.startTimeInput);
+    });
+  }, [sessions]);
 
   const modifiers = useMemo(
     () => ({
@@ -226,12 +281,16 @@ export function SchedulePageClient({
     []
   );
 
+  function refreshSchedule() {
+    router.refresh();
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="schedule-page">
       <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Visual preview only</span> — placeholder
-          data, no calendar OAuth or persistence. React to layout and affordances.
+          Sessions are saved in Mynk. Connect Google Calendar in settings when you want external
+          sync — calendar write is not live yet.
         </p>
         <Button asChild variant="outline" size="sm" className="min-h-9 shrink-0">
           <Link href={SCHEDULE_INTEGRATIONS_SETTINGS_HREF}>
@@ -247,7 +306,7 @@ export function SchedulePageClient({
             <CalendarDaysIcon className="size-4" aria-hidden />
             Month
           </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1.5">
+          <TabsTrigger value="agenda" className="gap-1.5" data-testid="schedule-agenda-tab">
             <ListIcon className="size-4" aria-hidden />
             Agenda
           </TabsTrigger>
@@ -260,7 +319,12 @@ export function SchedulePageClient({
               description="Native Mynk scheduling — external calendars are optional."
               actions={
                 <CreateSessionDialog
-                  defaultDate={selectedDate?.toISOString().slice(0, 10)}
+                  studentOptions={studentOptions}
+                  googleConnected={googleConnected}
+                  defaultDate={
+                    selectedDate ? localDateToInputValue(selectedDate) : undefined
+                  }
+                  onSaved={refreshSchedule}
                 />
               }
               contentClassName="flex justify-center pt-2"
@@ -278,7 +342,13 @@ export function SchedulePageClient({
             </SectionCard>
 
             <SectionCard realm="admin" title="Day detail" contentClassName="pt-2 min-w-0">
-              <DaySessionsPanel selectedDate={selectedDate} sessions={mockScheduledSessions} />
+              <DaySessionsPanel
+                selectedDate={selectedDate}
+                sessions={sessions}
+                studentOptions={studentOptions}
+                googleConnected={googleConnected}
+                onSaved={refreshSchedule}
+              />
             </SectionCard>
           </div>
         </TabsContent>
@@ -287,13 +357,29 @@ export function SchedulePageClient({
           <SectionCard realm="admin"
             title="Upcoming sessions"
             description="Soft duration is planning metadata — start and end recording remain tutor-controlled."
-            actions={<CreateSessionDialog />}
+            actions={
+              <CreateSessionDialog
+                studentOptions={studentOptions}
+                googleConnected={googleConnected}
+                onSaved={refreshSchedule}
+              />
+            }
           >
-            <ul className="space-y-3" role="list">
-              {upcomingSessions.map((session) => (
-                <SessionRow key={session.id} session={session} />
-              ))}
-            </ul>
+            {upcomingSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming sessions scheduled.</p>
+            ) : (
+              <ul className="space-y-3" role="list">
+                {upcomingSessions.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    studentOptions={studentOptions}
+                    googleConnected={googleConnected}
+                    onSaved={refreshSchedule}
+                  />
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </TabsContent>
       </Tabs>

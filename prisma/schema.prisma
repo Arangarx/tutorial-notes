@@ -138,6 +138,7 @@ model Student {
   recordings              SessionRecording[]
   whiteboardSessions      WhiteboardSession[]
   costEvents              CostEvent[]
+  scheduledSessions       ScheduledSession[]
 
   /// Identity Phase 2 / IAC-2: nullable FK to LearnerProfile.
   /// One LearnerProfile can be linked to multiple tutor-scoped Student rows (multi-tutor).
@@ -726,6 +727,7 @@ model AdminUser {
   emailConfigs            EmailConfig[]          @relation("AdminEmailConfigs")
   oauthConnections        OAuthEmailConnection[] @relation("AdminOAuthConnections")
   oauthCalendarConnections OAuthCalendarConnection[] @relation("AdminOAuthCalendarConnections")
+  scheduledSessions       ScheduledSession[]
   recordings              SessionRecording[]     @relation("AdminRecordings")
   whiteboardSessions      WhiteboardSession[]    @relation("AdminWhiteboards")
   costEvents              CostEvent[]
@@ -900,6 +902,33 @@ model OAuthCalendarConnection {
   adminUser     AdminUser? @relation("AdminOAuthCalendarConnections", fields: [adminUserId], references: [id], onDelete: Cascade)
 
   @@index([adminUserId])
+}
+
+/// Native in-app scheduled tutoring session (Priority #5 chunk 1).
+/// Separate from WhiteboardSession — planning metadata only until Start.
+model ScheduledSession {
+  id                     String    @id @default(uuid())
+  adminUserId            String
+  adminUser              AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  studentId              String
+  student                Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  /// Calendar day (Postgres DATE). Use date-only.ts at IO boundaries.
+  date                   DateTime  @db.Date
+  /// Local planning times as 24h HH:MM (no timezone policy in chunk 1).
+  startTime              String
+  endTime                String
+  /// Soft planning duration in minutes (45, 60, 90).
+  plannedDurationMinutes Int
+  subject                String
+  notes                  String    @default("")
+  location               String    @default("")
+  /// Reserved for future Google Calendar write — null until sync ships.
+  googleEventId          String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([adminUserId, date])
+  @@index([studentId])
 }
 
 // Waitlist entries from the landing page interest form.

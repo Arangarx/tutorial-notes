@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#1 Calendar OAuth connect+stub IN FLIGHT** (`feat/calendar-oauth-connect-stub`) so Andrew submits **one** Google scope verification. Sign-In/Sign-Up stay `openid email profile`. #3 Google signup WAITLISTED **merged** [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Andrew: add `/api/auth/calendar/callback`; **do not submit review** until demo is up. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **Calendar OAuth connect+stub — executor done, independent verify in flight.** Branch `feat/calendar-oauth-connect-stub` @ [`a975d2d2`](https://github.com/Arangarx/tutoring-notes/commit/a975d2d2). Do not merge until verifier APPROVE. Andrew: add `/api/auth/calendar/callback` + enable Calendar API; **do not submit review** until merged demo is up. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `2f54459f`.
+**Tip:** `master` @ `8e7a0a4a`.
 
-**Last action:** [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d) **APPROVE** → pre-merge PLAYWRIGHT-GAP + DEPLOY cookie copy → `merge --no-ff` [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f).
+**Last action:** [Calendar OAuth connect stub](30566df8-6a0f-4d04-8a19-24f50fe00d97) pushed `feat/calendar-oauth-connect-stub` @ `a975d2d2`. Dispatched [Verify calendar OAuth connect stub](23cdb7b4-73f5-4414-9584-665b306e9528).
 
-**In-flight:** [Calendar OAuth connect stub](30566df8-6a0f-4d04-8a19-24f50fe00d97).
+**In-flight:** independent verify of Calendar connect+stub (do not merge yet).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console (incl. calendar callback URI). Optional #2 leftovers: flag-off Playwright, mobile banner, desktop double mint.
 **Cleared:** Sign-In UI; Priority #2 findability; #3 Google signup WAITLISTED.
 

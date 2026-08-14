@@ -47,7 +47,7 @@ Notes:
 | Priority | Work | Status |
 |----------|------|--------|
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
-| #1 next | Calendar OAuth **connect + stub** (scopes in the one verification bundle; sync not live) | **Starting** — `feat/calendar-oauth-connect-stub`. Do **not** add calendar scopes to Sign-In/Sign-Up |
+| #1 next | Calendar OAuth **connect + stub** (scopes in the one verification bundle; sync not live) | Branch [`feat/calendar-oauth-connect-stub`](https://github.com/Arangarx/tutoring-notes/tree/feat/calendar-oauth-connect-stub) @ [`a975d2d2`](https://github.com/Arangarx/tutoring-notes/commit/a975d2d2) — **independent verify in flight** |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 <<<<<<< Updated upstream
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
@@ -67,4 +67,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In, Start/claim, and Google signup→WAITLISTED **shipped**. Agents on **Calendar OAuth connect+stub** so you only submit **one** Google scope verification. Add `/api/auth/calendar/callback` when you have 5 minutes — don’t submit review until the demo is up.
+> Release track option B. Sign-In, Start/claim, Google signup→WAITLISTED **shipped**. Calendar connect+stub **awaiting verify**. Add `/api/auth/calendar/callback` + enable Calendar API — **don’t submit review** until the demo is merged.

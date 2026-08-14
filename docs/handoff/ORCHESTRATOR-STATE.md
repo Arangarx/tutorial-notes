@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#5 native schedule CRUD IN FLIGHT** (`feat/schedule-native-crud`). #4 email OTP **merged** (enroll + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e)). Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#5 native schedule CRUD — executor done, independent verify in flight.** Branch `feat/schedule-native-crud` @ [`5442d401`](https://github.com/Arangarx/tutoring-notes/commit/5442d401). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,9 +53,9 @@
 
 **Tip:** `master` @ `529f619e`.
 
-**Last action:** [Verify TOTP login email-alt](d278c6c0-f7b3-45bf-9772-29d4ac35a79b) **APPROVE** → merge [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e). [Explore scheduling first chunk](9ec4d349-ac59-44af-b198-3921391b5c68) = native Neon CRUD. Dispatching schedule executor.
+**Last action:** [Native scheduled-session CRUD](e36cf7b0-dad8-4b28-abe6-86a01b0b5c3a) pushed `feat/schedule-native-crud` @ `5442d401`. Dispatched [Verify native schedule CRUD](a9752500-6ff7-4ce9-a93d-868e908a2a94).
 
-**In-flight:** [Native scheduled-session CRUD](e36cf7b0-dad8-4b28-abe6-86a01b0b5c3a) (`feat/schedule-native-crud`).
+**In-flight:** independent verify of schedule CRUD (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt).
 

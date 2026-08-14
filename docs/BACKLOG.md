@@ -194,7 +194,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **Gate B2** — parent privacy consent lattice + management UI (§6)
 - **Join denial UX** — authenticated wrong principal gets bare 404 (§6)
 - **npm audit Tier B (SHOULD-FIX-4)** —  (§6)
-- **SEC — /api/test/whiteboard/* gate hardening** — /api/test/whiteboard/* gate hardening (§6)
+- **SEC — /api/test/whiteboard/* gate hardening** — **DONE** 2026-08-14 ([`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095)): `guardPlaywrightTestRoute` hard-404s in production even if `PLAYWRIGHT_TEST=1`.
 - **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
 - **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device (§1)
 - **VERIFY-ACCT-1** — duplicate-account creation block — **DONE** 2026-08-14 ([`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7)). Google OAuth cross-realm round-trip remains PLAYWRIGHT-GAP (Jest surrogate).
@@ -1520,7 +1520,7 @@ Defense in depth.
 **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): origin pin in `isBlobUrlForSession` via `isAllowedBlobUrl`.
 
 **[P2][SEC] SEC — /api/test/whiteboard/* gate hardening**  
-Pin `PLAYWRIGHT_TEST_SECRET` in prod.
+**DONE** 2026-08-14 ([`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095)): production hard-404 via `guardPlaywrightTestRoute`. Optional leftover: pin empty `PLAYWRIGHT_TEST_SECRET` in prod env.
 
 **[P3][LEGAL] Phase 10-pre external pen-test**  
 Before first paying customer.

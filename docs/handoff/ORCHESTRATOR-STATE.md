@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Priority #3 first chunk IN FLIGHT** — Google signup auto-provision WAITLISTED + operator notify (`feat/google-signup-waitlisted`). `/login` Google unchanged (no provision). Remaining #1 calendar MVP queued (Console still Andrew). Andrew checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **Priority #3 Google signup WAITLISTED — executor done, independent verify in flight.** Branch `feat/google-signup-waitlisted` @ [`bc89bb0c`](https://github.com/Arangarx/tutoring-notes/commit/bc89bb0c). Auth-boundary — do not merge until verifier APPROVE. Remaining #1 calendar MVP queued. Andrew checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `f08d56b5` (update after this docs commit).
+**Tip:** `master` @ `2e6b5bd3`.
 
-**Last action:** [Verify student-detail findability](2d3b6e1b-651b-48ce-b08b-7d92b58fcb35) **APPROVE** → merge [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5). [Explore tutor signup first chunk](1cb55bec-f414-4f20-adad-81ed7a62331a) recommended Google signup WAITLISTED + notify. Dispatched [Google signup WAITLISTED provision](2c200cec-54fc-445a-9bcd-425b2a9c3135).
+**Last action:** [Google signup WAITLISTED provision](2c200cec-54fc-445a-9bcd-425b2a9c3135) pushed `feat/google-signup-waitlisted` @ `bc89bb0c`. Dispatched [Verify Google signup WAITLISTED](e4da1094-705e-4c37-a251-a58d61c6dc6d).
 
-**In-flight:** `feat/google-signup-waitlisted`.
+**In-flight:** independent verify of Google signup (auth-boundary — do not merge yet).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console. Optional #2 leftovers: flag-off Playwright, mobile banner, desktop double mint.
 **Cleared:** Sign-In UI; Priority #2 findability.
 

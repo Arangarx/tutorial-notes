@@ -291,12 +291,16 @@
 - **What breaks if violated**: cost estimates drift from actual OpenAI invoice; long transcripts (>128k tokens, ~100k words) silently truncate.
 - **Migration check**: model changes require updating the pricing table; provider changes (Anthropic, etc.) require new estimate logic + a new `CostEvent.model` enum entry.
 
-### 4.3 Google OAuth (Connect Gmail)
+### 4.3 Google OAuth (Connect Gmail + Connect Google Calendar)
 
-- **Assumption**: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` configured at the deployer level; OAuth callback URL must match Google Cloud Console allowed redirect URIs.
-- **Where baked in**: `src/lib/env.ts` (optional env vars); `GMAIL_CONNECT_ALLOWLIST` for per-admin gating.
-- **What breaks if violated**: Gmail send fails; degrades gracefully (no email sent, no crash).
-- **Migration check**: changing `NEXTAUTH_URL` (e.g. moving to a new domain) requires re-adding the callback URL in Google Cloud Console.
+- **Assumption**: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` configured at the deployer level; OAuth callback URLs must match Google Cloud Console allowed redirect URIs.
+- **Flows** (same client credentials, **different** redirect URIs and scopes):
+  - **Gmail send** — `/api/auth/gmail/callback`; scopes `gmail.send` + `userinfo.email`; optional `GMAIL_CONNECT_ALLOWLIST` per-admin gating.
+  - **Google Calendar connect (stub)** — `/api/auth/calendar/callback`; scopes `calendar.events` + `calendar.readonly` + `userinfo.email`; **no allowlist** (any signed-in admin may connect; first chunk).
+  - **NextAuth sign-in** — `/api/auth/callback/google`; scopes `openid email profile` only (separate from both connect flows).
+- **Where baked in**: `src/lib/env.ts` (optional env vars); `GMAIL_CONNECT_ALLOWLIST` for Gmail only.
+- **What breaks if violated**: Gmail send fails; Calendar connect fails; degrades gracefully (no crash).
+- **Migration check**: changing `NEXTAUTH_URL` (e.g. moving to a new domain) requires re-adding **both** callback URLs in Google Cloud Console.
 - **Production cutover (2026-05-30)**: canonical app host is `https://usemynk.com`; Production `NEXTAUTH_URL` matches. Preview/Dev remain on `*.vercel.app` unless explicitly re-pointed.
 
 ### 4.4 SMTP (real email)

@@ -12,10 +12,10 @@ import { CreateSessionDialog } from "@/components/admin/schedule/CreateSessionDi
 import { SessionSyncBadge } from "@/components/admin/schedule/SessionSyncBadge";
 import {
   datesWithSessions,
-  mockCalendarConnections,
   mockScheduledSessions,
   parseSessionDate,
   sessionsOnDate,
+  type MockCalendarConnection,
   type MockScheduledSession,
 } from "@/lib/schedule/mock-data";
 import { SCHEDULE_INTEGRATIONS_SETTINGS_HREF } from "@/lib/schedule/navigation";
@@ -192,7 +192,15 @@ function DaySessionsPanel({
   );
 }
 
-export function SchedulePageClient() {
+export function SchedulePageClient({
+  calendarConnections,
+  googleOAuthAvailable,
+  googleCalendarCount = null,
+}: {
+  calendarConnections: MockCalendarConnection[];
+  googleOAuthAvailable: boolean;
+  googleCalendarCount?: number | null;
+}) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     parseSessionDate("2026-06-11")
   );
@@ -291,7 +299,9 @@ export function SchedulePageClient() {
       </Tabs>
 
       <CalendarIntegrationsPanel
-        connections={mockCalendarConnections}
+        connections={calendarConnections}
+        googleOAuthAvailable={googleOAuthAvailable}
+        googleCalendarCount={googleCalendarCount}
         compact
         showSettingsLink
         settingsHref={SCHEDULE_INTEGRATIONS_SETTINGS_HREF}

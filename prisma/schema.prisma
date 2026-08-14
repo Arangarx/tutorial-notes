@@ -713,6 +713,7 @@ model AdminUser {
   emailMessages           EmailMessage[]         @relation("AdminEmailMessages")
   emailConfigs            EmailConfig[]          @relation("AdminEmailConfigs")
   oauthConnections        OAuthEmailConnection[] @relation("AdminOAuthConnections")
+  oauthCalendarConnections OAuthCalendarConnection[] @relation("AdminOAuthCalendarConnections")
   recordings              SessionRecording[]     @relation("AdminRecordings")
   whiteboardSessions      WhiteboardSession[]    @relation("AdminWhiteboards")
   costEvents              CostEvent[]
@@ -848,6 +849,21 @@ model OAuthEmailConnection {
   updatedAt    DateTime   @updatedAt
   adminUserId  String?
   adminUser    AdminUser? @relation("AdminOAuthConnections", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+}
+
+/// Google Calendar OAuth (separate from Gmail send and NextAuth sign-in).
+model OAuthCalendarConnection {
+  id            String     @id @default(uuid())
+  provider      String
+  refreshToken  String
+  email         String
+  /// One-shot calendarList.list count at connect time (screencast / status only).
+  calendarCount Int?
+  updatedAt     DateTime   @updatedAt
+  adminUserId   String?
+  adminUser     AdminUser? @relation("AdminOAuthCalendarConnections", fields: [adminUserId], references: [id], onDelete: Cascade)
 
   @@index([adminUserId])
 }

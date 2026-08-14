@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
  *
  * SYNCED FROM https://www.mortensenapps.com/terms as of 2026-05-31.
  * Product-specific COPPA cross-reference updated 2026-07-09 (SEC-POLICY-TRUTH interim).
+ * Google Calendar connect section added 2026-08-14 (honest stub — no sync claim).
  *
  * The Mortensen Apps umbrella terms at www.mortensenapps.com/terms are
  * the CANONICAL legal source for eligibility / acceptable use /
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalDocumentShell title="Terms of Use" lastUpdated="July 9, 2026">
+    <LegalDocumentShell title="Terms of Use" lastUpdated="August 14, 2026">
         <p className="text-sm leading-relaxed text-muted-foreground">
           These terms govern your use of <strong>Tutoring Notes</strong>, a web
           application operated by Andrew Mortensen (&ldquo;Operator,&rdquo; &ldquo;we,&rdquo;
@@ -103,6 +104,17 @@ export default function TermsPage() {
               only when you explicitly click &ldquo;Send update.&rdquo; You can disconnect
               at any time from Settings → Email. Your use of Gmail is also subject to
               Google&apos;s own terms of service.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="heading m-0 text-lg font-normal">Google Calendar integration</h2>
+            <p style={{ margin: "8px 0 0" }}>
+              If you connect Google Calendar, the app stores your OAuth connection for upcoming
+              scheduling features. <strong>Calendar sync is not live yet</strong> — we do not
+              currently create, update, delete, or watch calendar events on your behalf. You can
+              disconnect at any time from Settings → Calendar integrations. Your use of Google
+              Calendar is also subject to Google&apos;s own terms of service.
             </p>
           </div>
 

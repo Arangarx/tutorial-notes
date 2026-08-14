@@ -5,6 +5,7 @@ import { useActionState, useEffect, useId, useState } from "react";
 import zxcvbn from "zxcvbn";
 
 import { AuthFieldError } from "@/components/auth/AuthFieldError";
+import { GoogleSignInSection } from "@/components/auth/GoogleSignInSection";
 import { PasswordStrengthField } from "@/components/auth/PasswordStrengthField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,11 @@ import { Label } from "@/components/ui/label";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-strength";
 import { signup } from "./actions";
 
-export default function SignupForm() {
+export default function SignupForm({
+  googleOAuthAvailable,
+}: {
+  googleOAuthAvailable: boolean;
+}) {
   const [state, formAction] = useActionState(signup, null);
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState("");
@@ -28,7 +33,18 @@ export default function SignupForm() {
   }, [state?.error]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" onSubmit={() => setBusy(true)}>
+    <>
+      {googleOAuthAvailable ? (
+        <div className="mb-4">
+          <GoogleSignInSection
+            callbackUrl="/admin/pending-approval"
+            noticeVariant="sign-up"
+          />
+          <p className="my-4 text-center text-sm text-muted-foreground">or</p>
+        </div>
+      ) : null}
+
+      <form action={formAction} className="flex flex-col gap-4" onSubmit={() => setBusy(true)}>
       <div className="space-y-2">
         <Label htmlFor="signup-email">Email</Label>
         <Input
@@ -110,5 +126,6 @@ export default function SignupForm() {
         </Link>
       </p>
     </form>
+    </>
   );
 }

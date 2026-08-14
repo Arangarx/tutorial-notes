@@ -149,17 +149,28 @@ describe("Blockers #1, #3, #4, #7 — authOptions", () => {
     process.env.GOOGLE_CLIENT_ID = "test-client-id";
     process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
 
+    jest.doMock("next/headers", () => ({
+      cookies: jest.fn().mockResolvedValue({
+        get: jest.fn().mockReturnValue(undefined),
+        delete: jest.fn(),
+      }),
+    }));
+
     const { authOptions } = await import("@/auth-options");
     const signIn = authOptions.callbacks?.signIn;
     expect(typeof signIn).toBe("function");
     return signIn!;
   }
 
-  it("Blocker #3 — Google signIn rejects email not in DB", async () => {
+  it("Blocker #3 — Google signIn rejects email not in DB (no signup intent)", async () => {
     jest.doMock("@/lib/auth-db", () => ({
       hasAdminUsers: jest.fn().mockResolvedValue(true),
       getAdminByEmail: jest.fn().mockResolvedValue(null), // unknown email
       verifyPassword: jest.fn().mockResolvedValue(false),
+      createAdminFromGoogle: jest.fn(),
+    }));
+    jest.doMock("@/lib/notify-operator-new-signup", () => ({
+      notifyOperatorsOfNewSignup: jest.fn(),
     }));
 
     const signIn = await getSignInCallback();
@@ -173,12 +184,22 @@ describe("Blockers #1, #3, #4, #7 — authOptions", () => {
   });
 
   it("Blocker #4 — Google signIn rejects test-account email", async () => {
+    jest.doMock("next/headers", () => ({
+      cookies: jest.fn().mockResolvedValue({
+        get: jest.fn().mockReturnValue(undefined),
+        delete: jest.fn(),
+      }),
+    }));
     jest.doMock("@/lib/auth-db", () => ({
       hasAdminUsers: jest.fn().mockResolvedValue(true),
       getAdminByEmail: jest
         .fn()
         .mockResolvedValue(makeAdminRow({ isTestAccount: true })),
       verifyPassword: jest.fn().mockResolvedValue(false),
+      createAdminFromGoogle: jest.fn(),
+    }));
+    jest.doMock("@/lib/notify-operator-new-signup", () => ({
+      notifyOperatorsOfNewSignup: jest.fn(),
     }));
 
     const signIn = await getSignInCallback();
@@ -192,12 +213,22 @@ describe("Blockers #1, #3, #4, #7 — authOptions", () => {
   });
 
   it("Blocker #4 (positive) — Google signIn accepts real admin email", async () => {
+    jest.doMock("next/headers", () => ({
+      cookies: jest.fn().mockResolvedValue({
+        get: jest.fn().mockReturnValue(undefined),
+        delete: jest.fn(),
+      }),
+    }));
     jest.doMock("@/lib/auth-db", () => ({
       hasAdminUsers: jest.fn().mockResolvedValue(true),
       getAdminByEmail: jest
         .fn()
         .mockResolvedValue(makeAdminRow({ isTestAccount: false })),
       verifyPassword: jest.fn().mockResolvedValue(false),
+      createAdminFromGoogle: jest.fn(),
+    }));
+    jest.doMock("@/lib/notify-operator-new-signup", () => ({
+      notifyOperatorsOfNewSignup: jest.fn(),
     }));
 
     const signIn = await getSignInCallback();

@@ -7,6 +7,8 @@ import type { CSSProperties } from "react";
 const VARIANT_COPY = {
   "sign-in":
     "Sign-in is securely handled by Mortensen Apps (mortensenapps.com).",
+  "sign-up":
+    "Sign-up is securely handled by Mortensen Apps (mortensenapps.com).",
   connect:
     "Connecting Google is handled securely through Mortensen Apps (mortensenapps.com).",
 } as const;

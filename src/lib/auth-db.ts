@@ -50,6 +50,26 @@ export async function createAdmin(
       email: email.trim().toLowerCase(),
       passwordHash: hash,
       displayName: dn,
+      role: "TUTOR",
+      isTestAccount: false,
+      approvalStatus: "WAITLISTED",
+    },
+  });
+}
+
+/** Google OAuth signup from /signup — no password; same WAITLISTED gate as credentials. */
+export async function createAdminFromGoogle(
+  email: string,
+  displayName?: string | null
+) {
+  const dn = displayName?.trim() || null;
+  return db.adminUser.create({
+    data: {
+      email: email.trim().toLowerCase(),
+      passwordHash: null,
+      displayName: dn,
+      role: "TUTOR",
+      isTestAccount: false,
       approvalStatus: "WAITLISTED",
     },
   });

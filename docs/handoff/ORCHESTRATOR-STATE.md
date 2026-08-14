@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#5 native schedule CRUD MERGED** [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Remaining #5 Google outbound write **blocked** on Andrew Console verify. **#6 security MUST** — exploring first shippable chunk. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 security MUST chunk 1 IN FLIGHT** — wb-asset blob origin pinning (`feat/wb-asset-origin-pin`). Remaining #5 Google outbound write blocked on Console. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -53,11 +53,11 @@
 
 **Tip:** `master` @ [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216) (schedule CRUD merge).
 
-**Last action:** [Re-verify schedule CRUD](4d07272d-467a-4d34-9dd3-233c08fc4b11) **APPROVE** → `merge --no-ff` [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Dispatched [Explore #6 security MUST](3eec73d7-ad25-40c6-aa5b-1e9a743cb1a3).
+**Last action:** [Explore #6 security MUST](3eec73d7-ad25-40c6-aa5b-1e9a743cb1a3) recommended wb-asset origin pin first. Dispatched [Pin wb-asset blob origin](f7cbf808-b5e0-4714-9f6c-888196a213d8).
 
-**In-flight:** explore first #6 security MUST chunk (Google outbound write waits on Console).
+**In-flight:** `feat/wb-asset-origin-pin` executor (do not merge).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
-**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt).
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt); #5 native schedule CRUD.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 SMOKE-PRIV-1 — executor done, independent verify in flight.** Branch `feat/smoke-priv-1-learner-logout` @ [`f115fddd`](https://github.com/Arangarx/tutoring-notes/commit/f115fddd). Do not merge until APPROVE. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#6 SMOKE-PRIV-1 MERGED** [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb). Exploring leftover unblocked #6 / next numbered work. Remaining #5 Google outbound write blocked on Console. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ [`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095) (api-test hard-404 merge).
+**Tip:** `master` @ [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb) (SMOKE-PRIV-1 merge).
 
-**Last action:** [Fix learner logout dual-cookie](ff8df5f0-9536-4a37-ba1a-6c227ebde9cb) pushed `f115fddd`. Dispatched [Verify SMOKE-PRIV-1 logout](2de50bbc-80ff-48d2-9a24-0fbd703de084).
+**Last action:** [Verify SMOKE-PRIV-1 logout](2de50bbc-80ff-48d2-9a24-0fbd703de084) **APPROVE** → merge [`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb). Dispatched [Explore leftover #6 MUST](60f38311-4b50-4281-bd05-85e042df732a).
 
-**In-flight:** independent verify of `feat/smoke-priv-1-learner-logout` (do not merge). `tutoring-notes-master-ops` stays on master.
+**In-flight:** explore leftover unblocked #6 / next priority. `tutoring-notes-master-ops` stays on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
-**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; #6 VERIFY-ACCT-1; #6 api-test hard-404.
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 origin pin; VERIFY-ACCT-1; api-test hard-404; SMOKE-PRIV-1.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

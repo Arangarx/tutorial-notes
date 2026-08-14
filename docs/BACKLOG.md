@@ -196,7 +196,7 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **npm audit Tier B (SHOULD-FIX-4)** —  (§6)
 - **SEC — /api/test/whiteboard/* gate hardening** — **DONE** 2026-08-14 ([`bb6d3095`](https://github.com/Arangarx/tutoring-notes/commit/bb6d3095)): `guardPlaywrightTestRoute` hard-404s in production even if `PLAYWRIGHT_TEST=1`.
 - **SEC — tutor-asset/route.ts any-origin blob URL** — **DONE** 2026-08-14 ([`0252a889`](https://github.com/Arangarx/tutoring-notes/commit/0252a889)): `isBlobUrlForSession` pins origin via `isAllowedBlobUrl` (all three wb-asset proxies).
-- **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device (§1)
+- **SMOKE-PRIV-1** — learner sign-out leaves parent session on shared device — **DONE** 2026-08-14 ([`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb)): learner logout revokes + clears AH session when both cookies present.
 - **VERIFY-ACCT-1** — duplicate-account creation block — **DONE** 2026-08-14 ([`2fff57b7`](https://github.com/Arangarx/tutoring-notes/commit/2fff57b7)). Google OAuth cross-realm round-trip remains PLAYWRIGHT-GAP (Jest surrogate).
 - **WB-ADULT-JOIN-ENABLEMENT B2-signup / B3 / B4** —  (§6)
 - **WB-PARENT-JOIN-AS-CHILD** — parent_session_select picker (§6)
@@ -569,7 +569,7 @@ Enumerated bidirectional pass: strokes, shapes, text, eraser, move, pages, PDF, 
 Partial tests exist; enumerated completion still open. Cross-ref **SMOKE-UX-1**, **SSG-3**.
 
 **[P1][AUTH] SMOKE-PRIV-1 — learner sign-out leaves parent session on shared device**  
-Dual-cookie by design; Andrew 2026-07-04: sign-out must not leave someone else's session. Options: learner-only logout landing, device lock clearing both cookies.
+**DONE** 2026-08-14 ([`4bc96cfb`](https://github.com/Arangarx/tutoring-notes/commit/4bc96cfb)): `POST /api/auth/learner/logout` revokes + clears `mynk_ah_session` when present. Jest + Playwright identity-e2e.
 
 **[P1][LEGAL] SEC-POLICY-TRUTH — retention lifecycle enforcement**  
 Interim honest copy on `/privacy` (PASS recheck); no enforcing cron / account-closed state modeled. Do not claim fixed retention on `master` until built.

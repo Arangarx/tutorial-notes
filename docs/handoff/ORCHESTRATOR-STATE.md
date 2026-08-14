@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#5 native schedule CRUD — ownership fix pushed, re-verify in flight.** Branch `feat/schedule-native-crud` @ [`7c398c2c`](https://github.com/Arangarx/tutoring-notes/commit/7c398c2c). Do not merge until APPROVE. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#5 native schedule CRUD MERGED** [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Remaining #5 Google outbound write **blocked** on Andrew Console verify. **#6 security MUST** — exploring first shippable chunk. Andrew Console (calendar) unchanged. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,11 +51,11 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `529f619e`.
+**Tip:** `master` @ [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216) (schedule CRUD merge).
 
-**Last action:** [Fix schedule ownership Jest](cbe1a2c6-9f9e-4235-8082-cba5950f0f57) pushed `7c398c2c` (create-path denial + helper move + Playwright today default + dialog reset). Dispatched [Re-verify schedule CRUD](4d07272d-467a-4d34-9dd3-233c08fc4b11).
+**Last action:** [Re-verify schedule CRUD](4d07272d-467a-4d34-9dd3-233c08fc4b11) **APPROVE** → `merge --no-ff` [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Dispatched [Explore #6 security MUST](3eec73d7-ad25-40c6-aa5b-1e9a743cb1a3).
 
-**In-flight:** independent re-verify of `feat/schedule-native-crud` @ `7c398c2c` (do not merge).
+**In-flight:** explore first #6 security MUST chunk (Google outbound write waits on Console).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup; Calendar connect+stub; #4 email OTP (enroll + TOTP login alt).
 

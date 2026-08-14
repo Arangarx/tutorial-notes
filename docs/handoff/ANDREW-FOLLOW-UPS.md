@@ -51,8 +51,8 @@ Notes:
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; you approve at `/admin/tutor-approvals`. |
 | #4 | Email OTP 2FA (TOTP stays) | **DONE** — enroll [`ab70f002`](https://github.com/Arangarx/tutoring-notes/commit/ab70f002) + TOTP login email-alt [`529f619e`](https://github.com/Arangarx/tutoring-notes/commit/529f619e) |
-| #5 | Native schedule CRUD | Branch [`feat/schedule-native-crud`](https://github.com/Arangarx/tutoring-notes/tree/feat/schedule-native-crud) @ [`7c398c2c`](https://github.com/Arangarx/tutoring-notes/commit/7c398c2c) — **re-verify in flight** |
-| #6–7 | Security MUST, instrumentation | Queued |
+| #5 | Native schedule CRUD | **DONE** — merged [`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216). Google outbound write waits on your Console verification. |
+| #6 | Security MUST for strangers | Exploring first shippable chunk (Google calendar write still waits on you) |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -68,4 +68,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect, email OTP (incl. Sarah login alt) **shipped**. Agents on **#5 native schedule CRUD**. Your open work = calendar callback URI + **one** Google verification when live.
+> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect, email OTP, **native schedule CRUD** shipped. Agents starting **#6 security MUST**. Your open work = calendar callback URI + **one** Google verification when live.

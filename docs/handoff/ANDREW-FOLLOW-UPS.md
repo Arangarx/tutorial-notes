@@ -50,7 +50,7 @@ Notes:
 | #1 next | Calendar OAuth **connect + stub** (scopes in the one verification bundle; sync not live) | **Starting** — `feat/calendar-oauth-connect-stub`. Do **not** add calendar scopes to Sign-In/Sign-Up |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 <<<<<<< Updated upstream
-| #3 | Tutor signup / self-serve auth | Branch [`feat/google-signup-waitlisted`](https://github.com/Arangarx/tutoring-notes/tree/feat/google-signup-waitlisted) @ [`bc89bb0c`](https://github.com/Arangarx/tutoring-notes/commit/bc89bb0c) — **independent verify in flight** (auth-boundary) |
+| #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
 | #4–7 | Email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
@@ -67,4 +67,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In + Start/claim shipped. **#3 Google signup** verifying. **Calendar OAuth connect+stub** starting so you only submit **one** Google scope verification. Add `/api/auth/calendar/callback` when you have 5 minutes — don’t submit review until the demo is up.
+> Release track option B. Sign-In, Start/claim, and Google signup→WAITLISTED **shipped**. Agents on **Calendar OAuth connect+stub** so you only submit **one** Google scope verification. Add `/api/auth/calendar/callback` when you have 5 minutes — don’t submit review until the demo is up.

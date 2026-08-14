@@ -8,7 +8,7 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 
 1. **External Google validation** — Sign-In UI + Calendar scopes / Console prep + hybrid verification (long lead times). Detail below (§ Priority #1).
 2. **Student-detail Start / consent / claim findability (P0)** — **DONE** 2026-08-14 (`f08d56b5`, verified). Top `UnclaimedParentClaimBanner` + `SessionStartBlockedCallout`. Optional leftover: flag-off Playwright, mobile viewport, desktop double mint button.
-3. **Tutor signup / self-serve auth** — waitlist → real signup; Google sign-in on login surfaces (depends on #1 Sign-In wiring).
+3. **Tutor signup / self-serve auth** — **first chunk DONE** 2026-08-14 (`2f54459f`): Google on `/signup` → WAITLISTED + operator notify; `/login` Google still no-provision without signup-intent. Leftover: pagination, REJECTED UI, invite links.
 4. **2FA pilots will finish** — email OTP first; SMS later; keep TOTP as upgrade (Sarah authenticator-on-Apple friction).
 5. **Finish scheduling** (depends on #1 calendar scopes + sync).
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.

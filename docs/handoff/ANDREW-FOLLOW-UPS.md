@@ -47,11 +47,11 @@ Notes:
 | Priority | Work | Status |
 |----------|------|--------|
 | **#1** | `/login` Sign in with Google + Playwright | **DONE** — merged [`122bf761`](https://github.com/Arangarx/tutoring-notes/commit/122bf761) |
-| #1 next | Calendar OAuth **connect + stub** (scopes in the one verification bundle; sync not live) | Branch [`feat/calendar-oauth-connect-stub`](https://github.com/Arangarx/tutoring-notes/tree/feat/calendar-oauth-connect-stub) @ [`a975d2d2`](https://github.com/Arangarx/tutoring-notes/commit/a975d2d2) — **independent verify in flight** |
+| #1 next | Calendar OAuth **connect + stub** | **DONE** — merged [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Add callback URI + enable Calendar API; **submit one bundled verification** when this is on prod/preview |
 | #2 | Student-detail Start / consent / claim findability | **DONE** — merged [`f08d56b5`](https://github.com/Arangarx/tutoring-notes/commit/f08d56b5) |
 <<<<<<< Updated upstream
 | #3 | Tutor signup / self-serve auth | **DONE** (first chunk) — merged [`2f54459f`](https://github.com/Arangarx/tutoring-notes/commit/2f54459f). Google from `/signup` → WAITLISTED; `/login` Google still no-provision without signup-intent cookie. You approve at `/admin/tutor-approvals`. |
-| #4–7 | Email OTP 2FA, scheduling, security MUST, instrumentation | Queued per BACKLOG |
+| #4 | Email OTP 2FA (TOTP stays) | **In flight** — `feat/email-otp-2fa-enroll` (email-first enroll for new approved tutors; Sarah TOTP unchanged) |
 
 **You do not need to smoke** Sign-In UI until feature DONE (Playwright green + verify + merge). Then one hardware pass: real Google account that already exists as `AdminUser` → `/login` → Google → land past 2FA setup as today.
 
@@ -67,4 +67,4 @@ Notes:
 
 ## One-liner “where are we?”
 
-> Release track option B. Sign-In, Start/claim, Google signup→WAITLISTED **shipped**. Calendar connect+stub **awaiting verify**. Add `/api/auth/calendar/callback` + enable Calendar API — **don’t submit review** until the demo is merged.
+> Release track option B. Sign-In, Start/claim, Google signup, Calendar connect+stub **shipped**. Agents on **#4 email OTP 2FA**. Your open work = add `/api/auth/calendar/callback` + enable Calendar API, then **one** verification submit when the merge is live.

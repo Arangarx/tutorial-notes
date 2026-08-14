@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **Calendar OAuth connect+stub — executor done, independent verify in flight.** Branch `feat/calendar-oauth-connect-stub` @ [`a975d2d2`](https://github.com/Arangarx/tutoring-notes/commit/a975d2d2). Do not merge until verifier APPROVE. Andrew: add `/api/auth/calendar/callback` + enable Calendar API; **do not submit review** until merged demo is up. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** **#4 email OTP 2FA first chunk IN FLIGHT** (email-first enroll for new approved tutors; TOTP unchanged). Calendar connect+stub **merged** [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Andrew: add `/api/auth/calendar/callback` + enable Calendar API; submit **one** bundled verification when deploy is crawlable. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,13 +51,13 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ `8e7a0a4a`.
+**Tip:** `master` @ `da93ab78`.
 
-**Last action:** [Calendar OAuth connect stub](30566df8-6a0f-4d04-8a19-24f50fe00d97) pushed `feat/calendar-oauth-connect-stub` @ `a975d2d2`. Dispatched [Verify calendar OAuth connect stub](23cdb7b4-73f5-4414-9584-665b306e9528).
+**Last action:** [Verify calendar OAuth connect stub](23cdb7b4-73f5-4414-9584-665b306e9528) **APPROVE** → merge [`da93ab78`](https://github.com/Arangarx/tutoring-notes/commit/da93ab78). Starting #4 email OTP 2FA.
 
-**In-flight:** independent verify of Calendar connect+stub (do not merge yet).
-**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) Console (incl. calendar callback URI). Optional #2 leftovers: flag-off Playwright, mobile banner, desktop double mint.
-**Cleared:** Sign-In UI; Priority #2 findability; #3 Google signup WAITLISTED.
+**In-flight:** [Email OTP 2FA first chunk](d493c791-bd1a-40cd-bea9-b01f0340ba96) (`feat/email-otp-2fa-enroll`).
+**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Optional leftovers: Gmail/Calendar OAuth helper extract; SessionSyncBadge honesty; #2 flag-off/mobile.
+**Cleared:** Sign-In UI; #2 findability; #3 Google signup WAITLISTED; Calendar connect+stub.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
 

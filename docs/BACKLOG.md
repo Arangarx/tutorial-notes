@@ -49,9 +49,11 @@ Audit 2026-07-10; **elevated to #1** (Andrew option B, 2026-07-30). Long externa
 
 **Sequencing (Andrew 2026-07-10):** Calendar verification = **hybrid** — Console prep **NOW** + MVP demo build, **then** submit bundled verification. **Apple Calendar** = CalDAV / no Google-style app review — **defer**. **Sign in with Apple** = optional (Apple Developer enrollment only if pursued). **Skip Facebook.** **Microsoft** = optional.
 
-**Our code (parallel prep):** `/login` Sign in with Google — **DONE** 2026-08-14 (`122bf761`). Calendar **connect+stub IN FLIGHT** (Gmail-clone routes; no two-way sync yet) so scopes exist for the one verification. Scheduling backend (Priority #5) is real sync later. Umbrella + local privacy/terms calendar copy **in the same PR** as Connect (honest: connection saved, sync not live).
+**Our code (parallel prep):** `/login` Sign in with Google — **DONE** (`122bf761`). Calendar **connect+stub DONE** 2026-08-14 (`da93ab78`, verified) — scopes exist for the one verification; sync not live. Scheduling backend (Priority #5) is real two-way sync later.
 
-**State:** Gmail send = shipped. Google Sign-In UI = shipped. Calendar = connect+stub (not mock-only anymore once that branch merges). Andrew Console: [`docs/handoff/ANDREW-FOLLOW-UPS.md`](handoff/ANDREW-FOLLOW-UPS.md).
+**State:** Gmail send = shipped. Google Sign-In UI = shipped. Calendar connect+stub = shipped. Andrew Console: [`docs/handoff/ANDREW-FOLLOW-UPS.md`](handoff/ANDREW-FOLLOW-UPS.md) — add calendar callback URI + enable Calendar API; submit bundled verification after this commit is on a crawlable URL.
+
+**Follow-ups from Calendar verify (non-blocking):** extract shared Gmail/Calendar OAuth helper before a third Google connect flow; tag `calendar-oauth-connect.spec.ts`; reconcile schedule mock `SessionSyncBadge` “Synced” vs stub honesty.
 
 **Optional follow-ups (non-blocking, from Sign-In verify):** update `login.png` visual baseline; Playwright DOM-order assert (Mortensen notice above button); negative test when Google env unset; pre-existing login `page-has-heading-one` a11y.
 
@@ -1940,7 +1942,7 @@ Visual prototype only.
 Google watch / Apple CalDAV + conflict policy — unresolved.
 
 **[P3][OPS] Google OAuth bundling with calendar scopes**  
-Same Mortensen Apps consent-screen verification cycle ([`docs/LEGAL-SYNC.md`](LEGAL-SYNC.md)).
+Connect+stub shipped (`da93ab78`). Andrew submits **one** bundled verification after demo is crawlable. Two-way sync later does not add scopes.
 
 **[P3][OPS] Apple CalDAV vs EventKit path**  
 Not started.

@@ -172,6 +172,13 @@ export async function confirmTotpEnrollment(
     select: { id: true, totpSecretEnc: true },
   });
   if (!row) return { ok: false, error: "No pending enrollment found. Start enrollment first." };
+  if (!row.totpSecretEnc) {
+    return {
+      ok: false,
+      error:
+        "No pending TOTP secret. Start TOTP enrollment first, or use the email code form if this account uses email verification.",
+    };
+  }
 
   let secret: string;
   try {

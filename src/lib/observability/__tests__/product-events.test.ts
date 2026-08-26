@@ -39,6 +39,24 @@ describe("logProductEvent", () => {
     jest.restoreAllMocks();
   });
 
+  test("TUTOR_LOGIN accepts REJECTED approvalStatus in metadata payload", async () => {
+    mockProductEventCreate.mockResolvedValueOnce({ id: "pev-row-rejected" } as never);
+
+    await logProductEvent({
+      kind: "TUTOR_LOGIN",
+      adminUserId: "admin-rejected",
+      metadata: { method: "credentials", approvalStatus: "REJECTED" },
+    });
+
+    expect(mockProductEventCreate).toHaveBeenCalledTimes(1);
+    const arg = mockProductEventCreate.mock.calls[0][0];
+    expect(arg.data.kind).toBe("TUTOR_LOGIN");
+    expect(arg.data.metadata).toEqual({
+      method: "credentials",
+      approvalStatus: "REJECTED",
+    });
+  });
+
   test("happy path writes expected Prisma payload and success log line", async () => {
     mockProductEventCreate.mockResolvedValueOnce({ id: "pev-row-1" } as never);
 

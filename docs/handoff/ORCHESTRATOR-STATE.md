@@ -43,7 +43,7 @@
 
 **agenticPipeline:** Phase 1 **merged to agenticPipeline `master`** @ [`aa56225`](https://github.com/Arangarx/agenticPipeline/commit/aa56225) (change mode + fail-closed + TN template; Sonnet APPROVE after REJECT fixes). Plan: [`docs/AGENTIC-PIPELINE-INTEGRATION.md`](../AGENTIC-PIPELINE-INTEGRATION.md).
 
-**Next action(s):** **#6 Join denial UX MERGED** [`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24). Composer-sized unblocked #6 holes are closed. Remaining #5 Google write + invite-link product call + Resend/legal stay Andrew-blocked. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
+**Next action(s):** Tyson Google packet is in the last Andrew chat (cold-user). Remaining #5 Google write + invite-link product call stay Andrew-blocked. Checklist → [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md).
 
 ---
 
@@ -51,9 +51,9 @@
 
 **🧹 DOC-CLEANUP COMPLETE (2026-07-09, branch `chore/doc-cleanup-master`).** Full doc + plan cleanup: reviewed every transient doc (12 code-verified extraction batches) + 29 tutoring plans; **all open work consolidated into the reorganized [`docs/BACKLOG.md`](BACKLOG.md)** (P0–P3 area taxonomy, 484 deduped items); **133 transient docs + 29 plans archived** to `docs/archive/` + `~/.cursor/plans/archive/` ([`ARCHIVE-LEDGER.md`](../archive/ARCHIVE-LEDGER.md)); [`docs/INDEX.md`](../INDEX.md) refreshed to surviving canonical set only. Protected living docs (INDEX, BACKLOG, RELEASE-ROADMAP, architecture cheat-sheets, brand, legal, runbooks, templates, SARAH-CALL-PREP, iOS matrix) kept in place. Extraction scratch under `docs/handoff/_cleanup-scratch/` (audit; deletable later).
 
-**Tip:** `master` @ [`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24) (join denial UX merge).
+**Tip:** `master` @ [`e6aa85b3`](https://github.com/Arangarx/tutoring-notes/commit/e6aa85b3) (Vercel tsc/build unblock).
 
-**Last action:** [Verify join denial UX](5bf11ff4-d73a-4d46-a55d-fa1646209b44) **APPROVE** → merge [`647aaf24`](https://github.com/Arangarx/tutoring-notes/commit/647aaf24).
+**Last action:** Merge [`fix/confirm-totp-nullable-secret`](https://github.com/Arangarx/tutoring-notes/commit/e6aa85b3) after verifier REJECT (duplicate describe) was removed @ [`adc45488`](https://github.com/Arangarx/tutoring-notes/commit/adc45488).
 
 **In-flight:** none. `tutoring-notes-master-ops` on master.
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.

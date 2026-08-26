@@ -44,7 +44,7 @@ export default async function TwoFactorManagePage() {
   if (session.user.isTestAccount) redirect("/admin");
 
   // Determine enrollment state via DB.
-  let twoFaRow: { id: string; enrolledAt: Date; _count: { backupCodes: number } } | null = null;
+  let twoFaRow: { id: string; enrolledAt: Date | null; _count: { backupCodes: number } } | null = null;
   let remainingBackupCodes = 0;
 
   if (session.user.id) {
@@ -121,7 +121,7 @@ export default async function TwoFactorManagePage() {
     >
         <SectionCard realm="admin" title="Authentication status">
           <TwoFactorManageView
-            enrolledAt={twoFaRow.enrolledAt.toISOString()}
+            enrolledAt={(twoFaRow.enrolledAt ?? new Date(0)).toISOString()}
             remainingBackupCodes={remainingBackupCodes}
             isAdmin={isAdmin}
             userId={session.user.id ?? ""}

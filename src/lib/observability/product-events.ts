@@ -1,4 +1,4 @@
-import { Prisma, type ProductEventKind } from "@prisma/client";
+import { Prisma, type ProductEventKind, type TutorApprovalStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 
 export type TutorSignupMetadata = {
@@ -7,7 +7,7 @@ export type TutorSignupMetadata = {
 
 export type TutorLoginMetadata = {
   method: "credentials" | "google";
-  approvalStatus: "WAITLISTED" | "APPROVED";
+  approvalStatus: TutorApprovalStatus;
 };
 
 export type TutorApprovedMetadata = {

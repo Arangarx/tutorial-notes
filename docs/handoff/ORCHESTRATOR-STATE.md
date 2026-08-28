@@ -55,6 +55,8 @@
 
 **Last action:** Neon cost pass 2026-08-28 — scale-to-zero enabled (`suspend_timeout_seconds=300`); transcribe-sweep cron slowed to `*/15 * * * *` (layer 1 + end-session still cover live work). Backlogged **TXC-SWEEP-METRICS** + **NEON-SCALE-TO-ZERO-REVISIT**.
 
+**Process — Neon CLI (Andrew 2026-08-28):** `neon`/`neonctl` auth pops a **browser window**. Warn Andrew in chat *before* running it so he has eyes on the screen. Prefer Neon MCP when it can do the write.
+
 **In-flight:** `feat/join-denial-not-my-session` in main checkout (do not merge from this ops worktree).
 **Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Later: **NEON-SCALE-TO-ZERO-REVISIT** once real lessons are regular.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup + reject/revoke; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 security chunks + join denial; #7 ProductEvent tutor funnel.

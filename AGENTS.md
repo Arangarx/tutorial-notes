@@ -225,6 +225,10 @@ Andrew writes/approves plans primarily as orchestration scaffolding and does NOT
 
 Andrew's attention is split and he frequently does not see passive prompts — a `SwitchMode` ask, an `AskQuestion` he scrolls past, an inline "say the word and I'll…". **Inaction, a rejected/ignored mode switch, or silence is NOT agreement and NOT a preference signal** — it usually just means he didn't see it. **Rules:** (1) never infer intent or "proceed" from the absence of a click/response; (2) for any material decision, put it in front of him explicitly and wait for an affirmative answer — if a passive prompt goes unanswered, re-surface it directly rather than assuming a default; (3) a `SwitchMode`/`AskQuestion` rejection means "not that, or didn't see it," never "I considered the status quo and chose it."
 
+### Neon CLI browser auth needs Andrew's eyes (2026-08-28)
+
+`neon` / `neonctl` with no cached credentials opens a **browser OAuth window**. If Andrew is not looking at the screen, the login hangs invisibly (2026-08-28: we killed a stuck `neonctl` and used Neon MCP instead). **Rule:** before invoking `neon`/`neonctl` auth (or any CLI that pops a browser), say so in chat first — "eyes on the screen, a browser window is about to open." Prefer already-authenticated Neon MCP or the Console when MCP cannot do the write.
+
 ### Subagent git safety — never discard uncommitted work (2026-06-10, smokebook loss)
 
 - A dispatched subagent, blocked from `git checkout`-ing a branch by the user's **uncommitted** working-tree edits (full smoke notes), ran a `git restore` that **discarded** those notes. A separate fumble created an **accidental local merge** of an in-progress feature branch into the integration branch (`v1-redesign`). No code was lost (feature branch was pushed) but the user's notes were unrecoverable.

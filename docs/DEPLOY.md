@@ -76,6 +76,7 @@ So **you do not need to SSH or run SQL by hand** for normal schema changes: comm
 
 - **Emergency / broken CI:** run `npx prisma migrate deploy` locally with the same env vars, or use `scripts/push-schema-neon.ps1` / `db push` only as a fallback (documented in LOCAL-DEV).
 - **Neon MCP / agents:** optional convenience; if tools hang or UAC appears, use the console + commands above instead.
+- **`neon` / `neonctl` CLI auth:** opens a browser OAuth window. **Warn Andrew first** — he needs eyes on the screen or he will miss it (2026-08-28). Prefer Neon MCP when it can do the job.
 
 ### Preview deployments (PRs)
 

@@ -2,7 +2,7 @@
 
 > **For you when you’re back after a gap.** Agents keep this current. Code work continues without waiting on these unless a row says “blocks code.”
 
-**Last refreshed:** 2026-08-14  
+**Last refreshed:** 2026-08-28  
 **Canonical priorities:** [`docs/BACKLOG.md`](../BACKLOG.md) § Release priorities (option B)  
 **Living orchestrator state:** [`ORCHESTRATOR-STATE.md`](ORCHESTRATOR-STATE.md)
 
@@ -39,6 +39,7 @@ Notes:
 |------|-----|-------|
 | Dedupe Wave A/B + tokens visual pass | [`DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md) | Partial 2026-07-27; finish when convenient |
 | Design-system gallery | BACKLOG § QUEUED | Not built yet — queued |
+| Neon scale-to-zero revisit | BACKLOG **NEON-SCALE-TO-ZERO-REVISIT** (§10) | Enabled 5-min suspend 2026-08-28 to stop idle CU-hours. Re-check once real lessons are regular (first-hit cold start / Prisma timeout). Do not flip always-on just because compute is Active during a session. |
 
 ---
 

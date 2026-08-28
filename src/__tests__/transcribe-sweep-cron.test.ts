@@ -1,6 +1,10 @@
 /**
- * Unit tests for GET /api/cron/transcribe-sweep auth + delegation.
+ * Unit tests for GET /api/cron/transcribe-sweep auth + delegation,
+ * plus the vercel.json cadence lock (slowed until usefulness metrics exist).
  */
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const mockRunTranscribeSweep = jest.fn();
 
@@ -62,6 +66,19 @@ describe("GET /api/cron/transcribe-sweep", () => {
     const res = await GET(makeCronRequest("anything"));
     expect(res.status).toBe(401);
     expect(mockRunTranscribeSweep).not.toHaveBeenCalled();
+  });
+
+  test("vercel.json schedules transcribe-sweep every 15 minutes, not every minute", () => {
+    // Spec: until TXC-SWEEP-METRICS shows the 1-minute backstop is actually used,
+    // keep cadence at 15 min so idle Production does not poke Neon every 60s.
+    const raw = readFileSync(join(process.cwd(), "vercel.json"), "utf8");
+    const config = JSON.parse(raw) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+    const sweep = config.crons.find((c) => c.path === "/api/cron/transcribe-sweep");
+    expect(sweep).toBeDefined();
+    expect(sweep!.schedule).toBe("*/15 * * * *");
+    expect(sweep!.schedule).not.toBe("* * * * *");
   });
 
   test("authorized request runs sweep and returns counts", async () => {

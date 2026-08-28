@@ -12,7 +12,7 @@ We are on the **release track**: expand beyond Sarah to unsupervised new pilots.
 4. **2FA pilots will finish** — email OTP **DONE** (`ab70f002` enroll + `529f619e` TOTP login email-alt). SMS later; TOTP stays as upgrade.
 5. **Finish scheduling** — **native CRUD DONE** 2026-08-14 ([`1bbd9216`](https://github.com/Arangarx/tutoring-notes/commit/1bbd9216)). Google outbound event write later (after Console verification). Two-way sync still P3.
 6. **Security MUST for strangers** — release-triage MUST security/ownership holes before unsupervised pilots.
-7. **Comprehensive instrumentation** — **chunk 1 DONE** 2026-08-14 ([`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4)): first-party `ProductEvent` tutor funnel (signup/login/approval/session). No PostHog. No COPPA-path events yet. **Terms/Privacy stay 100% honest.**
+7. **Comprehensive instrumentation** — **chunk 1 DONE** 2026-08-14 ([`3e9cccf4`](https://github.com/Arangarx/tutoring-notes/commit/3e9cccf4)): first-party `ProductEvent` tutor funnel (signup/login/approval/session). No PostHog. No COPPA-path events yet. **Terms/Privacy stay 100% honest.** Queued: **TXC-SWEEP-METRICS** (§10) — how often `/api/cron/transcribe-sweep` runs vs actually recovers work (cadence slowed to 15 min 2026-08-28).
 
 **Background (not blocking the ordered list):** Wave C/D dedupe (fragile WB/A/V — Opus-grade); agenticPipeline Phase 2; NativeSelect; design-system gallery. Dedupe Wave A/B + tokens already done — new work still = zero new duplication ([`docs/DEDUPE-PLAN.md`](DEDUPE-PLAN.md)).
 
@@ -478,6 +478,8 @@ Bucketed for expanding beyond Sarah to **unsupervised new pilots** (strangers, n
 - **Cost observability Phase 2** —  (§10)
 - **Cost-event durability hardening** —  (§10)
 - **Full product usage instrumentation** — NEAR-IMMEDIATE POST-MASTER (§10)
+- **TXC-SWEEP-METRICS** — transcribe-sweep cron run vs useful-work counts (§10)
+- **NEON-SCALE-TO-ZERO-REVISIT** — re-review always-on vs 5-min suspend once real sessions (§10)
 - **Historical SessionNote timezone backfill** —  (§10)
 - **Outbox permanent-failure Datadog/Sentry breadcrumbs** —  (§3)
 - **S5** — scheduled topic + notes visible in live session (§11)
@@ -1848,6 +1850,18 @@ OpenAI `/v1/usage` reconciliation cron, monthly blob storage cron, Vercel comput
 
 **[P2][OPS] Full product usage instrumentation — NEAR-IMMEDIATE POST-MASTER**  
 First-party, learner-type-keyed; sub-learner zero 3rd-party egress. Reframes PostHog bootstrapper.
+
+**[P2][OPS][REC] TXC-SWEEP-METRICS — transcribe-sweep usefulness (Andrew 2026-08-28)**  
+**Why:** Neon compute was always-on this month; `/api/cron/transcribe-sweep` ran every minute and always queries Postgres (empty sweep still wakes the DB). Cadence slowed to `*/15 * * * *` until we have evidence the 1-minute backstop is actually needed. Layer 1 (`after()` enqueue) + layer 3 (end-session kick) still cover the happy path.  
+**What to record (first-party, no third-party, no COPPA-path PII):** per invocation — ran_at, `scanned` / `processed` / `done` / `failed` / `timedOut`, notes equivalents, and a boolean `foundWork` (`scanned + notesScanned > 0`). Queryable ratio: useful runs / total runs over N days + during live sessions specifically.  
+**Decision gate:** tighten back toward every minute only if metrics show mid-session orphans the 15-minute cadence is missing; otherwise keep 15 min (or gate the sweep so idle invocations skip the DB).  
+**Status:** `OPEN` — cadence change is in `vercel.json`; metrics not built yet.
+
+**[P2][OPS] NEON-SCALE-TO-ZERO-REVISIT — re-review always-on once the site is used for real (Andrew 2026-08-28)**  
+**What we did:** Production + preview-dev + project default `suspend_timeout_seconds` flipped `0` → `300` (5 min scale-to-zero). Idle August compute was ~661 hours / ~314 CU-hours with almost no user traffic. A live session keeps the DB awake by itself; first request after idle can cold-start (mitigations: `connect_timeout=60`, `withDbRetry` — `docs/DEPLOY.md`).  
+**Re-review when:** Sarah (or any pilot) is running real lessons regularly — first login/dashboard after idle, Start session after overnight suspend, Prisma timeout / wake failures. If cold-start pain is user-visible and retries don't absorb it, consider always-on (`-1`) **only for production**, not preview-dev.  
+**Do not flip back** just because compute shows Active during a lesson — that's expected.  
+**Status:** `WATCH` — setting is live in Neon Console now; revisit is the open work.
 
 **[P3][OPS] PostHog analytics Tier 0+1**  
 **Unbuilt** (`posthog` absent in `src/`). Event taxonomy reference: [`docs/archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md`](archive/handoff/posthog-analytics-tier-0-1-bootstrapper.md). Product direction = first-party instrumentation above.

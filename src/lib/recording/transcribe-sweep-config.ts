@@ -1,6 +1,10 @@
 /**
  * Tunables for the Vercel Cron transcription backstop sweep.
  * Recording re-arch Phase 1 — durable DB-as-queue transport (slice 2c).
+ *
+ * Cadence lives in `vercel.json` (currently every 15 minutes — Andrew 2026-08-28:
+ * slow until we have evidence the every-minute backstop is actually used).
+ * Usefulness metrics to decide whether to tighten: BACKLOG TXC-SWEEP-METRICS.
  */
 
 /** Max worker attempts before a chunk is left permanently failed. */

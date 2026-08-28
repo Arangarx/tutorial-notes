@@ -6,7 +6,7 @@
 >
 > **Capability-contract rule (Andrew, 2026-06-06):** Tie-ins to Vercel-specific functionality are fine while we run on Vercel. Every such dependency MUST be documented here (or in a feature design doc cross-registered here) as: **Vercel X provides capability Y; generic/AWS equivalent = Z.** Include delivery semantics, size/timeout limits, and plan-availability caveats where uncertain — say "verify at build time" rather than assert. This is the standard extension of the maintenance rule above; see §1.7 for the template and §11 for design-stage recording re-architecture entries.
 >
-> **Last audited**: 2026-06-07 (Slice 3 smoke fixes: `after()` §1.8, workspace maxDuration=300; Vercel Cron transcription sweep + DB-as-queue transport). Prior full audit: 2026-06-06 (capability-contract rule + recording re-arch design-stage deps).
+> **Last audited**: 2026-08-28 (§1.6 transcribe-sweep cadence `*/15 * * * *`; §2.4b scale-to-zero 300s; TXC-SWEEP-METRICS + NEON-SCALE-TO-ZERO-REVISIT). Prior: 2026-06-07 (Slice 3 smoke fixes: `after()` §1.8, workspace maxDuration=300; Vercel Cron transcription sweep + DB-as-queue transport). Prior full audit: 2026-06-06 (capability-contract rule + recording re-arch design-stage deps).
 
 ---
 
@@ -86,7 +86,7 @@
 - **Why we depend on it**: Recording re-arch Phase 1 D2 durable async transport — `TranscriptChunk` rows with `status=pending` (or retryable `failed`) are the durable queue; the cron sweep at `/api/cron/transcribe-sweep` catches orphans when the immediate fire-and-forget worker attempt dies with the function instance. End-session sweep is a separate layer (slice 3).
 - **Generic / AWS equivalent**: **Amazon EventBridge Scheduler** (or EventBridge rules) → **API Gateway / Lambda** or any HTTP endpoint.
 - **Where baked in**:
-  - `vercel.json` — `crons` entry: `* * * * *` → `/api/cron/transcribe-sweep` (every minute on **Pro**; Hobby minimum is once/day — verify plan at deploy time).
+  - `vercel.json` — `crons` entry: `*/15 * * * *` → `/api/cron/transcribe-sweep` (every 15 minutes on **Pro**; Hobby minimum is once/day — verify plan at deploy time). Slowed 2026-08-28 from `* * * * *` until sweep-usefulness metrics exist (BACKLOG TXC-SWEEP-METRICS); every-minute cadence was waking Neon continuously.
   - `src/app/api/cron/transcribe-sweep/route.ts` — auth via `CRON_SECRET` + `Authorization: Bearer` header (standard Vercel Cron pattern).
   - `src/lib/recording/transcribe-sweep.ts` — bounded batch + time-budget sweep over stale `TranscriptChunk` rows.
 - **Env var**: `CRON_SECRET` — **required** for cron auth. Vercel sends `Authorization: Bearer <CRON_SECRET>` when this env var is set. **Setting it in Vercel project env is a greenlight-gated follow-up for the operator** (MCP write-safety); until set, cron invocations are rejected with 401.
@@ -183,6 +183,13 @@
   - Pattern: load DB reference sets immediately after `$connect()`, before any long external call.
 - **What breaks if violated**: similar timeouts on other managed Postgres (Supabase, Render) can produce identical symptoms. Self-hosted Postgres typically has more generous defaults but still applies under load.
 - **Migration check**: validate idle timeout on new provider; either configure longer timeout or add `withConnectionRetry` wrapper to any script holding a connection during external API calls.
+
+### 2.4b Scale to zero (compute suspend)
+
+- **Assumption (Andrew 2026-08-28):** production + preview-dev + project default use `suspend_timeout_seconds=300` (5 min idle → scale to zero). Always-on (`0` / `-1`) was burning ~314 CU-hours in August with almost no user traffic.
+- **Where baked in**: Neon Console / API endpoint settings (not in-repo). First-request-after-idle mitigations: `docs/DEPLOY.md` (`connect_timeout=60`, migrate retry); app `withDbRetry`.
+- **What breaks if violated**: first page load after idle can take ~0.5–3s (compute wake). A live session keeps compute awake. Revisit always-on **only** if real-lesson usage shows user-visible cold-start failures — BACKLOG **NEON-SCALE-TO-ZERO-REVISIT**.
+- **Migration check**: any serverless Postgres with scale-to-zero needs the same first-connect timeout/retry story.
 
 ### 2.4 Additive migrations policy
 

@@ -53,10 +53,10 @@
 
 **Tip:** `master` @ [`e6aa85b3`](https://github.com/Arangarx/tutoring-notes/commit/e6aa85b3) (Vercel tsc/build unblock).
 
-**Last action:** Merge [`fix/confirm-totp-nullable-secret`](https://github.com/Arangarx/tutoring-notes/commit/e6aa85b3) after verifier REJECT (duplicate describe) was removed @ [`adc45488`](https://github.com/Arangarx/tutoring-notes/commit/adc45488).
+**Last action:** Neon cost pass 2026-08-28 — scale-to-zero enabled (`suspend_timeout_seconds=300`); transcribe-sweep cron slowed to `*/15 * * * *` (layer 1 + end-session still cover live work). Backlogged **TXC-SWEEP-METRICS** + **NEON-SCALE-TO-ZERO-REVISIT**.
 
-**In-flight:** none. `tutoring-notes-master-ops` on master.
-**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live.
+**In-flight:** `feat/join-denial-not-my-session` in main checkout (do not merge from this ops worktree).
+**Open Andrew human work:** [`ANDREW-FOLLOW-UPS.md`](ANDREW-FOLLOW-UPS.md) — calendar callback URI + Calendar API + **one** verification submit when live. Later: **NEON-SCALE-TO-ZERO-REVISIT** once real lessons are regular.
 **Cleared:** Sign-In UI; #2 findability; #3 Google signup + reject/revoke; Calendar connect+stub; #4 email OTP; #5 native schedule CRUD; #6 security chunks + join denial; #7 ProductEvent tutor funnel.
 
 **Durable decisions (2026-07-10 + 2026-08-14):** Calendar verification = **one bundled round** — connect+stub ships **before** submit so scopes are in that one review; full two-way sync later does **not** trigger a second verify. Sign-In/Sign-Up Google stay `openid email profile` (never calendar). Apple Calendar = CalDAV/defer. Skip Facebook. Microsoft optional. Eyeball: [`docs/handoff/DEDUPE-EYEBALL-LIST.md`](DEDUPE-EYEBALL-LIST.md).
